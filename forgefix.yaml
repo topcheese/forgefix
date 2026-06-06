@@ -1,0 +1,25 @@
+project: "ForgeFix Framework Self-Test"
+global_timeout_seconds: 60
+
+# ============================================================================
+# 1. UNIVERSAL LANGUAGE DEFINITIONS
+# ============================================================================
+languages:
+  go_stack:
+    root_anchor: "go.mod"
+    test_command: "go test -json ./..."
+    token_patterns:
+      token_run: "Action.*run"
+      token_pass: "Action.*pass"
+      token_fail: "Action.*fail"
+
+# ============================================================================
+# 2. RUNTIME PIPELINES
+# ============================================================================
+pipelines:
+  - id: "forgefix-core"
+    name: "🛠️ [ PANEL: FORGEFIX ENGINE CORE ]"
+    type: "go_stack"
+    panel_color: "magenta"
+    timeout_seconds: 45
+    ledger_floor: 9
