@@ -2,25 +2,27 @@ package engine
 
 import (
 	"os"
+	"path/filepath"
 )
 
 // ============================================================================
 // LEDGER FILE MANAGER
 // ============================================================================
 
-const (
-	LedgerFilePath = ".forgefix_ledger.json"
-)
+func ledgerPath(configDir string) string {
+	return filepath.Join(configDir, ".forgefix_ledger.json")
+}
 
-func LoadLedger() (*LedgerEngine, error) {
+func LoadLedger(configDir string) (*LedgerEngine, error) {
 	ledger := NewLedgerEngine()
-	_, err := os.Stat(LedgerFilePath)
+	path := ledgerPath(configDir)
+	_, err := os.Stat(path)
 	if err == nil {
-		_ = ledger.LoadFromFile(LedgerFilePath)
+		_ = ledger.LoadFromFile(path)
 	}
 	return ledger, nil
 }
 
-func SaveLedger(ledger *LedgerEngine) error {
-	return ledger.SaveToFile(LedgerFilePath)
+func SaveLedger(ledger *LedgerEngine, configDir string) error {
+	return ledger.SaveToFile(ledgerPath(configDir))
 }

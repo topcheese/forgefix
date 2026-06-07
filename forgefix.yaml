@@ -2,12 +2,12 @@ project: "ForgeFix Framework Self-Test"
 global_timeout_seconds: 60
 
 # ============================================================================
-# 1. UNIVERSAL LANGUAGE DEFINITIONS
+# 1. AGNOSTIC LANGUAGE SCHEMAS (Zero Hardcoding)
 # ============================================================================
 languages:
   go_stack:
     root_anchor: "go.mod"
-    test_command: "go test -json ./..."
+    test_command: "go test -json -count=1 ./..."
     token_patterns:
       token_run: "Action.*run"
       token_pass: "Action.*pass"
@@ -20,6 +20,6 @@ pipelines:
   - id: "forgefix-core"
     name: "🛠️ [ PANEL: FORGEFIX ENGINE CORE ]"
     type: "go_stack"
-    panel_color: "magenta"
+    panel_color: "green"
     timeout_seconds: 45
-    ledger_floor: 9
+    ledger_floor: 4

@@ -12,6 +12,8 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
+const maxDisplayHistory = 15
+
 var (
 	Red       = "\033[31m"
 	Reset     = "\033[0m"
@@ -105,6 +107,8 @@ type TestTracker struct {
 	Completed     map[string]*TestInfo
 	CompletedIDs  map[string]bool
 	History       []string
+	Ran           int
+	Passed        int
 }
 
 type TestResult struct {
@@ -214,9 +218,13 @@ func (le *LedgerEngine) ResetCurrentRun() {
 	le.mu.Lock()
 	defer le.mu.Unlock()
 	for _, entry := range le.entries {
+		// Preserve historical floors while resetting current run counters
+		// This prevents false regression detection before tests complete
+		historicalFloor := entry.HistoricalFloor
 		entry.TotalRan = 0
 		entry.TotalPassed = 0
 		entry.TotalFailed = 0
+		entry.HistoricalFloor = historicalFloor
 	}
 }
 
@@ -275,6 +283,8 @@ type Dashboard struct {
 	SkippedPipelines map[string]bool
 	SystemErrors     []string
 	TimeoutFired     bool
+	Bomb             BombState
+	BombFrame        int
 }
 
 type ErrorLog struct {
@@ -320,6 +330,17 @@ func (d *Dashboard) GetTracker(pipelineID string) *TestTracker {
 	return d.TestTrackers[pipelineID]
 }
 
+func (d *Dashboard) ResetTrackers() {
+	d.mu.Lock()
+	defer d.mu.Unlock()
+	for _, tracker := range d.TestTrackers {
+		tracker.ActiveTests = make(map[string]*TestInfo)
+		tracker.Completed = make(map[string]*TestInfo)
+		tracker.CompletedIDs = make(map[string]bool)
+		tracker.History = make([]string, 0)
+	}
+}
+
 func (d *Dashboard) MarkPipelineSkipped(id string) {
 	d.mu.Lock()
 	defer d.mu.Unlock()
@@ -359,7 +380,7 @@ func (d *Dashboard) AddErrorLog(exitCode int) {
 	})
 }
 
-func (d *Dashboard) UpdatePipelineMetrics(pipelineID string, action string, testID string, elapsed int, result string) {
+func (d *Dashboard) UpdatePipelineMetrics(pipelineID string, action string, testID string, elapsed int, result string, testName string) {
 	d.mu.Lock()
 	defer d.mu.Unlock()
 
@@ -400,8 +421,11 @@ func (d *Dashboard) UpdatePipelineMetrics(pipelineID string, action string, test
 				Started: time.Now(),
 			}
 		}
-		entry := d.Ledger.GetOrCreateEntry(pipelineID)
-		d.Ledger.UpdateEntry(pipelineID, entry.TotalRan+1, entry.TotalPassed+1, entry.TotalFailed)
+		// Only increment metrics if TestName is present (verified test function identifier)
+		if testName != "" {
+			entry := d.Ledger.GetOrCreateEntry(pipelineID)
+			d.Ledger.UpdateEntry(pipelineID, entry.TotalRan+1, entry.TotalPassed+1, entry.TotalFailed)
+		}
 		if info, exists := tracker.ActiveTests[testID]; exists {
 			info.State = StateCompleted
 			tracker.Completed[testID] = info
@@ -424,8 +448,11 @@ func (d *Dashboard) UpdatePipelineMetrics(pipelineID string, action string, test
 				Started: time.Now(),
 			}
 		}
-		entry := d.Ledger.GetOrCreateEntry(pipelineID)
-		d.Ledger.UpdateEntry(pipelineID, entry.TotalRan+1, entry.TotalPassed, entry.TotalFailed+1)
+		// Only increment metrics if TestName is present (verified test function identifier)
+		if testName != "" {
+			entry := d.Ledger.GetOrCreateEntry(pipelineID)
+			d.Ledger.UpdateEntry(pipelineID, entry.TotalRan+1, entry.TotalPassed, entry.TotalFailed+1)
+		}
 		if info, exists := tracker.ActiveTests[testID]; exists {
 			info.State = StateCompleted
 			tracker.Completed[testID] = info
@@ -442,9 +469,19 @@ func (d *Dashboard) GetMetrics(pipelineID string) (Ran int, Passed int, Failed i
 	if tracker == nil {
 		return 0, 0, 0, make(map[string]*TestInfo), make(map[string]*TestInfo)
 	}
+	active := make(map[string]*TestInfo, len(tracker.ActiveTests))
+	for k, v := range tracker.ActiveTests {
+		cp := *v
+		active[k] = &cp
+	}
+	comp := make(map[string]*TestInfo, len(tracker.Completed))
+	for k, v := range tracker.Completed {
+		cp := *v
+		comp[k] = &cp
+	}
 	entry := d.Ledger.GetEntry(pipelineID)
 	return entry.TotalRan, entry.TotalPassed, entry.TotalFailed,
-		make(map[string]*TestInfo), make(map[string]*TestInfo)
+		active, comp
 }
 
 func (d *Dashboard) GetTotalFailures() int {
@@ -490,7 +527,11 @@ func (d *Dashboard) RenderPanel(pipeline PipelineConfig) string {
 		return fmt.Sprintf("%s%s%s\n", Bold, pipeline.Name, Reset)
 	}
 
-	floorBroken := pipeline.LedgerFloor > 0 && entry.TotalRan > 0 && entry.TotalPassed < pipeline.LedgerFloor
+	effectiveFloor := pipeline.LedgerFloor
+	if effectiveFloor == 0 {
+		effectiveFloor = entry.HistoricalFloor
+	}
+	floorBroken := effectiveFloor > 0 && entry.TotalRan > 0 && entry.TotalPassed < effectiveFloor
 	metricsColor := Reset
 	if floorBroken {
 		metricsColor = Red
@@ -506,7 +547,7 @@ func (d *Dashboard) RenderPanel(pipeline PipelineConfig) string {
 			metricsColor, entry.TotalPassed, Reset,
 			metricsColor, entry.TotalFailed, Reset,
 			Bold, Red,
-			pipeline.LedgerFloor, entry.TotalPassed,
+			effectiveFloor, entry.TotalPassed,
 			Reset,
 		)
 	} else {
@@ -522,17 +563,31 @@ func (d *Dashboard) RenderPanel(pipeline PipelineConfig) string {
 	}
 
 	tracker := d.TestTrackers[pipeline.ID]
-	if tracker == nil || len(tracker.History) == 0 {
-		return header
-	}
-
 	list := "\n"
-	for _, line := range tracker.History {
-		color := Green
-		if strings.HasPrefix(line, "✗") {
-			color = Red
+	if tracker != nil {
+		displayHistory := tracker.History
+		truncated := 0
+		if len(displayHistory) > maxDisplayHistory {
+			truncated = len(displayHistory) - maxDisplayHistory
+			displayHistory = displayHistory[truncated:]
 		}
-		list += fmt.Sprintf("   %s%s%s\n", color, line, Reset)
+		if truncated > 0 {
+			list += fmt.Sprintf("   %s... and %d more%s\n", White, truncated, Reset)
+		}
+		for _, line := range displayHistory {
+			color := Green
+			if strings.HasPrefix(line, "✗") {
+				color = Red
+			}
+			list += fmt.Sprintf("   %s%s%s\n", color, line, Reset)
+		}
+		if len(tracker.ActiveTests) > 0 {
+			list += fmt.Sprintf("   %s⏳ Running:%s\n", Yellow, Reset)
+			for _, info := range tracker.ActiveTests {
+				elapsed := time.Since(info.Started).Seconds()
+				list += fmt.Sprintf("   %s   %s (%.1fs)%s\n", Yellow, info.Name, elapsed, Reset)
+			}
+		}
 	}
 
 	return header + list
@@ -565,13 +620,17 @@ func (d *Dashboard) RenderSummary() string {
 			if !skipped && (e == nil || e.TotalRan == 0 || e.TotalFailed > 0) {
 				allNonSkippedOK = false
 			}
-			if !skipped && e != nil && e.TotalRan > 0 && p.LedgerFloor > 0 && e.TotalPassed < p.LedgerFloor {
+			ef := p.LedgerFloor
+			if ef == 0 && e != nil {
+				ef = e.HistoricalFloor
+			}
+			if !skipped && e != nil && e.TotalRan > 0 && ef > 0 && e.TotalPassed < ef {
 				brokenFloors = append(brokenFloors, struct {
 					id    string
 					name  string
 					floor int
 					got   int
-				}{p.ID, p.Name, p.LedgerFloor, e.TotalPassed})
+				}{p.ID, p.Name, ef, e.TotalPassed})
 			}
 		}
 	} else {
@@ -751,7 +810,12 @@ func (d *Dashboard) ToAIPayload() AIResponsePayload {
 			if d.SkippedPipelines[p.ID] {
 				continue
 			}
-			if e := d.Ledger.GetEntry(p.ID); e != nil && e.TotalRan > 0 && p.LedgerFloor > 0 && e.TotalPassed < p.LedgerFloor {
+			e := d.Ledger.GetEntry(p.ID)
+		ef := p.LedgerFloor
+		if e != nil && ef == 0 {
+			ef = e.HistoricalFloor
+		}
+		if e != nil && e.TotalRan > 0 && ef > 0 && e.TotalPassed < ef {
 				anyFloorBroken = true
 				break
 			}
@@ -784,7 +848,11 @@ func (d *Dashboard) ToAIPayload() AIResponsePayload {
 		var suggestedAction, errorDetails string
 		var systemErrors []string
 
-		floorBroken := !skipped && entry != nil && entry.TotalRan > 0 && p.LedgerFloor > 0 && entry.TotalPassed < p.LedgerFloor
+		ef := p.LedgerFloor
+		if ef == 0 && entry != nil {
+			ef = entry.HistoricalFloor
+		}
+		floorBroken := !skipped && entry != nil && entry.TotalRan > 0 && ef > 0 && entry.TotalPassed < ef
 
 		if skipped {
 			status = "skipped"
@@ -799,8 +867,8 @@ func (d *Dashboard) ToAIPayload() AIResponsePayload {
 			errorDetails = "Zero test streams detected for a non-skipped pipeline."
 		} else if floorBroken {
 			status = "regression"
-			suggestedAction = fmt.Sprintf("BASELINE FLOOR BROKEN: Pipeline '%s' requires %d passing tests but only %d passed. Restore or rewrite the missing tests.", p.ID, p.LedgerFloor, entry.TotalPassed)
-			errorDetails = fmt.Sprintf("passed=%d below configured floor=%d", entry.TotalPassed, p.LedgerFloor)
+			suggestedAction = fmt.Sprintf("BASELINE FLOOR BROKEN: Pipeline '%s' requires %d passing tests but only %d passed. Restore or rewrite the missing tests.", p.ID, ef, entry.TotalPassed)
+			errorDetails = fmt.Sprintf("passed=%d below floor=%d", entry.TotalPassed, ef)
 		} else if entry.TotalFailed > 0 {
 			status = "fail"
 			suggestedAction = fmt.Sprintf("TEST FAILURE: %d test(s) failed. Review the failed test names below and inspect the corresponding source files for assertion errors.", entry.TotalFailed)
