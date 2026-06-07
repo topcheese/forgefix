@@ -72,7 +72,12 @@ func ExecuteCommand(command CommandConfig, paths []string) (string, error) {
 	switch command.Type {
 	case "go_stack":
 		cmd = "go"
-		args = append(args, "test", "-json", "-timeout", "120s", "./...")
+		args = append(args, "test", "-json", "-timeout", "120s")
+		if len(command.Args) > 0 {
+			args = append(args, command.Args...)
+		} else {
+			args = append(args, "./...")
+		}
 	case "flutter_stack":
 		cmd = "flutter"
 		args = append(args, "test", "--machine")

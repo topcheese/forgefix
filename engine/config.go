@@ -5,14 +5,16 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"sort"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"gopkg.in/yaml.v3"
 )
 
-const maxDisplayHistory = 15
+const maxPanelSlots = 5
 
 var (
 	Red       = "\033[31m"
@@ -285,6 +287,25 @@ type Dashboard struct {
 	TimeoutFired     bool
 	Bomb             BombState
 	BombFrame        int
+	stopCh           chan struct{}
+	stopOnce         sync.Once
+	dirty            atomic.Int32
+}
+
+func (d *Dashboard) markDirty() {
+	d.dirty.Store(1)
+}
+
+func (d *Dashboard) IsDirty() bool {
+	return d.dirty.Load() == 1
+}
+
+func (d *Dashboard) ClearDirty() {
+	d.dirty.Store(0)
+}
+
+func (d *Dashboard) StopCh() <-chan struct{} {
+	return d.stopCh
 }
 
 type ErrorLog struct {
@@ -299,6 +320,7 @@ func NewDashboard(pipelines []PipelineConfig) *Dashboard {
 		TestTrackers:   make(map[string]*TestTracker),
 		Ledger:         NewLedgerEngine(),
 		PipelineActive: true,
+		stopCh:         make(chan struct{}),
 	}
 }
 
@@ -359,6 +381,7 @@ func (d *Dashboard) IsPipelineSkipped(id string) bool {
 func (d *Dashboard) AddSystemError(msg string) {
 	d.mu.Lock()
 	defer d.mu.Unlock()
+	d.markDirty()
 	d.SystemErrors = append(d.SystemErrors, msg)
 }
 
@@ -383,6 +406,7 @@ func (d *Dashboard) AddErrorLog(exitCode int) {
 func (d *Dashboard) UpdatePipelineMetrics(pipelineID string, action string, testID string, elapsed int, result string, testName string) {
 	d.mu.Lock()
 	defer d.mu.Unlock()
+	d.markDirty()
 
 	tracker, exists := d.TestTrackers[pipelineID]
 	if !exists {
@@ -514,10 +538,7 @@ func (d *Dashboard) GetErrorLogs() []ErrorLog {
 	return clone
 }
 
-func (d *Dashboard) RenderPanel(pipeline PipelineConfig) string {
-	d.mu.RLock()
-	defer d.mu.RUnlock()
-
+func (d *Dashboard) renderHeader(pipeline PipelineConfig) string {
 	if d.SkippedPipelines[pipeline.ID] {
 		return fmt.Sprintf("%s%s %s[SKIPPED]%s\n", Bold, pipeline.Name, Yellow, Reset)
 	}
@@ -537,60 +558,109 @@ func (d *Dashboard) RenderPanel(pipeline PipelineConfig) string {
 		metricsColor = Red
 	}
 
-	var header string
 	if floorBroken {
-		header = fmt.Sprintf(
+		return fmt.Sprintf(
 			"%s%s  Ran: %s%d%s | Pass: %s%d%s | Fail: %s%d%s  %s%s(⚠️ BASELINE BROKEN: Expected %d, Got %d)%s\n",
-			Bold,
-			pipeline.Name,
+			Bold, pipeline.Name,
 			metricsColor, entry.TotalRan, Reset,
 			metricsColor, entry.TotalPassed, Reset,
 			metricsColor, entry.TotalFailed, Reset,
-			Bold, Red,
-			effectiveFloor, entry.TotalPassed,
-			Reset,
+			Bold, Red, effectiveFloor, entry.TotalPassed, Reset,
 		)
-	} else {
-		header = fmt.Sprintf(
-			"%s%s  Ran: %s%d%s | Pass: %s%d%s | Fail: %s%d%s%s\n",
-			Bold,
-			pipeline.Name,
-			metricsColor, entry.TotalRan, Reset,
-			metricsColor, entry.TotalPassed, Reset,
-			metricsColor, entry.TotalFailed, Reset,
-			Reset,
-		)
+	}
+	return fmt.Sprintf(
+		"%s%s  Ran: %s%d%s | Pass: %s%d%s | Fail: %s%d%s%s\n",
+		Bold, pipeline.Name,
+		metricsColor, entry.TotalRan, Reset,
+		metricsColor, entry.TotalPassed, Reset,
+		metricsColor, entry.TotalFailed, Reset, Reset,
+	)
+}
+
+func (d *Dashboard) RenderHeader(pipeline PipelineConfig) string {
+	d.mu.RLock()
+	defer d.mu.RUnlock()
+	return d.renderHeader(pipeline)
+}
+
+func (d *Dashboard) renderTestList(pipeline PipelineConfig) string {
+	if d.SkippedPipelines[pipeline.ID] {
+		return ""
 	}
 
 	tracker := d.TestTrackers[pipeline.ID]
-	list := "\n"
-	if tracker != nil {
-		displayHistory := tracker.History
-		truncated := 0
-		if len(displayHistory) > maxDisplayHistory {
-			truncated = len(displayHistory) - maxDisplayHistory
-			displayHistory = displayHistory[truncated:]
+	if tracker == nil {
+		return ""
+	}
+
+	var list strings.Builder
+	var rows []string
+
+	if d.Bomb != BombDetonated && !d.TimeoutFired {
+		type activeTest struct {
+			id   string
+			info *TestInfo
 		}
-		if truncated > 0 {
-			list += fmt.Sprintf("   %s... and %d more%s\n", White, truncated, Reset)
+		var active []activeTest
+		for id, info := range tracker.ActiveTests {
+			active = append(active, activeTest{id, info})
 		}
-		for _, line := range displayHistory {
-			color := Green
-			if strings.HasPrefix(line, "✗") {
-				color = Red
+		sort.Slice(active, func(i, j int) bool {
+			return active[i].info.Started.Before(active[j].info.Started)
+		})
+		count := 0
+		spinnerChars := []string{"⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"}
+		for _, at := range active {
+			if count >= maxPanelSlots {
+				break
 			}
-			list += fmt.Sprintf("   %s%s%s\n", color, line, Reset)
-		}
-		if len(tracker.ActiveTests) > 0 {
-			list += fmt.Sprintf("   %s⏳ Running:%s\n", Yellow, Reset)
-			for _, info := range tracker.ActiveTests {
-				elapsed := time.Since(info.Started).Seconds()
-				list += fmt.Sprintf("   %s   %s (%.1fs)%s\n", Yellow, info.Name, elapsed, Reset)
-			}
+			elapsed := time.Since(at.info.Started).Seconds()
+			spinIdx := int(elapsed*10) % len(spinnerChars)
+			rows = append(rows, fmt.Sprintf("   %s%s %s (%.1fs)%s", Yellow, spinnerChars[spinIdx], at.info.Name, elapsed, Reset))
+			count++
 		}
 	}
 
-	return header + list
+	remaining := maxPanelSlots - len(rows)
+	if remaining > 0 && len(tracker.History) > 0 {
+		start := 0
+		if len(tracker.History) > remaining {
+			start = len(tracker.History) - remaining
+		}
+		for i := start; i < len(tracker.History); i++ {
+			line := tracker.History[i]
+			color := Green
+			if strings.HasPrefix(line, "✗") {
+				color = Red
+			} else if strings.HasPrefix(line, "⏹") {
+				color = Yellow
+			}
+			rows = append(rows, fmt.Sprintf("   %s%s%s", color, line, Reset))
+		}
+	}
+
+	for _, row := range rows {
+		list.WriteString(row)
+		list.WriteString("\n")
+	}
+
+	return list.String()
+}
+
+func (d *Dashboard) RenderTestList(pipeline PipelineConfig) string {
+	d.mu.RLock()
+	defer d.mu.RUnlock()
+	return d.renderTestList(pipeline)
+}
+
+func (d *Dashboard) RenderPanel(pipeline PipelineConfig) string {
+	d.mu.RLock()
+	defer d.mu.RUnlock()
+
+	list := d.renderTestList(pipeline)
+	listStr := "\n" + list
+
+	return d.renderHeader(pipeline) + listStr
 }
 
 func (d *Dashboard) RenderSummary() string {
@@ -686,6 +756,117 @@ func (d *Dashboard) RenderSummary() string {
 	}
 
 	return result
+}
+
+func (d *Dashboard) RenderFailureReport() string {
+	d.mu.RLock()
+	defer d.mu.RUnlock()
+
+	var result strings.Builder
+
+	result.WriteString(fmt.Sprintf("\n%s🔥 FAILED TESTS%s\n", Bold+Red, Reset))
+	result.WriteString(fmt.Sprintf("%s══════════════════════════════════════════%s\n", Bold, Reset))
+
+	for _, pipeline := range d.Pipelines {
+		skipped := d.SkippedPipelines[pipeline.ID]
+		if skipped {
+			continue
+		}
+		tracker := d.TestTrackers[pipeline.ID]
+		if tracker == nil {
+			continue
+		}
+
+		hasFailures := false
+		for _, line := range tracker.History {
+			if strings.HasPrefix(line, "✗") {
+				hasFailures = true
+				break
+			}
+		}
+		if !hasFailures {
+			continue
+		}
+
+		result.WriteString(fmt.Sprintf("\n%s%s%s\n", Bold, pipeline.Name, Reset))
+		for _, line := range tracker.History {
+			if strings.HasPrefix(line, "✗") {
+				result.WriteString(fmt.Sprintf("   %s%s%s\n", Red, line, Reset))
+			}
+		}
+	}
+
+	for _, errMsg := range d.SystemErrors {
+		result.WriteString(fmt.Sprintf("%s%s%s\n", Red, errMsg, Reset))
+	}
+
+	if d.Ledger != nil {
+		totalRan := d.Ledger.GetTotalRan()
+		totalPassed := d.Ledger.GetTotalPassed()
+		totalFailed := d.Ledger.GetTotalFailed()
+		totalFloor := d.Ledger.GetTotalFloor()
+		result.WriteString(fmt.Sprintf("\n%s══════════════════════════════════════════%s\n", Bold, Reset))
+		result.WriteString(fmt.Sprintf("%sTotal: %d passed, %d failed, %d ran, floor %d%s\n", White, totalPassed, totalFailed, totalRan, totalFloor, Reset))
+	}
+
+	return result.String()
+}
+
+func (d *Dashboard) RenderTimeoutReport() string {
+	d.mu.RLock()
+	defer d.mu.RUnlock()
+
+	var result strings.Builder
+
+	result.WriteString(fmt.Sprintf("\n%s⏰ TESTS STILL RUNNING AT TIMEOUT%s\n", Bold+Yellow, Reset))
+	result.WriteString(fmt.Sprintf("%s══════════════════════════════════════════%s\n", Bold, Reset))
+
+	for _, pipeline := range d.Pipelines {
+		tracker := d.TestTrackers[pipeline.ID]
+		if tracker == nil {
+			continue
+		}
+		if len(tracker.ActiveTests) == 0 {
+			continue
+		}
+		result.WriteString(fmt.Sprintf("\n%s%s%s\n", Bold, pipeline.Name, Reset))
+		for _, info := range tracker.ActiveTests {
+			elapsed := time.Since(info.Started).Seconds()
+			result.WriteString(fmt.Sprintf("   %s⏳ %s (%.2fs)%s\n", Yellow, info.Name, elapsed, Reset))
+		}
+	}
+
+	numFailed := 0
+	for _, pipeline := range d.Pipelines {
+		tracker := d.TestTrackers[pipeline.ID]
+		if tracker == nil {
+			continue
+		}
+		for _, line := range tracker.History {
+			if strings.HasPrefix(line, "✗") {
+				if numFailed == 0 {
+					result.WriteString(fmt.Sprintf("\n%s❌ FAILED TESTS%s\n", Bold+Red, Reset))
+				}
+				result.WriteString(fmt.Sprintf("   %s%s%s\n", Red, line, Reset))
+				numFailed++
+			}
+		}
+	}
+
+	for _, errMsg := range d.SystemErrors {
+		result.WriteString(fmt.Sprintf("%s%s%s\n", Red, errMsg, Reset))
+	}
+
+	if d.Ledger != nil {
+		totalRan := d.Ledger.GetTotalRan()
+		totalPassed := d.Ledger.GetTotalPassed()
+		totalFailed := d.Ledger.GetTotalFailed()
+		totalFloor := d.Ledger.GetTotalFloor()
+		result.WriteString(fmt.Sprintf("\n%s══════════════════════════════════════════%s\n", Bold, Reset))
+		result.WriteString(fmt.Sprintf("%sTotal: %d passed, %d failed, %d ran, floor %d%s\n", White, totalPassed, totalFailed, totalRan, totalFloor, Reset))
+	}
+
+	return result.String()
 }
 
 // ============================================================================

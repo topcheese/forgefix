@@ -9,9 +9,9 @@ languages:
     root_anchor: "go.mod"
     test_command: "go test -json -count=1 ./..."
     token_patterns:
-      token_run: "Action.*run"
-      token_pass: "Action.*pass"
-      token_fail: "Action.*fail"
+      token_run: '"Action":"run"'
+      token_pass: '"Action":"pass"'
+      token_fail: '"Action":"fail"'
 
 # ============================================================================
 # 2. RUNTIME PIPELINES

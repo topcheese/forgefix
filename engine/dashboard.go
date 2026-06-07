@@ -37,8 +37,13 @@ func (u *UI) StartRenderLoop(quit chan struct{}) {
 		select {
 		case <-quit:
 			return
+		case <-u.dashboard.StopCh():
+			return
 		case <-ticker.C:
-			u.render()
+			if u.dashboard.IsDirty() {
+				u.dashboard.ClearDirty()
+				u.render()
+			}
 		}
 	}
 }
@@ -52,7 +57,7 @@ func (u *UI) render() {
 	fmt.Fprint(&output, "\033[H\033[2J")
 
 	for _, pipeline := range u.dashboard.GetActivePipelines() {
-		panel := u.dashboard.RenderPanel(pipeline)
+		output.WriteString(u.dashboard.RenderHeader(pipeline))
 
 		e := u.dashboard.Ledger.GetEntry(pipeline.ID)
 		ef := pipeline.LedgerFloor
@@ -62,14 +67,13 @@ func (u *UI) render() {
 
 		if u.dashboard.Bomb == BombDefused {
 			floorStr := fmt.Sprintf("%d", ef)
-			panel += "\n" + Green + Bold + "   >> BOMB DEFUSED <<" + Reset + "\n"
-			panel += Green + RenderBombDefused(floorStr) + Reset
+			output.WriteString("\n" + Green + Bold + "   >> BOMB DEFUSED <<" + Reset + "\n")
+			output.WriteString(Green + RenderBombDefused(floorStr) + Reset)
 		} else if u.dashboard.Bomb != BombDetonated {
 			floorStr := fmt.Sprintf("%d", ef)
-			panel += "\n" + RenderBombRing(u.dashboard.BombFrame, floorStr)
+			output.WriteString("\n" + RenderBombRing(u.dashboard.BombFrame, floorStr))
 		}
 
-		output.WriteString(panel)
 		output.WriteString("\n")
 	}
 
@@ -106,10 +110,18 @@ func (u *UI) render() {
 		output.WriteString(fmt.Sprintf("%sFailed: %s%d%s\n", White, Red, totalFailed, Reset))
 		output.WriteString(fmt.Sprintf("%sBaseline: %s%d%s\n", White, White, totalFloor, Reset))
 		output.WriteString(fmt.Sprintf("%s========================================\n", Bold))
+	}
 
-		for _, errMsg := range u.dashboard.GetSystemErrors() {
-			output.WriteString(fmt.Sprintf("%s%s%s\n", Red, errMsg, Reset))
+	output.WriteString("\n")
+	for _, pipeline := range u.dashboard.GetActivePipelines() {
+		testList := u.dashboard.RenderTestList(pipeline)
+		if testList != "" {
+			output.WriteString(testList)
 		}
+	}
+
+	for _, errMsg := range u.dashboard.GetSystemErrors() {
+		output.WriteString(fmt.Sprintf("%s%s%s\n", Red, errMsg, Reset))
 	}
 
 	fmt.Print(output.String())
@@ -313,6 +325,44 @@ func (d *Dashboard) GetTimeoutTests(pipelineID string, timeoutSecs int) []struct
 func (d *Dashboard) TriggerDetonation() {
 	d.mu.Lock()
 	defer d.mu.Unlock()
+	d.markDirty()
+	if d.Bomb == BombDetonated {
+		return
+	}
 	d.Bomb = BombDetonated
-	d.SystemErrors = append(d.SystemErrors, "🛑 TIMEOUT: Test stream exceeded 15s hard limit")
+	d.drainOrphanedTests()
+	d.stopOnce.Do(func() {
+		close(d.stopCh)
+	})
+}
+
+// drainOrphanedTests moves all remaining ActiveTests to History with "⏹" prefix.
+// These are tests that were killed/interrupted by the detonation and never completed.
+// Called under d.mu.Lock() from TriggerDetonation.
+func (d *Dashboard) drainOrphanedTests() {
+	for _, pipeline := range d.Pipelines {
+		tracker := d.TestTrackers[pipeline.ID]
+		if tracker == nil {
+			continue
+		}
+		var orphanIDs []string
+		for id := range tracker.ActiveTests {
+			if !tracker.CompletedIDs[id] {
+				orphanIDs = append(orphanIDs, id)
+			}
+		}
+		sawOrphan := false
+		for _, id := range orphanIDs {
+			info := tracker.ActiveTests[id]
+			tracker.CompletedIDs[id] = true
+			info.State = StateCompleted
+			tracker.Completed[id] = info
+			tracker.History = append(tracker.History, "⏹ "+id)
+			delete(tracker.ActiveTests, id)
+			sawOrphan = true
+		}
+		if sawOrphan {
+			d.SystemErrors = append(d.SystemErrors, "⏹ Tests still running when bomb detonated")
+		}
+	}
 }

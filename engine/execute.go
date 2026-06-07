@@ -7,6 +7,7 @@ import (
 	"os"
 	"os/signal"
 	"path/filepath"
+	"strings"
 	"sync"
 	"syscall"
 	"time"
@@ -132,12 +133,12 @@ func ExecuteSuite(config *Config, configDir string, aiMode bool, watchMode bool)
 		// Check for any test failures
 		hasFailures := dashboard.GetTotalFailures() > 0
 
-		if !allMet && hasFailures {
+		if hasFailures || !allMet {
 			dashboard.Bomb = BombDetonated
 			for _, pr := range runners {
 				pr.Runner.Kill()
 			}
-		} else if allMet && dashboard.GetTotalFailures() == 0 {
+		} else {
 			dashboard.Bomb = BombDefused
 		}
 
@@ -145,9 +146,21 @@ func ExecuteSuite(config *Config, configDir string, aiMode bool, watchMode bool)
 			if aiMode {
 				EmitDetonated(dashboard)
 			} else {
-				time.Sleep(100 * time.Millisecond)
-				fmt.Print("\033[H\033[2J")
-				fmt.Print(RenderDetonation())
+				time.Sleep(200 * time.Millisecond)
+				var sb strings.Builder
+				sb.WriteString("\033[H\033[2J")
+				for _, p := range config.Pipelines {
+					sb.WriteString(dashboard.RenderHeader(p))
+					sb.WriteString("\n" + RenderDetonation() + "\n")
+				}
+				for _, p := range config.Pipelines {
+					list := dashboard.RenderTestList(p)
+					if list != "" {
+						sb.WriteString(list)
+					}
+				}
+				sb.WriteString(dashboard.RenderFailureReport())
+				fmt.Print(sb.String())
 			}
 			os.Exit(1)
 		}
@@ -162,8 +175,21 @@ func ExecuteSuite(config *Config, configDir string, aiMode bool, watchMode bool)
 		if aiMode {
 			EmitJSON(dashboard)
 		} else {
-			fmt.Print("\033[H\033[2J")
-			fmt.Println(Red + "\n❌ TIMEOUT: pipeline execution exceeded global timeout" + Reset)
+			var sb strings.Builder
+			sb.WriteString("\033[H\033[2J")
+			for _, p := range config.Pipelines {
+				sb.WriteString(dashboard.RenderHeader(p))
+				sb.WriteString("\n")
+			}
+			for _, p := range config.Pipelines {
+				list := dashboard.RenderTestList(p)
+				if list != "" {
+					sb.WriteString(list)
+				}
+			}
+			sb.WriteString(Red + Bold + "\n❌ TIMEOUT: pipeline execution exceeded global timeout\n" + Reset)
+			sb.WriteString(dashboard.RenderTimeoutReport())
+			fmt.Print(sb.String())
 		}
 		os.Exit(1)
 	case <-sigChan:
@@ -186,7 +212,40 @@ func ExecuteSuite(config *Config, configDir string, aiMode bool, watchMode bool)
 		EmitJSON(dashboard)
 	} else {
 		if dashboard.Bomb == BombDefused {
-			fmt.Println(Green + Bold + "   ▶▶▶ 🟢 [SUCCESS] BOMB DEFUSED: ALL SYSTEMS SECURE ◀◀◀" + Reset)
+			time.Sleep(200 * time.Millisecond)
+			var sb strings.Builder
+			sb.WriteString("\033[H\033[2J")
+			for _, p := range config.Pipelines {
+				sb.WriteString(dashboard.RenderHeader(p))
+				e := dashboard.Ledger.GetEntry(p.ID)
+				ef := p.LedgerFloor
+				if e != nil && e.HistoricalFloor > ef {
+					ef = e.HistoricalFloor
+				}
+				floorStr := fmt.Sprintf("%d", ef)
+				sb.WriteString("\n" + Green + Bold + "   >> BOMB DEFUSED <<" + Reset + "\n")
+				sb.WriteString(Green + RenderBombDefused(floorStr) + Reset + "\n")
+			}
+			totalPassed := dashboard.Ledger.GetTotalPassed()
+			totalFailed := dashboard.Ledger.GetTotalFailed()
+			totalRan := dashboard.Ledger.GetTotalRan()
+			totalFloor := dashboard.Ledger.GetTotalFloor()
+			sb.WriteString(fmt.Sprintf("\n%s========================================\n", Bold))
+			sb.WriteString(fmt.Sprintf("%s✅ ALL SYSTEMS NOMINAL: ALL TESTS PASSED CLEANLY%s\n", Green, Reset))
+			sb.WriteString(fmt.Sprintf("%sTotal Tests: %d%s\n", White, totalRan, Reset))
+			sb.WriteString(fmt.Sprintf("%sPassed: %s%d%s\n", White, Green, totalPassed, Reset))
+			sb.WriteString(fmt.Sprintf("%sFailed: %s%d%s\n", White, Red, totalFailed, Reset))
+			sb.WriteString(fmt.Sprintf("%sBaseline: %s%d%s\n", White, White, totalFloor, Reset))
+			sb.WriteString(fmt.Sprintf("%s========================================\n", Bold))
+			for _, p := range config.Pipelines {
+				list := dashboard.RenderTestList(p)
+				if list != "" {
+					sb.WriteString("\n")
+					sb.WriteString(list)
+				}
+			}
+			sb.WriteString(fmt.Sprintf("\n%s   ▶▶▶ 🟢 [SUCCESS] BOMB DEFUSED: ALL SYSTEMS SECURE ◀◀◀%s\n", Green+Bold, Reset))
+			fmt.Print(sb.String())
 		}
 	}
 
