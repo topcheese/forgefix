@@ -1,0 +1,21 @@
+# Runtime state directories
+.ff/
+**/.ff/
+
+# Binaries
+ff
+*.exe
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Build artifacts
+tmp/
+/build/
