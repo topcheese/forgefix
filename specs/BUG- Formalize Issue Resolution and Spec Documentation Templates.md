@@ -1,6 +1,6 @@
 ---
 spec_id: "SPEC-1781317038"
-status: "review"
+status: "closed"
 type: "type/fix"
 version: "version/v0.8.0"
 repo_issue: 154

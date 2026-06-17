@@ -1,6 +1,6 @@
 ---
 spec_id: "SPEC-1781424037"
-status: "backlog"
+status: "closed"
 repo_issue: ""
 ---
 # Bug  Ff Sync Loop Creates Duplicate Remote Issues

@@ -1,6 +1,6 @@
 ---
 spec_id: "SPEC-1781317037"
-status: "in-progress"
+status: "closed"
 type: "type/bug"
 version: "version/v0.8.0"
 repo_issue: 153
