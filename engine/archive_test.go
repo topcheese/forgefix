@@ -30,7 +30,7 @@ func TestArchiveResolvedSpecs_ArchivesClosedSpecs(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	ledger := NewLedgerEngine(configDir)
+	ledger := NewLedgerEngine()
 	ledger.WorkflowConfig = DefaultWorkflowConfig()
 
 	for _, entry := range []struct {
@@ -42,7 +42,7 @@ func TestArchiveResolvedSpecs_ArchivesClosedSpecs(t *testing.T) {
 		{"SPEC-300", "closed"},
 		{"SPEC-400", "draft"},
 	} {
-		writeSpecFile(t, specsDir, entry.specID, entry.status)
+		writeArchiveSpecFile(t, specsDir, entry.specID, entry.status)
 		ledger.SetSpecEntry(entry.specID, &SpecEntry{
 			SpecID: entry.specID,
 			Status: entry.status,
@@ -121,7 +121,7 @@ func TestArchiveResolvedSpecs_NoClosedSpecs(t *testing.T) {
 		{"SPEC-200", "draft"},
 		{"SPEC-300", "review"},
 	} {
-		writeSpecFile(t, specsDir, entry.specID, entry.status)
+		writeArchiveSpecFile(t, specsDir, entry.specID, entry.status)
 	}
 
 	archiveName, count, err := ArchiveResolvedSpecs(configDir)
@@ -152,7 +152,7 @@ func TestArchiveResolvedSpecs_MixedResolvedAndClosed(t *testing.T) {
 		{"SPEC-200", "closed"},
 		{"SPEC-300", "ship"},
 	} {
-		writeSpecFile(t, specsDir, entry.specID, entry.status)
+		writeArchiveSpecFile(t, specsDir, entry.specID, entry.status)
 	}
 
 	archiveName, count, err := ArchiveResolvedSpecs(configDir)

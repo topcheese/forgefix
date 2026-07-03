@@ -601,136 +601,142 @@ func ShipReconciliation(config *Config, configDir string, aiMode bool) {
 		os.Exit(1)
 	}
 
-	entries := ReadAuditLogEntries(configDir)
-	if len(entries) == 0 {
-		if aiMode {
-			EmitAIError("AUDIT_LOG_ERROR", "No audit log entries found. Nothing to ship.")
-			os.Exit(1)
+	// When ship-ready specs exist, skip the audit log / resolution check
+	// and proceed directly to push (spec-based workflow).
+	if len(shipSpecs) == 0 {
+		entries := ReadAuditLogEntries(configDir)
+		if len(entries) == 0 {
+			if aiMode {
+				EmitAIError("AUDIT_LOG_ERROR", "No audit log entries found. Nothing to ship.")
+				os.Exit(1)
+			}
+			fmt.Fprintln(os.Stderr, "No audit log entries found. Nothing to ship.")
+			os.Exit(0)
 		}
-		fmt.Fprintln(os.Stderr, "No audit log entries found. Nothing to ship.")
-		os.Exit(0)
-	}
 
-	var resolved []AuditEntry
-	for _, entry := range entries {
-		if !strings.HasPrefix(entry.Message, "CREATED") {
-			continue
-		}
-		comments, err := coord.GetIssueComments(entry.IssueNumber)
-		if err != nil {
-			fmt.Fprintf(os.Stderr, "Warning: failed to fetch comments for issue #%d: %v\n", entry.IssueNumber, err)
-			continue
-		}
-		for _, comment := range comments {
-			if strings.Contains(comment.Body, "[ForgeFix Resolution Report]") {
-				resolved = append(resolved, entry)
-				break
+		var resolved []AuditEntry
+		for _, entry := range entries {
+			if !strings.HasPrefix(entry.Message, "CREATED") {
+				continue
+			}
+			comments, err := coord.GetIssueComments(entry.IssueNumber)
+			if err != nil {
+				fmt.Fprintf(os.Stderr, "Warning: failed to fetch comments for issue #%d: %v\n", entry.IssueNumber, err)
+				continue
+			}
+			for _, comment := range comments {
+				if strings.Contains(comment.Body, "[ForgeFix Resolution Report]") {
+					resolved = append(resolved, entry)
+					break
+				}
 			}
 		}
-	}
 
-	if len(resolved) == 0 {
-		fmt.Fprintln(os.Stderr, "Error: No resolved issues with [ForgeFix Resolution Report] tag found.")
-		if aiMode {
-			fmt.Println("AI mode: proceeding with ship despite no automated resolutions.")
-		} else if !confirmPrompt("No automated resolutions detected. Proceed manually?") {
-			fmt.Fprintln(os.Stderr, "Ship aborted.")
-			os.Exit(1)
+		if len(resolved) == 0 {
+			fmt.Fprintln(os.Stderr, "Error: No resolved issues with [ForgeFix Resolution Report] tag found.")
+			if aiMode {
+				fmt.Println("AI mode: proceeding with ship despite no automated resolutions.")
+			} else if !confirmPrompt("No automated resolutions detected. Proceed manually?") {
+				fmt.Fprintln(os.Stderr, "Ship aborted.")
+				os.Exit(1)
+			}
+			if !aiMode {
+				fmt.Println("Proceeding with manual confirmation.")
+				return
+			}
 		}
-		if !aiMode {
-			fmt.Println("Proceeding with manual confirmation.")
-			return
-		}
-	}
 
-	if len(resolved) > 1 {
-		fmt.Fprintf(os.Stderr, "Warning: Multiple resolved issues found (%d):\n", len(resolved))
+		if len(resolved) > 1 {
+			fmt.Fprintf(os.Stderr, "Warning: Multiple resolved issues found (%d):\n", len(resolved))
+			for _, r := range resolved {
+				fmt.Fprintf(os.Stderr, "  - #%d: %s\n", r.IssueNumber, r.TestName)
+			}
+			if aiMode {
+				fmt.Println("AI mode: proceeding with all resolutions.")
+			} else if !confirmPrompt("Multiple resolutions found. Proceed with all?") {
+				fmt.Fprintln(os.Stderr, "Ship aborted.")
+				os.Exit(1)
+			}
+		}
+
+		testNames := make(map[string]bool)
 		for _, r := range resolved {
-			fmt.Fprintf(os.Stderr, "  - #%d: %s\n", r.IssueNumber, r.TestName)
+			testNames[r.TestName] = true
 		}
-		if aiMode {
-			fmt.Println("AI mode: proceeding with all resolutions.")
-		} else if !confirmPrompt("Multiple resolutions found. Proceed with all?") {
-			fmt.Fprintln(os.Stderr, "Ship aborted.")
+
+		statusOut, err := execGit(configDir, "status", "--porcelain")
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "Error: failed to check git status: %v\n", err)
 			os.Exit(1)
 		}
-	}
 
-	testNames := make(map[string]bool)
-	for _, r := range resolved {
-		testNames[r.TestName] = true
-	}
-
-	statusOut, err := execGit(configDir, "status", "--porcelain")
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "Error: failed to check git status: %v\n", err)
-		os.Exit(1)
-	}
-
-	var untracked []string
-	for _, line := range strings.Split(statusOut, "\n") {
-		line = strings.TrimSpace(line)
-		if line == "" {
-			continue
-		}
-		if strings.HasPrefix(line, "??") {
-			untracked = append(untracked, strings.TrimSpace(line[2:]))
-		}
-	}
-	if len(untracked) > 0 {
-		fmt.Fprintln(os.Stderr, "Error: Workspace contains untracked files unrelated to test execution:")
-		for _, f := range untracked {
-			fmt.Fprintf(os.Stderr, "  - %s\n", f)
-		}
-		fmt.Fprintln(os.Stderr, "Ship aborted: commit or stash untracked files before shipping.")
-		os.Exit(1)
-	}
-
-	stagedOut, err := execGit(configDir, "diff", "--cached", "--name-only")
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "Error: failed to get staged files: %v\n", err)
-		os.Exit(1)
-	}
-
-	var stagedFiles []string
-	for _, f := range strings.Split(stagedOut, "\n") {
-		f = strings.TrimSpace(f)
-		if f != "" {
-			stagedFiles = append(stagedFiles, f)
-		}
-	}
-
-	var unrelatedFiles []string
-	for _, file := range stagedFiles {
-		fileDiff, err := execGit(configDir, "diff", "--cached", "--", file)
-		if err != nil {
-			unrelatedFiles = append(unrelatedFiles, file)
-			continue
-		}
-		related := false
-		for testName := range testNames {
-			if strings.Contains(fileDiff, testName) {
-				related = true
-				break
+		var untracked []string
+		for _, line := range strings.Split(statusOut, "\n") {
+			line = strings.TrimSpace(line)
+			if line == "" {
+				continue
+			}
+			if strings.HasPrefix(line, "??") {
+				untracked = append(untracked, strings.TrimSpace(line[2:]))
 			}
 		}
-		if !related {
-			unrelatedFiles = append(unrelatedFiles, file)
+		if len(untracked) > 0 {
+			fmt.Fprintln(os.Stderr, "Error: Workspace contains untracked files unrelated to test execution:")
+			for _, f := range untracked {
+				fmt.Fprintf(os.Stderr, "  - %s\n", f)
+			}
+			fmt.Fprintln(os.Stderr, "Ship aborted: commit or stash untracked files before shipping.")
+			os.Exit(1)
 		}
-	}
-	if len(unrelatedFiles) > 0 {
-		fmt.Fprintln(os.Stderr, "Error: The following staged changes are unrelated to resolved test failures:")
-		for _, f := range unrelatedFiles {
-			fmt.Fprintf(os.Stderr, "  - %s\n", f)
-		}
-		fmt.Fprintln(os.Stderr, "Ship aborted: all staged changes must be related to resolved test issues.")
-		os.Exit(1)
-	}
 
-	fmt.Println("Ship validation passed.")
-	fmt.Printf("Validated %d resolved issue(s) with matching staged changes.\n", len(resolved))
-	for _, r := range resolved {
-		fmt.Printf("  - #%d: %s\n", r.IssueNumber, r.TestName)
+		stagedOut, err := execGit(configDir, "diff", "--cached", "--name-only")
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "Error: failed to get staged files: %v\n", err)
+			os.Exit(1)
+		}
+
+		var stagedFiles []string
+		for _, f := range strings.Split(stagedOut, "\n") {
+			f = strings.TrimSpace(f)
+			if f != "" {
+				stagedFiles = append(stagedFiles, f)
+			}
+		}
+
+		var unrelatedFiles []string
+		for _, file := range stagedFiles {
+			fileDiff, err := execGit(configDir, "diff", "--cached", "--", file)
+			if err != nil {
+				unrelatedFiles = append(unrelatedFiles, file)
+				continue
+			}
+			related := false
+			for testName := range testNames {
+				if strings.Contains(fileDiff, testName) {
+					related = true
+					break
+				}
+			}
+			if !related {
+				unrelatedFiles = append(unrelatedFiles, file)
+			}
+		}
+		if len(unrelatedFiles) > 0 {
+			fmt.Fprintln(os.Stderr, "Error: The following staged changes are unrelated to resolved test failures:")
+			for _, f := range unrelatedFiles {
+				fmt.Fprintf(os.Stderr, "  - %s\n", f)
+			}
+			fmt.Fprintln(os.Stderr, "Ship aborted: all staged changes must be related to resolved test issues.")
+			os.Exit(1)
+		}
+
+		fmt.Println("Ship validation passed.")
+		fmt.Printf("Validated %d resolved issue(s) with matching staged changes.\n", len(resolved))
+		for _, r := range resolved {
+			fmt.Printf("  - #%d: %s\n", r.IssueNumber, r.TestName)
+		}
+	} else {
+		fmt.Printf("Ship validation passed. %d spec(s) ready to ship.\n", len(shipSpecs))
 	}
 
 	fmt.Println("Pushing to remote...")
