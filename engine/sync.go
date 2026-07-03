@@ -529,7 +529,11 @@ func syncSingleSpec(coord *IssueCoordinator, configDir, specID string, cfg *Conf
 		}
 
 		if spec.RepoIssue == 0 {
-			issue, err := coord.CreateIssueWithBody(spec.Title, spec.Body)
+			title := spec.Title
+			if !IsValidIssueTitle(title) {
+				title = fmt.Sprintf("feat/spec: %s", title)
+			}
+			issue, err := coord.CreateIssueWithBody(title, spec.Body)
 			if err != nil {
 				return fmt.Errorf("creating issue for spec %s: %w", spec.Title, err)
 			}
@@ -607,7 +611,7 @@ func SpawnBackgroundSync(configDir, specID string) error {
 
 func isResolvedStatus(status string) bool {
 	switch strings.TrimSpace(strings.ToLower(status)) {
-	case "closed", "done", "fixed", "ship":
+	case "closed", "done", "fixed":
 		return true
 	default:
 		return false

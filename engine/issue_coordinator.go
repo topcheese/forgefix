@@ -1545,7 +1545,11 @@ func (c *IssueCoordinator) SyncSpecs(configDir string) error {
 				fmt.Printf("Found existing remote issue #%d for spec: %s (skipping POST)\n", existing.Number, spec.Title)
 			} else {
 				c.markSpecAsDuplicateIfNeeded(spec)
-				issue, err := c.CreateIssueWithBody(spec.Title, spec.Body)
+				title := spec.Title
+				if !IsValidIssueTitle(title) {
+					title = fmt.Sprintf("feat/spec: %s", title)
+				}
+				issue, err := c.CreateIssueWithBody(title, spec.Body)
 				if err != nil {
 					fmt.Fprintf(os.Stderr, "error creating issue for spec %s: %v\n", spec.Title, err)
 					continue
@@ -1582,7 +1586,11 @@ func (c *IssueCoordinator) SyncSpecs(configDir string) error {
 						fmt.Printf("Found existing remote issue #%d for spec: %s (rebinding)\n", existing.Number, spec.Title)
 					} else {
 						c.markSpecAsDuplicateIfNeeded(spec)
-						issue, err := c.CreateIssueWithBody(spec.Title, spec.Body)
+						title := spec.Title
+						if !IsValidIssueTitle(title) {
+							title = fmt.Sprintf("feat/spec: %s", title)
+						}
+						issue, err := c.CreateIssueWithBody(title, spec.Body)
 						if err != nil {
 							fmt.Fprintf(os.Stderr, "error creating replacement issue for spec %s: %v\n", spec.Title, err)
 							continue

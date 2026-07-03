@@ -26,27 +26,28 @@
       "status": "closed",
       "linked_commits": []
     },
+    "SPEC-1783045153": {
+      "spec_id": "SPEC-1783045153",
+      "repo_issue_id": 436,
+      "status": "closed",
+      "linked_commits": []
+    },
     "SPEC-1783079687": {
       "spec_id": "SPEC-1783079687",
-      "repo_issue_id": 0,
-      "status": "in-progress",
-      "linked_commits": [
-        "4293fca",
-        "c8ae0b1"
-      ]
+      "repo_issue_id": 435,
+      "status": "closed",
+      "linked_commits": []
     },
     "SPEC-1783113194": {
       "spec_id": "SPEC-1783113194",
-      "repo_issue_id": 0,
-      "status": "in-progress",
-      "linked_commits": [
-        "ba59717"
-      ]
+      "repo_issue_id": 434,
+      "status": "closed",
+      "linked_commits": []
     },
     "SPEC-1783113220": {
       "spec_id": "SPEC-1783113220",
-      "repo_issue_id": 0,
-      "status": "draft",
+      "repo_issue_id": 437,
+      "status": "closed",
       "linked_commits": []
     }
   }

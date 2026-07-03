@@ -1,6 +1,6 @@
 ---
 spec_id: "SPEC-1783045153"
-status: ship # backlog, in-progress, review, ship, closed
+status: ship
 repo_issue: ""
 ---
 # Project Setup And Extraction
