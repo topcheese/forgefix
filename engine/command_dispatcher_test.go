@@ -66,12 +66,17 @@ func TestCommandDispatcher_VersionViaShortFlag(t *testing.T) {
 	}
 }
 
-func TestCommandDispatcher_UnknownCommandReturnsError(t *testing.T) {
-	var buf strings.Builder
-	d := NewCommandDispatcher("/tmp", "/tmp", &buf, &buf)
-	_, err := d.Execute("nonexistent", nil)
-	if err == nil {
-		t.Fatal("expected error for unknown command, got nil")
+func TestCommandDispatcher_UnknownCommandRunsTestSuite(t *testing.T) {
+	var stdout, stderr strings.Builder
+	d := NewCommandDispatcher("/tmp", "/tmp", &stdout, &stderr)
+	// Unknown commands are now treated as test suite flags (existing behavior)
+	result, err := d.Execute("nonexistent", nil)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	// Should not error — routes to handleRun which may fail gracefully
+	if result.ExitCode != 0 && result.ExitCode != 1 {
+		t.Errorf("expected ExitCode 0 or 1, got %d", result.ExitCode)
 	}
 }
 

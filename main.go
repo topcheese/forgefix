@@ -45,12 +45,8 @@ func main() {
 	}
 
 	cmd := ""
-	targetPath := ""
 	if len(os.Args) > 1 {
 		cmd = strings.ToLower(os.Args[1])
-	}
-	if len(os.Args) > 2 && (cmd == "sync" || cmd == "ship") && !strings.HasPrefix(os.Args[2], "-") {
-		targetPath = os.Args[2]
 	}
 
 	skipConfigCheck := cmd == "help" || cmd == "--help" || cmd == "version" || cmd == "-v" || cmd == "sync" || cmd == "ship" || cmd == "archive" || cmd == "specs"
@@ -69,104 +65,22 @@ func main() {
 	disp := engine.NewCommandDispatcher(projectRoot, wd, os.Stdout, os.Stderr)
 
 	switch cmd {
-	case "spec":
-		result, err := disp.Execute("spec", os.Args[2:])
+	case "version", "-v", "help", "--help", "spec", "specs", "archive", "commit", "sync", "ship", "--install-shortcut":
+		result, err := disp.Execute(cmd, os.Args[2:])
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "internal error: %v\n", err)
 			os.Exit(1)
 		}
 		os.Exit(result.ExitCode)
-	case "specs":
-		result, err := disp.Execute("specs", os.Args[2:])
-		if err != nil {
-			fmt.Fprintf(os.Stderr, "internal error: %v\n", err)
-			os.Exit(1)
-		}
-		os.Exit(result.ExitCode)
-	case "archive":
-		result, err := disp.Execute("archive", os.Args[2:])
-		if err != nil {
-			fmt.Fprintf(os.Stderr, "internal error: %v\n", err)
-			os.Exit(1)
-		}
-		if result.Message != "" {
-			fmt.Println(result.Message)
-		}
-		os.Exit(result.ExitCode)
-	case "commit":
-		result, err := disp.Execute("commit", os.Args[2:])
-		if err != nil {
-			fmt.Fprintf(os.Stderr, "internal error: %v\n", err)
-			os.Exit(1)
-		}
-		os.Exit(result.ExitCode)
-	case "sync":
-		result, err := disp.Execute("sync", os.Args[2:])
-		if err != nil {
-			fmt.Fprintf(os.Stderr, "internal error: %v\n", err)
-			os.Exit(1)
-		}
-		os.Exit(result.ExitCode)
-	case "ship":
-		result, err := disp.Execute("ship", os.Args[2:])
-		if err != nil {
-			fmt.Fprintf(os.Stderr, "internal error: %v\n", err)
-			os.Exit(1)
-		}
-		os.Exit(result.ExitCode)
-	case "version", "-v":
-		result, _ := disp.Execute("version", nil)
-		os.Exit(result.ExitCode)
-	case "help", "--help":
-		result, _ := disp.Execute("help", nil)
-		os.Exit(result.ExitCode)
-	case "--install-shortcut":
-		binDir, warning, err := engine.InstallGlobal()
-		if err != nil {
-			fmt.Fprintf(os.Stderr, "error: %v\n", err)
-			os.Exit(1)
-		}
-		fmt.Printf("ForgeFix binary installed to %s\n", binDir)
-		if warning != "" {
-			fmt.Fprintln(os.Stderr, warning)
-		}
-		os.Exit(0)
-	case "":
-		// No subcommand - run test suite
 	default:
-		// Unknown subcommand - treat as flags for test suite
-	}
-
-	flags := engine.ParseFlags(os.Args[1:])
-
-	if flags.Help {
-		result, _ := disp.Execute("help", nil)
-		os.Exit(result.ExitCode)
-	}
-	if flags.Version {
-		result, _ := disp.Execute("version", nil)
-		os.Exit(result.ExitCode)
-	}
-
-	loaded, err := engine.LoadPipelineConfig(targetPath)
-	if err != nil {
-		if flags.AIMode {
-			engine.EmitAIError("CONFIG_LOAD_FAILURE", err.Error())
-		} else {
-			fmt.Fprintln(os.Stderr, err)
+		// No subcommand or unknown — run test suite via dispatcher
+		result, err := disp.Execute("", os.Args[1:])
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "internal error: %v\n", err)
 			os.Exit(1)
 		}
+		os.Exit(result.ExitCode)
 	}
-
-	if flags.FailureDecay > 0 {
-		loaded.Config.FailureDecaySeconds = flags.FailureDecay
-	}
-	if flags.RunTest != "" {
-		for i := range loaded.Config.Pipelines {
-			loaded.Config.Pipelines[i].Command.Args = []string{"-run", fmt.Sprintf("^%s$", flags.RunTest), "./..."}
-		}
-	}
-	engine.ExecuteSuite(loaded.Config, loaded.ConfigDir, flags.AIMode, false)
 }
 
 func findConfigFile(wd string) (string, bool) {

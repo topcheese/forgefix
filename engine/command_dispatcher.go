@@ -1,7 +1,6 @@
 package engine
 
 import (
-	"fmt"
 	"io"
 )
 
@@ -55,8 +54,11 @@ func (d *CommandDispatcher) Execute(cmd string, args []string) (CommandResult, e
 		return d.handleSpec(args)
 	case "commit":
 		return d.handleCommit(args)
+	case "--install-shortcut":
+		return d.handleInstallShortcut(args)
 	default:
-		return CommandResult{}, fmt.Errorf("unknown command: %s", cmd)
+		// Empty cmd or unknown cmd — run test suite (existing behavior)
+		return d.handleRun(cmd, args)
 	}
 }
 
