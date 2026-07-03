@@ -40,7 +40,7 @@ func ArchiveResolvedSpecs(configDir string) (string, int, error) {
 			continue
 		}
 
-		if fm["status"] == "resolved" {
+		if fm["status"] == "resolved" || fm["status"] == "closed" {
 			resolved = append(resolved, archivedSpec{
 				content:  string(data),
 				specID:   fm["spec_id"],

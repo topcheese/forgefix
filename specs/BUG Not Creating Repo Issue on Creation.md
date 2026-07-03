@@ -1,6 +1,6 @@
 ---
 spec_id: "SPEC-1783079687"
-status: review
+status: ship
 repo_issue: ""
 ---
 # Bug Not Creating Repo Issue On Creation
