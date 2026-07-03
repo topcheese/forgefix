@@ -45,6 +45,8 @@ func (d *CommandDispatcher) Execute(cmd string, args []string) (CommandResult, e
 		return d.handleVersion(), nil
 	case "archive":
 		return d.handleArchive(args)
+	case "specs":
+		return d.handleListSpecs(args)
 	default:
 		return CommandResult{}, fmt.Errorf("unknown command: %s", cmd)
 	}

@@ -9,12 +9,9 @@ import (
 	"regexp"
 	"strconv"
 	"strings"
-	"text/tabwriter"
 	"time"
 
 	"ForgeFix/engine"
-
-	"github.com/fatih/color"
 )
 
 func main() {
@@ -108,12 +105,12 @@ func main() {
 		}
 		os.Exit(0)
 	case "specs":
-		flags := engine.ParseFlags(os.Args[2:])
-		if err := runListSpecs(projectRoot, flags.All); err != nil {
-			fmt.Fprintf(os.Stderr, "error: %v\n", err)
+		result, err := disp.Execute("specs", os.Args[2:])
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "internal error: %v\n", err)
 			os.Exit(1)
 		}
-		os.Exit(0)
+		os.Exit(result.ExitCode)
 	case "archive":
 		result, err := disp.Execute("archive", os.Args[2:])
 		if err != nil {
@@ -1104,117 +1101,6 @@ func extractMessageFromArgs(args []string) string {
 		msgParts = append(msgParts, arg)
 	}
 	return strings.Join(msgParts, " ")
-}
-
-func runListSpecs(wd string, all bool) error {
-	configDir := wd
-	ledger, err := engine.LoadLedger(configDir)
-	if err != nil {
-		return fmt.Errorf("failed to load ledger: %w", err)
-	}
-
-	specs, err := ledger.ListSpecs(all)
-	if err != nil {
-		return fmt.Errorf("failed to list specs: %w", err)
-	}
-
-	w := tabwriter.NewWriter(os.Stdout, 0, 8, 0, '\t', 0)
-
-	fmt.Fprintln(w, "SpecID\tRepo Issue\tStatus\tLinked Commits")
-	fmt.Fprintln(w, "-------\t-----------\t------\t------------")
-
-	cfg := ledger.WorkflowConfig
-	statusColors := buildColorMap(cfg.Statuses)
-
-	activeCount := 0
-	archivedCount := 0
-
-	for _, spec := range specs {
-		repoIssue := spec.RepoIssueID
-		if repoIssue == 0 {
-			repoIssue = -1
-		}
-
-		linkedCommits := strings.Join(spec.LinkedCommits, ", ")
-		if linkedCommits == "" {
-			linkedCommits = "-"
-		}
-
-		colorizedStatus := colorizeStatus(spec.Status, statusColors)
-		fmt.Fprintf(w, "%s\t%d\t%s\t%s\n", spec.SpecID, repoIssue, colorizedStatus, linkedCommits)
-
-		if cfg != nil && cfg.IsArchivedStatus(spec.Status) {
-			archivedCount++
-		} else if cfg == nil && (spec.Status == "resolved" || spec.Status == "deprecated") {
-			archivedCount++
-		} else {
-			activeCount++
-		}
-	}
-
-	w.Flush()
-
-	fmt.Printf("\n")
-	fmt.Printf("Active specs: %d\n", activeCount)
-	fmt.Printf("Archived specs: %d\n", archivedCount)
-
-	return nil
-}
-
-type colorFunc func(format string, a ...interface{}) string
-
-func colorAttr(name string) color.Attribute {
-	switch strings.ToLower(name) {
-	case "black":
-		return color.FgBlack
-	case "red":
-		return color.FgRed
-	case "green":
-		return color.FgGreen
-	case "yellow":
-		return color.FgYellow
-	case "blue":
-		return color.FgBlue
-	case "magenta":
-		return color.FgMagenta
-	case "cyan":
-		return color.FgCyan
-	case "white":
-		return color.FgWhite
-	case "hiblack", "hi-black":
-		return color.FgHiBlack
-	case "hired", "hi-red":
-		return color.FgHiRed
-	case "higreen", "hi-green":
-		return color.FgHiGreen
-	case "hiyellow", "hi-yellow":
-		return color.FgHiYellow
-	case "hiblue", "hi-blue":
-		return color.FgHiBlue
-	case "himagenta", "hi-magenta":
-		return color.FgHiMagenta
-	case "hicyan", "hi-cyan":
-		return color.FgHiCyan
-	case "hiwhite", "hi-white":
-		return color.FgHiWhite
-	default:
-		return color.FgWhite
-	}
-}
-
-func buildColorMap(defs []engine.StatusDef) map[string]colorFunc {
-	m := make(map[string]colorFunc, len(defs))
-	for _, d := range defs {
-		m[d.Name] = color.New(colorAttr(d.Color)).SprintfFunc()
-	}
-	return m
-}
-
-func colorizeStatus(status string, m map[string]colorFunc) string {
-	if c, ok := m[status]; ok {
-		return c(status)
-	}
-	return status
 }
 
 func promptRetrySyncFailures(configDir string) error {
