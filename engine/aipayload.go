@@ -49,11 +49,11 @@ func (d *DashboardFacade) ToAIPayload() AIResponsePayload {
 	defer d.mu.RUnlock()
 
 	var totalRan, totalPassed, totalFailed, totalFloor int
-	if d.ledgerSvc != nil {
-		totalRan = d.ledgerSvc.GetTotalRan()
-		totalPassed = d.ledgerSvc.GetTotalPassed()
-		totalFailed = d.ledgerSvc.GetTotalFailed()
-		totalFloor = d.ledgerSvc.GetTotalFloor()
+	if d.ledger != nil {
+		totalRan = d.ledger.GetTotalRan()
+		totalPassed = d.ledger.GetTotalPassed()
+		totalFailed = d.ledger.GetTotalFailed()
+		totalFloor = d.ledger.GetTotalFloor()
 	}
 
 	allSkipped := true
@@ -65,12 +65,12 @@ func (d *DashboardFacade) ToAIPayload() AIResponsePayload {
 	}
 
 	anyFloorBroken := false
-	if d.ledgerSvc != nil {
+	if d.ledger != nil {
 		for _, p := range d.GetPipelines() {
 			if d.IsPipelineSkipped(p.ID) {
 				continue
 			}
-			e := d.ledgerSvc.GetEntry(p.ID)
+			e := d.ledger.GetEntry(p.ID)
 			floor := p.LedgerFloor
 			if e != nil && e.HistoricalFloor > 0 {
 				floor = e.HistoricalFloor
@@ -102,7 +102,7 @@ func (d *DashboardFacade) ToAIPayload() AIResponsePayload {
 	var pipelines []AIPipelineResult
 	for _, p := range d.GetPipelines() {
 		skipped := d.IsPipelineSkipped(p.ID)
-		entry := d.ledgerSvc.GetEntry(p.ID)
+		entry := d.ledger.GetEntry(p.ID)
 
 		status := "pass"
 		var suggestedAction, errorDetails string

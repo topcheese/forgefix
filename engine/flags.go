@@ -3,18 +3,26 @@ package engine
 import (
 	"fmt"
 	"io"
+	"strconv"
 	"strings"
 )
 
 const Version = "0.8.0"
 
 type CLIArgs struct {
-	AIMode         bool
-	Help           bool
+	AIMode          bool
+	Help            bool
 	InstallShortcut bool
 	InstallGlobal   bool
-	Version        bool
-	Message        string
+	Version         bool
+	Message         string
+	FailureDecay    int
+	RunTest         string
+	SpecID          string
+	SpecType        string
+	SpecVersion     string
+	All             bool
+	Delete          bool
 }
 
 func ParseFlags(args []string) CLIArgs {
@@ -36,6 +44,38 @@ func ParseFlags(args []string) CLIArgs {
 				i++
 				flags.Message = SanitizeMessage(args[i])
 			}
+		case "--failure-decay", "-d":
+			if i+1 < len(args) {
+				i++
+				val, err := strconv.Atoi(args[i])
+				if err == nil && val > 0 {
+					flags.FailureDecay = val
+				}
+			}
+		case "--run", "-r":
+			if i+1 < len(args) {
+				i++
+				flags.RunTest = args[i]
+			}
+		case "--spec", "-s":
+			if i+1 < len(args) {
+				i++
+				flags.SpecID = args[i]
+			}
+		case "--type", "-t":
+			if i+1 < len(args) {
+				i++
+				flags.SpecType = args[i]
+			}
+		case "--ver":
+			if i+1 < len(args) {
+				i++
+				flags.SpecVersion = args[i]
+			}
+		case "--all":
+			flags.All = true
+		case "--delete":
+			flags.Delete = true
 		}
 	}
 	return flags

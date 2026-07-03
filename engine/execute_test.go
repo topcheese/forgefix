@@ -132,7 +132,7 @@ func TestIntegration_DetonationToDefusedFullCycle(t *testing.T) {
 	coord, _ := newMockCoordinator()
 	d.Coord = coord
 
-	d.GetTestTrackersMap()["p1"] = &TestTracker{
+	d.SetTestTracker("p1", &TestTracker{
 		Completed: map[string]*TestInfo{
 			"test_fail": {
 				ID:          "test_fail",
@@ -145,7 +145,7 @@ func TestIntegration_DetonationToDefusedFullCycle(t *testing.T) {
 			},
 		},
 		CompletedIDs: map[string]bool{"test_fail": true},
-	}
+	})
 
 	handleDetonationIssues(d, tmpDir)
 
@@ -206,7 +206,7 @@ func TestIntegration_NoFailedTestsNoIssues(t *testing.T) {
 	d := NewDashboard([]PipelineConfig{
 		{ID: "p1", Name: "Pipeline 1"},
 	})
-	d.GetTestTrackersMap()["p1"] = &TestTracker{
+	d.SetTestTracker("p1", &TestTracker{
 		Completed: map[string]*TestInfo{
 			"test_pass": {
 				ID:    "test_pass",
@@ -215,7 +215,7 @@ func TestIntegration_NoFailedTestsNoIssues(t *testing.T) {
 			},
 		},
 		CompletedIDs: map[string]bool{"test_pass": true},
-	}
+	})
 
 	failed := collectFailedTests(d)
 	if len(failed) != 0 {
@@ -231,19 +231,19 @@ func TestIntegration_MultiplePipelinesFailures(t *testing.T) {
 	coord, transport := newMockCoordinator()
 	d.Coord = coord
 
-	d.GetTestTrackersMap()["p1"] = &TestTracker{
+	d.SetTestTracker("p1", &TestTracker{
 		Completed: map[string]*TestInfo{
 			"test_a": {ID: "test_a", Name: "TestA", State: StateDud, Elapsed: 100},
 			"test_b": {ID: "test_b", Name: "TestB", State: StateDud, Elapsed: 200},
 		},
 		CompletedIDs: map[string]bool{"test_a": true, "test_b": true},
-	}
-	d.GetTestTrackersMap()["p2"] = &TestTracker{
+	})
+	d.SetTestTracker("p2", &TestTracker{
 		Completed: map[string]*TestInfo{
 			"test_c": {ID: "test_c", Name: "TestC", State: StateDud, Elapsed: 300},
 		},
 		CompletedIDs: map[string]bool{"test_c": true},
-	}
+	})
 
 	searchA := "https://api.github.com/repos/test-owner/test-repo/issues?q=test-owner%2FTestA&state=all"
 	transport.setResponse("GET", searchA, http.StatusOK, []GitHubIssue{})

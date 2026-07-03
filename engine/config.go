@@ -18,7 +18,7 @@ import (
 //
 //   - TestTrackerService (testtracker.go): Test state management (run/pass/fail)
 //   - PipelineManager (pipelinemanager.go): Pipeline lifecycle and skip tracking
-//   - LedgerService (ledgerservice.go): Metrics aggregation and formatting
+//   - LedgerEngine (ledger.go): Metrics aggregation, persistence, and formatting
 //   - ErrorTracker (errortracker.go): System errors and execution logs
 //   - DashboardState (dashboardstate.go): Runtime state (bomb, timeout, config dir)
 //   - IssueRefTracker (issuereftracker.go): GitHub issue references

@@ -11,7 +11,7 @@ type DashboardFacade struct {
 	// New services
 	testTracker    *TestTrackerService
 	pipelineMgr    *PipelineManager
-	ledgerSvc      *LedgerService
+	ledger         *LedgerEngine
 	errorTracker   *ErrorTracker
 	
 	// Legacy state (for backward compat)
@@ -27,21 +27,20 @@ type DashboardFacade struct {
 	FailureDecaySecs      int
 	TestCommandCompleted  bool
 	ConfigDir             string
-	ledger                *LedgerEngine
 }
 
 func NewDashboardFacade(pipelines []PipelineConfig, configDir string) *DashboardFacade {
 	dirtySignal := func() {}
 	f := &DashboardFacade{
-		testTracker:    NewTestTrackerService(dirtySignal),
-		pipelineMgr:    NewPipelineManager(pipelines),
-		ledgerSvc:      NewLedgerService(),
-		errorTracker:   NewErrorTracker(),
-		PipelineActive: true,
-		stopCh:         make(chan struct{}),
-		IssueRefs:      make(map[string]*IssueInfo),
+		testTracker:      NewTestTrackerService(dirtySignal),
+		pipelineMgr:      NewPipelineManager(pipelines),
+		ledger:           NewLedgerEngine(),
+		errorTracker:     NewErrorTracker(),
+		PipelineActive:   true,
+		stopCh:           make(chan struct{}),
+		IssueRefs:        make(map[string]*IssueInfo),
 		FailureDecaySecs: 15,
-		ConfigDir:      configDir,
+		ConfigDir:        configDir,
 	}
 	// Wire up dirty signal after construction
 	f.testTracker = NewTestTrackerService(f.markDirty)
@@ -86,16 +85,40 @@ func (f *DashboardFacade) AddErrorLog(exitCode int) {
 
 func (f *DashboardFacade) UpdatePipelineMetrics(pipelineID string, action string, testID string, elapsed int, result string, testName string) {
 	f.testTracker.UpdateMetrics(pipelineID, action, testID, testName, elapsed, result, "", "", 0, 0)
+	if testName != "" && (action == "pass" || action == "fail") {
+		entry := f.ledger.GetOrCreateEntry(pipelineID)
+		ran := entry.TotalRan + 1
+		passed := entry.TotalPassed
+		failed := entry.TotalFailed
+		if action == "pass" {
+			passed++
+		} else {
+			failed++
+		}
+		f.ledger.UpdateEntry(pipelineID, ran, passed, failed)
+	}
 }
 
 func (f *DashboardFacade) UpdatePipelineMetricsWithDetails(pipelineID string, action string, testID string, elapsed int, result string, testName string, errorTrace string, filePath string, failureLine int, failureColumn int) {
 	f.testTracker.UpdateMetrics(pipelineID, action, testID, testName, elapsed, result, errorTrace, filePath, failureLine, failureColumn)
+	if testName != "" && (action == "pass" || action == "fail") {
+		entry := f.ledger.GetOrCreateEntry(pipelineID)
+		ran := entry.TotalRan + 1
+		passed := entry.TotalPassed
+		failed := entry.TotalFailed
+		if action == "pass" {
+			passed++
+		} else {
+			failed++
+		}
+		f.ledger.UpdateEntry(pipelineID, ran, passed, failed)
+	}
 }
 
 func (f *DashboardFacade) GetMetrics(pipelineID string) (ran int, passed int, failed int, active map[string]*TestInfo, completed map[string]*TestInfo) {
 	ran, passed, failed, active, completed = f.testTracker.GetMetrics(pipelineID)
 	// Also get ledger entry for historical floor
-	entry := f.ledgerSvc.GetEntry(pipelineID)
+	entry := f.ledger.GetEntry(pipelineID)
 	if entry != nil {
 		// Override with ledger data
 		ran = entry.TotalRan
@@ -106,7 +129,7 @@ func (f *DashboardFacade) GetMetrics(pipelineID string) (ran int, passed int, fa
 }
 
 func (f *DashboardFacade) GetTotalFailures() int {
-	return f.ledgerSvc.GetTotalFailed()
+	return f.ledger.GetTotalFailed()
 }
 
 func (f *DashboardFacade) SetPipelineActive(active bool) {
@@ -156,49 +179,39 @@ func (f *DashboardFacade) ClearDirty() {
 // ========== Ledger delegation ==========
 
 func (f *DashboardFacade) GetOrCreateLedgerEntry(pipelineID string) *LedgerEntry {
-	entry := f.ledgerSvc.GetOrCreateEntry(pipelineID)
-	if f.ledger != nil {
-		f.ledger.GetOrCreateEntry(pipelineID)
-	}
-	return entry
+	return f.ledger.GetOrCreateEntry(pipelineID)
 }
 
 func (f *DashboardFacade) UpdateLedgerEntry(pipelineID string, ran, passed, failed int) {
-	f.ledgerSvc.UpdateEntry(pipelineID, ran, passed, failed)
-	if f.ledger != nil {
-		f.ledger.UpdateEntry(pipelineID, ran, passed, failed)
-	}
+	f.ledger.UpdateEntry(pipelineID, ran, passed, failed)
 }
 
 func (f *DashboardFacade) GetLedgerEntry(pipelineID string) *LedgerEntry {
-	return f.ledgerSvc.GetEntry(pipelineID)
+	return f.ledger.GetEntry(pipelineID)
 }
 
 func (f *DashboardFacade) ResetLedgerCurrentRun() {
-	f.ledgerSvc.ResetCurrentRun()
-	if f.ledger != nil {
-		f.ledger.ResetCurrentRun()
-	}
+	f.ledger.ResetCurrentRun()
 }
 
 func (f *DashboardFacade) GetTotalRan() int {
-	return f.ledgerSvc.GetTotalRan()
+	return f.ledger.GetTotalRan()
 }
 
 func (f *DashboardFacade) GetTotalPassed() int {
-	return f.ledgerSvc.GetTotalPassed()
+	return f.ledger.GetTotalPassed()
 }
 
 func (f *DashboardFacade) GetTotalFailed() int {
-	return f.ledgerSvc.GetTotalFailed()
+	return f.ledger.GetTotalFailed()
 }
 
 func (f *DashboardFacade) GetTotalFloor() int {
-	return f.ledgerSvc.GetTotalFloor()
+	return f.ledger.GetTotalFloor()
 }
 
 func (f *DashboardFacade) FormatLedgerSummary(boldOpt, whiteOpt, greenOpt, redOpt, resetOpt string) string {
-	return f.ledgerSvc.FormatSummary(boldOpt, whiteOpt, greenOpt, redOpt, resetOpt)
+	return f.ledger.FormatSummary(boldOpt, whiteOpt, greenOpt, redOpt, resetOpt)
 }
 
 // ========== Backward-compat helper for rendering ==========
@@ -234,17 +247,11 @@ func (f *DashboardFacade) FormatSummary(boldOpt, whiteOpt, greenOpt, redOpt, res
 
 // Helper methods for rendering
 func (f *DashboardFacade) GetSkippedPipelines() map[string]bool {
-	// Return empty for now
-	return make(map[string]bool)
+	return f.pipelineMgr.GetSkippedPipelines()
 }
 
 func (f *DashboardFacade) GetTestTrackers() map[string]*TestTracker {
-	f.mu.RLock()
-	defer f.mu.RUnlock()
-	// Build map from test tracker service
-	trackers := make(map[string]*TestTracker)
-	// This is a simplification - in reality we'd need to expose this from test tracker
-	return trackers
+	return f.testTracker.GetAllTrackers()
 }
 
 func (f *DashboardFacade) GetSystemErrorLogs() []ErrorLog {
@@ -262,12 +269,6 @@ func (f *DashboardFacade) SetLedger(ledger *LedgerEngine) {
 	f.mu.Lock()
 	defer f.mu.Unlock()
 	f.ledger = ledger
-	// Sync entries to ledgerSvc for backward compat
-	if ledger != nil {
-		for id, entry := range ledger.GetAllEntries() {
-			f.ledgerSvc.UpdateEntry(id, entry.TotalRan, entry.TotalPassed, entry.TotalFailed)
-		}
-	}
 }
 
 // Backward compat fields
@@ -288,6 +289,10 @@ func (f *DashboardFacade) GetSkippedPipelinesMap() map[string]bool {
 
 func (f *DashboardFacade) GetTestTrackersMap() map[string]*TestTracker {
 	return f.testTracker.GetAllTrackers()
+}
+
+func (f *DashboardFacade) SetTestTracker(pipelineID string, tracker *TestTracker) {
+	f.testTracker.SetTracker(pipelineID, tracker)
 }
 
 // For execute.go collectFailedTests

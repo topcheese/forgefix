@@ -17,72 +17,6 @@ import (
 	"github.com/fatih/color"
 )
 
-type cliArgs struct {
-	AIMode       bool
-	Help         bool
-	Version      bool
-	Message      string
-	FailureDecay int
-	RunTest      string
-	SpecID       string
-	SpecType     string
-	SpecVersion  string
-	All          bool
-	Delete       bool
-}
-
-func parseFlags(args []string) cliArgs {
-	var flags cliArgs
-	for i := 0; i < len(args); i++ {
-		switch args[i] {
-		case "--ai", "-ai":
-			flags.AIMode = true
-		case "--help", "-h":
-			flags.Help = true
-		case "--version", "-v":
-			flags.Version = true
-		case "--message", "-m":
-			if i+1 < len(args) {
-				i++
-				flags.Message = engine.SanitizeMessage(args[i])
-			}
-		case "--failure-decay", "-d":
-			if i+1 < len(args) {
-				i++
-				val, err := strconv.Atoi(args[i])
-				if err == nil && val > 0 {
-					flags.FailureDecay = val
-				}
-			}
-		case "--run", "-r":
-			if i+1 < len(args) {
-				i++
-				flags.RunTest = args[i]
-			}
-		case "--spec", "-s":
-			if i+1 < len(args) {
-				i++
-				flags.SpecID = args[i]
-			}
-		case "--type", "-t":
-			if i+1 < len(args) {
-				i++
-				flags.SpecType = args[i]
-			}
-		case "--ver":
-			if i+1 < len(args) {
-				i++
-				flags.SpecVersion = args[i]
-			}
-		case "--all":
-			flags.All = true
-		case "--delete":
-			flags.Delete = true
-		}
-	}
-	return flags
-}
-
 func printHelp(w io.Writer) {
 	engine.PrintHelp(w)
 }
@@ -160,13 +94,9 @@ func main() {
 	skipConfigCheck := cmd == "help" || cmd == "--help" || cmd == "version" || cmd == "-v" || cmd == "sync" || cmd == "ship" || cmd == "archive" || cmd == "specs"
 
 	if !skipConfigCheck {
-		if _, found := findConfigFile(projectRoot); !found {
-			target, err := engine.InitConfig(projectRoot)
-			if err != nil {
-				fmt.Fprintf(os.Stderr, "error initializing config: %v\n", err)
-				os.Exit(1)
-			}
-			fmt.Fprintf(os.Stderr, "Initialized ForgeFix config: %s\n", target)
+		if _, found := findConfigFile(wd); !found {
+			promptForInit(wd)
+			os.Exit(0)
 		}
 	}
 
@@ -176,7 +106,7 @@ func main() {
 
 	switch cmd {
 	case "spec":
-		flags := parseFlags(os.Args[2:])
+		flags := engine.ParseFlags(os.Args[2:])
 		specName := ""
 		for _, arg := range os.Args[2:] {
 			if !strings.HasPrefix(arg, "-") {
@@ -207,7 +137,7 @@ func main() {
 		}
 		os.Exit(0)
 	case "specs":
-		flags := parseFlags(os.Args[2:])
+		flags := engine.ParseFlags(os.Args[2:])
 		if err := runListSpecs(projectRoot, flags.All); err != nil {
 			fmt.Fprintf(os.Stderr, "error: %v\n", err)
 			os.Exit(1)
@@ -226,7 +156,7 @@ func main() {
 		fmt.Printf("Archived %d resolved specs to %s\n", count, archiveName)
 		os.Exit(0)
 	case "commit":
-		flags := parseFlags(os.Args[2:])
+		flags := engine.ParseFlags(os.Args[2:])
 		msg := flags.Message
 		if msg == "" {
 			msg = extractMessageFromArgs(os.Args[2:])
@@ -248,7 +178,7 @@ func main() {
 		}
 		os.Exit(0)
 	case "sync":
-		flags := parseFlags(os.Args[2:])
+		flags := engine.ParseFlags(os.Args[2:])
 		specID := flags.SpecID
 
 		loaded, err := engine.LoadPipelineConfig(targetPath)
@@ -277,7 +207,7 @@ func main() {
 		}
 		os.Exit(0)
 	case "ship":
-		flags := parseFlags(os.Args[2:])
+		flags := engine.ParseFlags(os.Args[2:])
 		loaded, err := engine.LoadPipelineConfig(targetPath)
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "error: %v\n", err)
@@ -309,7 +239,7 @@ func main() {
 		// Unknown subcommand - treat as flags for test suite
 	}
 
-	flags := parseFlags(os.Args[1:])
+	flags := engine.ParseFlags(os.Args[1:])
 
 	if flags.Help {
 		printHelp(os.Stdout)
@@ -347,6 +277,38 @@ func findConfigFile(wd string) (string, bool) {
 		return "", false
 	}
 	return filepath.Base(path), true
+}
+
+func promptForInit(wd string) bool {
+	fmt.Print("ForgeFix configuration not found. Initialize? (y/N/q): ")
+	var response string
+	_, _ = fmt.Scanln(&response)
+	response = strings.TrimSpace(strings.ToLower(response))
+	if response == "q" {
+		fmt.Println("Aborted.")
+		return false
+	}
+	if response == "y" || response == "yes" {
+		target, err := engine.InitConfig(wd)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "error initializing config: %v\n", err)
+			return false
+		}
+		fmt.Printf("created %s\n", target)
+
+		if binDir, warning, err := engine.InstallGlobal(); err != nil {
+			fmt.Fprintf(os.Stderr, "warning: config created but binary install failed: %v\n", err)
+			fmt.Fprintln(os.Stderr, "Run 'ff --install' later to install the ff command globally.")
+		} else {
+			fmt.Printf("Installed ff globally to %s\n", binDir)
+			if warning != "" {
+				fmt.Fprintln(os.Stderr, warning)
+			}
+		}
+		return true
+	}
+	fmt.Println("OK, run 'ff' again when ready.")
+	return false
 }
 
 func createSpec(projectRoot, name string, aiMode bool) error {
@@ -1053,6 +1015,20 @@ created: %s
 	ledger.SetSpecEntry(newSpecID, entry)
 	if err := engine.SaveLedger(ledger, ledgerDir); err != nil {
 		return "", fmt.Errorf("saving ledger: %w", err)
+	}
+
+	// Queue sync operation and spawn background sync for remote issue creation
+	loaded, loadErr := engine.LoadPipelineConfig(wd)
+	if loadErr == nil && loaded.Config != nil {
+		if err := engine.QueueSyncSpec(loaded.ConfigDir, newSpecID); err != nil {
+			fmt.Fprintf(os.Stderr, "warning: failed to queue spec sync: %v\n", err)
+		}
+
+		if loaded.Config.AutoIssueManagement {
+			if err := engine.SpawnBackgroundSync(loaded.ConfigDir, newSpecID); err != nil {
+				fmt.Fprintf(os.Stderr, "warning: failed to spawn background sync: %v\n", err)
+			}
+		}
 	}
 
 	fmt.Printf("Created new bug spec: %s (%s)\n", newSpecID, title)

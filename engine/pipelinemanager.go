@@ -51,3 +51,13 @@ func (m *PipelineManager) GetActivePipelines() []PipelineConfig {
 	}
 	return active
 }
+
+func (m *PipelineManager) GetSkippedPipelines() map[string]bool {
+	m.mu.RLock()
+	defer m.mu.RUnlock()
+	cp := make(map[string]bool, len(m.skippedPipelines))
+	for k, v := range m.skippedPipelines {
+		cp[k] = v
+	}
+	return cp
+}

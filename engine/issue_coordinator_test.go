@@ -502,7 +502,7 @@ func TestCollectFailedTests(t *testing.T) {
 		{ID: "p1", Name: "Pipeline 1"},
 	})
 
-	d.GetTestTrackersMap()["p1"] = &TestTracker{
+	d.SetTestTracker("p1", &TestTracker{
 		Completed: map[string]*TestInfo{
 			"test_a": {ID: "test_a", Name: "TestA", State: StateDud, Elapsed: 100},
 			"test_b": {ID: "test_b", Name: "TestB", State: StateDud, Elapsed: 200},
@@ -513,7 +513,7 @@ func TestCollectFailedTests(t *testing.T) {
 			"test_b": true,
 			"test_c": true,
 		},
-	}
+	})
 
 	failed := collectFailedTests(d)
 	if len(failed) != 2 {
@@ -533,11 +533,11 @@ func TestCollectFailedTests_NoFailures(t *testing.T) {
 		{ID: "p1", Name: "Pipeline 1"},
 	})
 
-	d.GetTestTrackersMap()["p1"] = &TestTracker{
+	d.SetTestTracker("p1", &TestTracker{
 		Completed: map[string]*TestInfo{
 			"test_a": {ID: "test_a", Name: "TestA", State: StatePopped, Elapsed: 100},
 		},
-	}
+	})
 
 	failed := collectFailedTests(d)
 	if len(failed) != 0 {
@@ -602,7 +602,7 @@ func TestHandleDetonationIssues(t *testing.T) {
 	coord, _ := newMockCoordinator()
 	d.Coord = coord
 
-	d.GetTestTrackersMap()["p1"] = &TestTracker{
+	d.SetTestTracker("p1", &TestTracker{
 		Completed: map[string]*TestInfo{
 			"test_fail": {
 				ID:          "test_fail",
@@ -615,7 +615,7 @@ func TestHandleDetonationIssues(t *testing.T) {
 			},
 		},
 		CompletedIDs: map[string]bool{"test_fail": true},
-	}
+	})
 
 	tmpDir := t.TempDir()
 	d.ConfigDir = tmpDir
@@ -663,7 +663,7 @@ func TestHandleDetonationIssues_ExistingIssue(t *testing.T) {
 	coord, _ := newMockCoordinator()
 	d.Coord = coord
 
-	d.GetTestTrackersMap()["p1"] = &TestTracker{
+	d.SetTestTracker("p1", &TestTracker{
 		Completed: map[string]*TestInfo{
 			"test_old": {
 				ID:      "test_old",
@@ -673,7 +673,7 @@ func TestHandleDetonationIssues_ExistingIssue(t *testing.T) {
 			},
 		},
 		CompletedIDs: map[string]bool{"test_old": true},
-	}
+	})
 
 	handleDetonationIssues(d, tmpDir)
 
@@ -1081,7 +1081,7 @@ func TestHandleTimeoutIssues(t *testing.T) {
 	coord, _ := newMockCoordinator()
 	d.Coord = coord
 
-	d.GetTestTrackersMap()["p1"] = &TestTracker{
+	d.SetTestTracker("p1", &TestTracker{
 		Completed: map[string]*TestInfo{
 			"test_timeout": {
 				ID:      "test_timeout",
@@ -1091,7 +1091,7 @@ func TestHandleTimeoutIssues(t *testing.T) {
 			},
 		},
 		CompletedIDs: map[string]bool{"test_timeout": true},
-	}
+	})
 
 	handleTimeoutIssues(d, tmpDir)
 

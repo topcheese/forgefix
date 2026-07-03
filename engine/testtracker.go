@@ -177,6 +177,15 @@ func (s *TestTrackerService) GetAllTrackers() map[string]*TestTracker {
 	return cp
 }
 
+// SetTracker injects a tracker for a pipeline. Intended for tests and
+// backward-compatible consumers that need to seed tracker state directly.
+func (s *TestTrackerService) SetTracker(pipelineID string, tracker *TestTracker) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.trackers[pipelineID] = tracker
+	s.markDirty()
+}
+
 func (s *TestTrackerService) markDirty() {
 	if s.dirtySignal != nil {
 		s.dirtySignal()

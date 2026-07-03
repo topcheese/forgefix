@@ -1,0 +1,120 @@
+{
+  "version": "0.8.0",
+  "entries": {
+    "forgefix": {
+      "pipeline_id": "forgefix",
+      "total_ran": 311,
+      "total_passed": 311,
+      "total_failed": 0,
+      "historical_floor": 311,
+      "last_update": "2026-07-03T13:50:02-07:00"
+    }
+  },
+  "spec_mappings": {
+    "SPEC-1781313682": {
+      "spec_id": "SPEC-1781313682",
+      "repo_issue_id": 0,
+      "status": "draft",
+      "linked_commits": []
+    },
+    "SPEC-1781316016": {
+      "spec_id": "SPEC-1781316016",
+      "repo_issue_id": 0,
+      "status": "draft",
+      "linked_commits": []
+    },
+    "SPEC-1781317039": {
+      "spec_id": "SPEC-1781317039",
+      "repo_issue_id": 0,
+      "status": "draft",
+      "linked_commits": []
+    },
+    "SPEC-1781317040": {
+      "spec_id": "SPEC-1781317040",
+      "repo_issue_id": 0,
+      "status": "draft",
+      "linked_commits": []
+    },
+    "SPEC-1781317041": {
+      "spec_id": "SPEC-1781317041",
+      "repo_issue_id": 0,
+      "status": "draft",
+      "linked_commits": []
+    },
+    "SPEC-1781317044": {
+      "spec_id": "SPEC-1781317044",
+      "repo_issue_id": 0,
+      "status": "ready",
+      "linked_commits": []
+    },
+    "SPEC-1781317045": {
+      "spec_id": "SPEC-1781317045",
+      "repo_issue_id": 0,
+      "status": "ship",
+      "linked_commits": [
+        "d5305530",
+        "22162cf"
+      ]
+    },
+    "SPEC-1781325139": {
+      "spec_id": "SPEC-1781325139",
+      "repo_issue_id": 0,
+      "status": "draft",
+      "linked_commits": []
+    },
+    "SPEC-1781325576": {
+      "spec_id": "SPEC-1781325576",
+      "repo_issue_id": 0,
+      "status": "draft",
+      "linked_commits": []
+    },
+    "SPEC-1781365269": {
+      "spec_id": "SPEC-1781365269",
+      "repo_issue_id": 0,
+      "status": "draft",
+      "linked_commits": []
+    },
+    "SPEC-1781427559": {
+      "spec_id": "SPEC-1781427559",
+      "repo_issue_id": 0,
+      "status": "draft",
+      "linked_commits": []
+    },
+    "SPEC-1781642627": {
+      "spec_id": "SPEC-1781642627",
+      "repo_issue_id": 0,
+      "status": "draft",
+      "linked_commits": []
+    },
+    "SPEC-1781654468": {
+      "spec_id": "SPEC-1781654468",
+      "repo_issue_id": 0,
+      "status": "draft",
+      "linked_commits": []
+    },
+    "SPEC-1781852997": {
+      "spec_id": "SPEC-1781852997",
+      "repo_issue_id": 0,
+      "status": "draft",
+      "linked_commits": []
+    },
+    "SPEC-1783004952": {
+      "spec_id": "SPEC-1783004952",
+      "repo_issue_id": 433,
+      "status": "closed",
+      "linked_commits": []
+    },
+    "SPEC-1783045153": {
+      "spec_id": "SPEC-1783045153",
+      "repo_issue_id": 0,
+      "status": "ship",
+      "linked_commits": []
+    },
+    "SPEC-1783079687": {
+      "spec_id": "SPEC-1783079687",
+      "repo_issue_id": 0,
+      "status": "review",
+      "linked_commits": ["f9cb8bd"]
+    }
+  }
+}

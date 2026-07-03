@@ -1,6 +1,7 @@
 package main
 
 import (
+	"io"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -32,7 +33,7 @@ func TestParseFlagsHandlesAllSemanticFlags(t *testing.T) {
 
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
-			flags := parseFlags(tc.args)
+			flags := engine.ParseFlags(tc.args)
 
 			if flags.AIMode != tc.wantAI {
 				t.Errorf("AIMode: got %v, want %v", flags.AIMode, tc.wantAI)
@@ -342,6 +343,85 @@ created: 2024-01-01
 	}
 	if !strings.Contains(string(output), "SPEC-123") {
 		t.Errorf("expected commit to contain SPEC-123, got: %s", string(output))
+	}
+}
+
+func TestPromptForInitInstallsBinaryOnYes(t *testing.T) {
+	tmpDir := t.TempDir()
+	projectName := filepath.Base(tmpDir)
+
+	// Copy test binary as the local ff binary
+	testBinary, err := os.Executable()
+	if err != nil {
+		t.Fatal(err)
+	}
+	ffPath := filepath.Join(tmpDir, "ff")
+	if err := copyFile(testBinary, ffPath); err != nil {
+		t.Fatal(err)
+	}
+
+	// Create a go.mod so InitConfig produces a Go pipeline
+	goModPath := filepath.Join(tmpDir, "go.mod")
+	if err := os.WriteFile(goModPath, []byte("module test\n\ngo 1.26\n"), 0644); err != nil {
+		t.Fatal(err)
+	}
+
+	// Set HOME so binary installs into tmpDir/.local/bin/
+	t.Setenv("HOME", tmpDir)
+	t.Setenv("SHELL", "/bin/zsh")
+
+	// Mock stdin with "y"
+	oldStdin := os.Stdin
+	r, w, _ := os.Pipe()
+	os.Stdin = r
+	go func() {
+		w.Write([]byte("y\n"))
+		w.Close()
+	}()
+	defer func() { os.Stdin = oldStdin }()
+
+	// Capture stderr to check for error messages
+	var stderrBuf strings.Builder
+	oldStderr := os.Stderr
+	pr, pw, _ := os.Pipe()
+	os.Stderr = pw
+	done := make(chan struct{})
+	go func() {
+		defer close(done)
+		var buf strings.Builder
+		_, _ = io.Copy(&buf, pr)
+		stderrBuf = buf
+	}()
+
+	// Run promptForInit - it should create config + install binary
+	result := promptForInit(tmpDir)
+
+	// Close stderr pipe and wait for reader
+	pw.Close()
+	<-done
+	os.Stderr = oldStderr
+
+	if !result {
+		t.Fatalf("promptForInit returned false, expected true. stderr: %s", stderrBuf.String())
+	}
+
+	// Verify config file was created
+	configPath := filepath.Join(tmpDir, projectName+"_ff.yaml")
+	if _, err := os.Stat(configPath); os.IsNotExist(err) {
+		t.Errorf("config not created at %s", configPath)
+	}
+
+	// Verify binary was installed globally
+	binPath := filepath.Join(tmpDir, ".local", "bin", "ff")
+	if _, err := os.Stat(binPath); os.IsNotExist(err) {
+		t.Errorf("ff binary not installed to %s", binPath)
+	}
+
+	// The PATH warning is expected in an isolated temp dir without shell profiles
+	// Verify the warning mentions PATH (expected) not an actual install error
+	stderrText := stderrBuf.String()
+	if stderrText != "" && !strings.Contains(stderrText, "could not update PATH") {
+		t.Errorf("unexpected stderr output: %s", stderrText)
 	}
 }
 

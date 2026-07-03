@@ -51,8 +51,7 @@ func TestFirecrackerSingleSlotOnly(t *testing.T) {
 			Started: base.Add(time.Duration(i) * 100 * time.Millisecond),
 		}
 	}
-	trackers := d.GetTestTrackersMap()
-	trackers["p"] = tracker
+	d.SetTestTracker("p", tracker)
 
 	result := d.renderTestList(PipelineConfig{ID: "p"})
 	lines := strings.Split(strings.TrimSpace(result), "\n")

@@ -89,6 +89,9 @@ func SaveSyncQueue(configDir string, ops []SyncOperation) error {
 }
 
 func EnqueueSyncOp(configDir string, op SyncOperation) error {
+	if configDir == "" {
+		return nil
+	}
 	ops, _ := LoadSyncQueue(configDir)
 	op.ID = fmt.Sprintf("%d-%s", time.Now().UnixNano(), op.Type)
 	op.Timestamp = time.Now()

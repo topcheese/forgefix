@@ -28,6 +28,13 @@ func localBinaryName() string {
 }
 
 func FFDir(configDir string) string {
+	if configDir == "" {
+		if wd, err := os.Getwd(); err == nil {
+			configDir = wd
+		} else {
+			configDir = "."
+		}
+	}
 	return filepath.Join(configDir, ffDirName)
 }
 
@@ -86,18 +93,16 @@ func localBinaryPath(configDir string) string {
 func FindProjectRoot(startDir string) string {
 	dir := startDir
 
-	// Walk up checking for _ff.yaml at each level. Return the nearest
-	// ancestor that has one — this is the authoritative project root.
-	// We check every level because _ff.yaml is definitive; other heuristics
-	// (templates/, ff binary, .ff/) can produce false positives from stale
-	// subdirectory artifacts.
+	// Walk up checking for {dirbasename}_ff.yaml at each level. Return the
+	// nearest ancestor that has one matching its own directory name — this
+	// is the authoritative project root.  We match by directory name so that
+	// a stray james_ff.yaml in $HOME is never picked up when working in a
+	// project beneath it.
 	for {
-		if entries, err := os.ReadDir(dir); err == nil {
-			for _, entry := range entries {
-				if !entry.IsDir() && strings.HasSuffix(entry.Name(), "_ff.yaml") {
-					return dir
-				}
-			}
+		folderName := filepath.Base(dir)
+		targetConfig := fmt.Sprintf("%s_ff.yaml", folderName)
+		if _, err := os.Stat(filepath.Join(dir, targetConfig)); err == nil {
+			return dir
 		}
 		parent := filepath.Dir(dir)
 		if parent == dir {
@@ -106,8 +111,8 @@ func FindProjectRoot(startDir string) string {
 		dir = parent
 	}
 
-	// If no _ff.yaml found, try heuristic markers. Refuse to match on .ff/
-	// alone (it can be a stale artifact from a subdirectory).
+	// Fall back to heuristic markers. Refuse to match on .ff/ alone (it can
+	// be a stale artifact from a subdirectory).
 	dir = startDir
 	for {
 		if _, err := os.Stat(filepath.Join(dir, "templates")); err == nil {
@@ -118,7 +123,12 @@ func FindProjectRoot(startDir string) string {
 		}
 		if _, err := os.Stat(filepath.Join(dir, ffDirName)); err == nil {
 			if hasYaml, _ := hasConfigFile(dir); hasYaml {
-				return dir
+				// Confirm the yaml matches this directory name
+				folderName := filepath.Base(dir)
+				targetConfig := fmt.Sprintf("%s_ff.yaml", folderName)
+				if hasYaml, _ = hasConfigFileNamed(dir, targetConfig); hasYaml {
+					return dir
+				}
 			}
 		}
 		parent := filepath.Dir(dir)
@@ -143,22 +153,71 @@ func hasConfigFile(dir string) (bool, error) {
 	return false, nil
 }
 
+func hasConfigFileNamed(dir, name string) (bool, error) {
+	_, err := os.Stat(filepath.Join(dir, name))
+	if err == nil {
+		return true, nil
+	}
+	if os.IsNotExist(err) {
+		return false, nil
+	}
+	return false, err
+}
+
+func findNamedConfig(dir, name string) (string, error) {
+	path := filepath.Join(dir, name)
+	if _, err := os.Stat(path); err == nil {
+		return path, nil
+	}
+	return "", fmt.Errorf("config %s not found in %s", name, dir)
+}
+
+func FindMatchingConfig(startDir string) (string, error) {
+	dir := startDir
+	for {
+		folderName := filepath.Base(dir)
+		target := fmt.Sprintf("%s_ff.yaml", folderName)
+		found, err := findNamedConfig(dir, target)
+		if err == nil {
+			return found, nil
+		}
+		parent := filepath.Dir(dir)
+		if parent == dir {
+			break
+		}
+		dir = parent
+	}
+	return "", fmt.Errorf("no matching _ff.yaml found from %s", startDir)
+}
+
 func EnsureDevBinary(configDir string) error {
 	projectRoot := FindProjectRoot(configDir)
-	src := filepath.Join(projectRoot, localBinaryName())
-	dst := FFBinPath(projectRoot)
 
+	// Check for binary in configDir first, then fall back to projectRoot
+	srcDir := configDir
+	src := filepath.Join(srcDir, localBinaryName())
 	srcInfo, err := os.Stat(src)
 	if err != nil {
 		if os.IsNotExist(err) {
 			if projectRoot != configDir {
-				return fmt.Errorf("local ff binary not found at %s. Run 'go build -o ff .' in project root (%s)", src, projectRoot)
+				srcDir = projectRoot
+				src = filepath.Join(srcDir, localBinaryName())
+				srcInfo, err = os.Stat(src)
+				if err != nil {
+					if os.IsNotExist(err) {
+						return fmt.Errorf("local ff binary not found at %s or %s. Run 'go build -o ff .' in project root (%s)", filepath.Join(configDir, localBinaryName()), src, projectRoot)
+					}
+					return fmt.Errorf("checking local binary: %w", err)
+				}
+			} else {
+				return nil
 			}
-			return nil
+		} else {
+			return fmt.Errorf("checking local binary: %w", err)
 		}
-		return fmt.Errorf("checking local binary: %w", err)
 	}
 
+	dst := FFBinPath(projectRoot)
 	dstInfo, err := os.Stat(dst)
 	if err == nil && srcInfo.Size() == dstInfo.Size() {
 		return nil
@@ -208,20 +267,31 @@ func Bootstrap(configDir string) error {
 		return fmt.Errorf("creating .ff/bin/: %w", err)
 	}
 
-	src := filepath.Join(projectRoot, localBinaryName())
-	dst := FFBinPath(projectRoot)
-
+	// Check for binary in configDir first, then fall back to projectRoot
+	srcDir := configDir
+	src := filepath.Join(srcDir, localBinaryName())
 	srcInfo, err := os.Stat(src)
 	if err != nil {
 		if os.IsNotExist(err) {
 			if projectRoot != configDir {
-				return fmt.Errorf("local ff binary not found at %s. Run 'go build -o ff .' in project root (%s)", src, projectRoot)
+				srcDir = projectRoot
+				src = filepath.Join(srcDir, localBinaryName())
+				srcInfo, err = os.Stat(src)
+				if err != nil {
+					if os.IsNotExist(err) {
+						return fmt.Errorf("local ff binary not found at %s or %s. Run 'go build -o ff .' in project root (%s)", filepath.Join(configDir, localBinaryName()), src, projectRoot)
+					}
+					return fmt.Errorf("checking local binary: %w", err)
+				}
+			} else {
+				return nil
 			}
-			return nil
+		} else {
+			return fmt.Errorf("checking local binary: %w", err)
 		}
-		return fmt.Errorf("checking local binary: %w", err)
 	}
 
+	dst := FFBinPath(projectRoot)
 	dstInfo, err := os.Stat(dst)
 	if err == nil && srcInfo.Size() == dstInfo.Size() {
 		return nil
