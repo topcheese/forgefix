@@ -1,7 +1,7 @@
 ---
 spec_id: "SPEC-1783113220"
-status: closed
-repo_issue: 437
+status: ship
+repo_issue: ""
 ---
 # Ship Flow
 ## Goal

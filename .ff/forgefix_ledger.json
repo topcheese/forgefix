@@ -28,8 +28,8 @@
     },
     "SPEC-1783045153": {
       "spec_id": "SPEC-1783045153",
-      "repo_issue_id": 436,
-      "status": "closed",
+      "repo_issue_id": 438,
+      "status": "ship",
       "linked_commits": []
     },
     "SPEC-1783079687": {
