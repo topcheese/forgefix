@@ -38,6 +38,14 @@
     "SPEC-1783113194": {
       "spec_id": "SPEC-1783113194",
       "repo_issue_id": 0,
+      "status": "in-progress",
+      "linked_commits": [
+        "ba59717"
+      ]
+    },
+    "SPEC-1783113220": {
+      "spec_id": "SPEC-1783113220",
+      "repo_issue_id": 0,
       "status": "draft",
       "linked_commits": []
     }

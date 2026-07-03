@@ -1,9 +1,9 @@
 ---
-spec_id: "SPEC-1783113194"
+spec_id: "SPEC-1783113220"
 status: ship
 repo_issue: ""
 ---
-# Fix Ship Flow And Archive Closed Specs
+# Ship Flow
 ## Goal
 ## Technical Requirements
 ## Acceptance Criteria
