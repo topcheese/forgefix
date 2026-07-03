@@ -13,10 +13,10 @@ const ffDirName = ".ff"
 const binDirName = "bin"
 
 const (
-	legacyLedgerFile   = ".forgefix_ledger.json"
-	ffLedgerFile       = "forgefix_ledger.json"
-	legacyHistoryFile  = ".forgefix_history.log"
-	ffHistoryFile      = ".forgefix_history.log"
+	legacyLedgerFile  = ".forgefix_ledger.json"
+	ffLedgerFile      = "forgefix_ledger.json"
+	legacyHistoryFile = ".forgefix_history.log"
+	ffHistoryFile     = ".forgefix_history.log"
 )
 
 func localBinaryName() string {
@@ -244,5 +244,3 @@ func Bootstrap(configDir string) error {
 	}
 	return nil
 }
-
-

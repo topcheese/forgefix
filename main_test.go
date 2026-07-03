@@ -12,12 +12,12 @@ import (
 
 func TestParseFlagsHandlesAllSemanticFlags(t *testing.T) {
 	cases := []struct {
-		name       string
-		args       []string
-		wantAI     bool
-		wantHelp   bool
-		wantVer    bool
-		wantMsg    string
+		name     string
+		args     []string
+		wantAI   bool
+		wantHelp bool
+		wantVer  bool
+		wantMsg  string
 	}{
 		{"empty", []string{}, false, false, false, ""},
 		{"--ai", []string{"--ai"}, true, false, false, ""},
@@ -92,7 +92,7 @@ func TestPromptForSpecSelectionNewBug(t *testing.T) {
 	// Add a dummy spec so we go through categorical selection
 	entry := &engine.SpecEntry{
 		SpecID:        "SPEC-EXISTING",
-		RepoIssueID:  1,
+		RepoIssueID:   1,
 		Status:        "draft",
 		LinkedCommits: []string{},
 		Type:          "feature",
@@ -156,7 +156,7 @@ func TestPromptForSpecSelectionExisting(t *testing.T) {
 	ledger := engine.NewLedgerEngine()
 	entry := &engine.SpecEntry{
 		SpecID:        "SPEC-123",
-		RepoIssueID:  1,
+		RepoIssueID:   1,
 		Status:        "in-progress",
 		LinkedCommits: []string{},
 		Type:          "feature",
@@ -212,7 +212,7 @@ func TestPromptForSpecSelectionSkip(t *testing.T) {
 	ledger := engine.NewLedgerEngine()
 	entry := &engine.SpecEntry{
 		SpecID:        "SPEC-123",
-		RepoIssueID:  1,
+		RepoIssueID:   1,
 		Status:        "in-progress",
 		LinkedCommits: []string{},
 		Type:          "feature",
@@ -269,7 +269,7 @@ func TestRunCommitWithFlagSpecID(t *testing.T) {
 	ledger := engine.NewLedgerEngine()
 	entry := &engine.SpecEntry{
 		SpecID:        "SPEC-123",
-		RepoIssueID:  1,
+		RepoIssueID:   1,
 		Status:        "in-progress",
 		LinkedCommits: []string{},
 		Type:          "feature",

@@ -229,7 +229,7 @@ func TestStressFIFOOrder(t *testing.T) {
 
 	// Verify the order matches queue order
 	expected := []string{
-		"POST /repos/test-owner/test-repo/issues",      // create issue
+		"POST /repos/test-owner/test-repo/issues",            // create issue
 		"POST /repos/test-owner/test-repo/issues/1/comments", // post comment
 	}
 	if !strings.HasSuffix(calls[len(calls)-1].Path, "/issues/1") || calls[len(calls)-1].Method != "PATCH" {

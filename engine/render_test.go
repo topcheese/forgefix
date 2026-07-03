@@ -52,7 +52,7 @@ func TestDashboardRenderer_WriteBombActive(t *testing.T) {
 func TestDashboardRenderer_WriteBombLive_Detonated(t *testing.T) {
 	pipelines := []PipelineConfig{{ID: "p", Name: "Pipe"}}
 	d := NewDashboard(pipelines)
-	d.Bomb = BombDetonated
+	d.SetBomb(BombDetonated)
 
 	var r DashboardRenderer
 	var sb strings.Builder
@@ -67,10 +67,10 @@ func TestDashboardRenderer_WriteBombLive_Detonated(t *testing.T) {
 func TestDashboardRenderer_WriteBombLive_Defused(t *testing.T) {
 	pipelines := []PipelineConfig{{ID: "p", Name: "Pipe", LedgerFloor: 3}}
 	d := NewDashboard(pipelines)
-	d.Bomb = BombDefused
+	d.SetBomb(BombDefused)
 	ledger := NewLedgerEngine()
 	ledger.GetOrCreateEntry("p")
-	d.Ledger = ledger
+	d.SetLedger(ledger)
 
 	var r DashboardRenderer
 	var sb strings.Builder
@@ -88,7 +88,7 @@ func TestDashboardRenderer_WriteBombLive_Defused(t *testing.T) {
 func TestDashboardRenderer_WriteBombLive_Active(t *testing.T) {
 	pipelines := []PipelineConfig{{ID: "p", Name: "Pipe", LedgerFloor: 5}}
 	d := NewDashboard(pipelines)
-	d.Bomb = BombActive
+	d.SetBomb(BombActive)
 
 	var r DashboardRenderer
 	var sb strings.Builder
@@ -107,14 +107,14 @@ func TestDashboardRenderer_WriteBombFinal_Defused(t *testing.T) {
 	d := NewDashboard([]PipelineConfig{
 		{ID: "p", Name: "Pipe", LedgerFloor: 7},
 	})
-	d.Bomb = BombDefused
+	d.SetBomb(BombDefused)
 	ledger := NewLedgerEngine()
 	ledger.GetOrCreateEntry("p")
-	d.Ledger = ledger
+	d.SetLedger(ledger)
 
 	var r DashboardRenderer
 	var sb strings.Builder
-	r.WriteBombFinal(&sb, d, d.Pipelines[0])
+	r.WriteBombFinal(&sb, d, d.GetPipelinesSlice()[0])
 
 	output := sb.String()
 	if !strings.Contains(output, ">> BOMB DEFUSED <<") {
@@ -127,11 +127,11 @@ func TestDashboardRenderer_WriteBombFinal_Defused(t *testing.T) {
 
 func TestDashboardRenderer_WriteBombFinal_Detonated(t *testing.T) {
 	d := NewDashboard([]PipelineConfig{{ID: "p", Name: "Pipe"}})
-	d.Bomb = BombDetonated
+	d.SetBomb(BombDetonated)
 
 	var r DashboardRenderer
 	var sb strings.Builder
-	r.WriteBombFinal(&sb, d, d.Pipelines[0])
+	r.WriteBombFinal(&sb, d, d.GetPipelinesSlice()[0])
 
 	output := sb.String()
 	if !strings.Contains(output, "BOMB DETONATED") {
@@ -141,11 +141,11 @@ func TestDashboardRenderer_WriteBombFinal_Detonated(t *testing.T) {
 
 func TestDashboardRenderer_WriteBombFinal_Active(t *testing.T) {
 	d := NewDashboard([]PipelineConfig{{ID: "p", Name: "Pipe"}})
-	d.Bomb = BombActive
+	d.SetBomb(BombActive)
 
 	var r DashboardRenderer
 	var sb strings.Builder
-	r.WriteBombFinal(&sb, d, d.Pipelines[0])
+	r.WriteBombFinal(&sb, d, d.GetPipelinesSlice()[0])
 
 	output := sb.String()
 	if output != "\n" {
@@ -155,7 +155,7 @@ func TestDashboardRenderer_WriteBombFinal_Active(t *testing.T) {
 
 func TestDashboardRenderer_WriteTimeoutSection_Fired(t *testing.T) {
 	d := NewDashboard([]PipelineConfig{{ID: "p", Name: "Pipe"}})
-	d.TimeoutFired = true
+	d.SetTimeoutFired(true)
 
 	var r DashboardRenderer
 	var sb strings.Builder
@@ -169,7 +169,7 @@ func TestDashboardRenderer_WriteTimeoutSection_Fired(t *testing.T) {
 
 func TestDashboardRenderer_WriteTimeoutSection_NotFired(t *testing.T) {
 	d := NewDashboard([]PipelineConfig{{ID: "p", Name: "Pipe"}})
-	d.TimeoutFired = false
+	d.SetTimeoutFired(false)
 
 	var r DashboardRenderer
 	var sb strings.Builder
@@ -183,7 +183,7 @@ func TestDashboardRenderer_WriteTimeoutSection_NotFired(t *testing.T) {
 
 func TestDashboardRenderer_WriteSuccessFooter(t *testing.T) {
 	d := NewDashboard([]PipelineConfig{{ID: "p", Name: "Pipe"}})
-	d.Bomb = BombDefused
+	d.SetBomb(BombDefused)
 
 	var r DashboardRenderer
 	var sb strings.Builder
@@ -200,7 +200,7 @@ func TestDashboardRenderer_WriteSuccessFooter(t *testing.T) {
 
 func TestDashboardRenderer_WriteSuccessFooter_SkipWhenNotDefused(t *testing.T) {
 	d := NewDashboard([]PipelineConfig{{ID: "p", Name: "Pipe"}})
-	d.Bomb = BombActive
+	d.SetBomb(BombActive)
 
 	var r DashboardRenderer
 	var sb strings.Builder

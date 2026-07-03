@@ -277,12 +277,13 @@ func main() {
 		}
 		os.Exit(0)
 	case "ship":
+		flags := parseFlags(os.Args[2:])
 		loaded, err := engine.LoadPipelineConfig(targetPath)
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "error: %v\n", err)
 			os.Exit(1)
 		}
-		engine.ShipReconciliation(loaded.Config, loaded.ConfigDir)
+		engine.ShipReconciliation(loaded.Config, loaded.ConfigDir, flags.AIMode)
 		fmt.Println("ship: running final verification and release pipeline…")
 		os.Exit(0)
 	case "version":
@@ -412,6 +413,24 @@ func createSpec(projectRoot, name string, aiMode bool) error {
 		}
 		ledger.SetSpecEntry(specID, entry)
 		_ = engine.SaveLedger(ledger, ledgerDir)
+	}
+
+	// Queue sync operation and spawn background sync for remote issue creation
+	loaded, loadErr := engine.LoadPipelineConfig(projectRoot)
+	if loadErr == nil && loaded.Config != nil {
+		if err := engine.QueueSyncSpec(loaded.ConfigDir, specID); err != nil {
+			fmt.Fprintf(os.Stderr, "warning: failed to queue spec sync: %v\n", err)
+		} else {
+			fmt.Printf("Queued sync for spec %s\n", specID)
+		}
+
+		if loaded.Config.AutoIssueManagement {
+			if err := engine.SpawnBackgroundSync(loaded.ConfigDir, specID); err != nil {
+				fmt.Fprintf(os.Stderr, "warning: failed to spawn background sync: %v\n", err)
+			} else {
+				fmt.Println("Triggered background sync for remote issue creation")
+			}
+		}
 	}
 
 	if aiMode {

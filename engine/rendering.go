@@ -57,11 +57,11 @@ func truncateLabel(s string, max int) string {
 
 func (d *Dashboard) renderHeader(pipeline PipelineConfig) string {
 	name := pipeline.Name
-	if d.SkippedPipelines[pipeline.ID] {
+	if d.IsPipelineSkipped(pipeline.ID) {
 		return fmt.Sprintf("%s %s %s[SKIPPED]%s\n", truncateLabel(name, 22), Bold, Yellow, Reset)
 	}
 
-	entry := d.Ledger.GetEntry(pipeline.ID)
+	entry := d.GetLedgerEntry(pipeline.ID)
 	if entry == nil {
 		return fmt.Sprintf("%s%s%s\n", Bold, truncateLabel(name, 22), Reset)
 	}
@@ -102,11 +102,11 @@ func (d *Dashboard) RenderHeader(pipeline PipelineConfig) string {
 }
 
 func (d *Dashboard) renderTestList(pipeline PipelineConfig) string {
-	if d.SkippedPipelines[pipeline.ID] {
+	if d.IsPipelineSkipped(pipeline.ID) {
 		return ""
 	}
 
-	tracker := d.TestTrackers[pipeline.ID]
+	tracker := d.GetTestTrackersMap()[pipeline.ID]
 	if tracker == nil {
 		return "\n\n"
 	}
@@ -114,7 +114,7 @@ func (d *Dashboard) renderTestList(pipeline PipelineConfig) string {
 	var list strings.Builder
 
 	activeCount := len(tracker.ActiveTests)
-	hasActiveTests := d.Bomb != BombDetonated && !d.TimeoutFired && activeCount > 0
+	hasActiveTests := d.GetBomb() != BombDetonated && !d.GetTimeoutFired() && activeCount > 0
 
 	var newestDud *TestInfo
 	for _, info := range tracker.Completed {
@@ -201,11 +201,11 @@ func (d *Dashboard) RenderSummary() string {
 
 	var totalRan, totalPassed, totalFailed int
 	var totalFloor int
-	if d.Ledger != nil {
-		totalRan = d.Ledger.GetTotalRan()
-		totalPassed = d.Ledger.GetTotalPassed()
-		totalFailed = d.Ledger.GetTotalFailed()
-		totalFloor = d.Ledger.GetTotalFloor()
+	if ledger := d.GetLedger(); ledger != nil {
+		totalRan = ledger.GetTotalRan()
+		totalPassed = ledger.GetTotalPassed()
+		totalFailed = ledger.GetTotalFailed()
+		totalFloor = ledger.GetTotalFloor()
 	}
 
 	allNonSkippedOK := true
@@ -215,10 +215,10 @@ func (d *Dashboard) RenderSummary() string {
 		floor int
 		got   int
 	}
-	if d.Ledger != nil {
-		for _, p := range d.Pipelines {
-			skipped := d.SkippedPipelines[p.ID]
-			e := d.Ledger.GetEntry(p.ID)
+	if d.GetLedger() != nil {
+		for _, p := range d.GetPipelinesSlice() {
+			skipped := d.IsPipelineSkipped(p.ID)
+			e := d.GetLedgerEntry(p.ID)
 			if !skipped && (e == nil || e.TotalRan == 0 || e.TotalFailed > 0) {
 				allNonSkippedOK = false
 			}
@@ -264,11 +264,11 @@ func (d *Dashboard) RenderSummary() string {
 		fmt.Sprintf("%sBaseline: %s%d%s\n", White, White, totalFloor, Reset) +
 		fmt.Sprintf("%s========================================\n", Bold)
 
-	for _, pipeline := range d.Pipelines {
+	for _, pipeline := range d.GetPipelinesSlice() {
 		result += "\n" + d.RenderPanel(pipeline)
 	}
 
-	for _, errMsg := range d.SystemErrors {
+	for _, errMsg := range d.GetSystemErrors() {
 		result += fmt.Sprintf("%s%s%s\n", Red, errMsg, Reset)
 	}
 
@@ -299,12 +299,12 @@ func (d *Dashboard) RenderFailureReport() string {
 	result.WriteString(fmt.Sprintf("\n%s🔥 FAILED TESTS%s\n", Bold+Red, Reset))
 	result.WriteString(fmt.Sprintf("%s══════════════════════════════════════════%s\n", Bold, Reset))
 
-	for _, pipeline := range d.Pipelines {
-		skipped := d.SkippedPipelines[pipeline.ID]
+	for _, pipeline := range d.GetPipelinesSlice() {
+		skipped := d.IsPipelineSkipped(pipeline.ID)
 		if skipped {
 			continue
 		}
-		tracker := d.TestTrackers[pipeline.ID]
+		tracker := d.GetTestTrackersMap()[pipeline.ID]
 		if tracker == nil {
 			continue
 		}
@@ -348,15 +348,15 @@ func (d *Dashboard) RenderFailureReport() string {
 		}
 	}
 
-	for _, errMsg := range d.SystemErrors {
+	for _, errMsg := range d.GetSystemErrors() {
 		result.WriteString(fmt.Sprintf("%s%s%s\n", Red, errMsg, Reset))
 	}
 
-	if d.Ledger != nil {
-		totalRan := d.Ledger.GetTotalRan()
-		totalPassed := d.Ledger.GetTotalPassed()
-		totalFailed := d.Ledger.GetTotalFailed()
-		totalFloor := d.Ledger.GetTotalFloor()
+	if ledger := d.GetLedger(); ledger != nil {
+		totalRan := ledger.GetTotalRan()
+		totalPassed := ledger.GetTotalPassed()
+		totalFailed := ledger.GetTotalFailed()
+		totalFloor := ledger.GetTotalFloor()
 		result.WriteString(fmt.Sprintf("\n%s══════════════════════════════════════════%s\n", Bold, Reset))
 		result.WriteString(fmt.Sprintf("%sTotal: %d passed, %d failed, %d ran, floor %d%s\n", White, totalPassed, totalFailed, totalRan, totalFloor, Reset))
 	}
@@ -373,8 +373,8 @@ func (d *Dashboard) RenderTimeoutReport() string {
 	result.WriteString(fmt.Sprintf("\n%s⏰ TESTS STILL RUNNING AT TIMEOUT%s\n", Bold+Yellow, Reset))
 	result.WriteString(fmt.Sprintf("%s══════════════════════════════════════════%s\n", Bold, Reset))
 
-	for _, pipeline := range d.Pipelines {
-		tracker := d.TestTrackers[pipeline.ID]
+	for _, pipeline := range d.GetPipelinesSlice() {
+		tracker := d.GetTestTrackersMap()[pipeline.ID]
 		if tracker == nil {
 			continue
 		}
@@ -389,8 +389,8 @@ func (d *Dashboard) RenderTimeoutReport() string {
 	}
 
 	numFailed := 0
-	for _, pipeline := range d.Pipelines {
-		tracker := d.TestTrackers[pipeline.ID]
+	for _, pipeline := range d.GetPipelinesSlice() {
+		tracker := d.GetTestTrackersMap()[pipeline.ID]
 		if tracker == nil {
 			continue
 		}
@@ -405,15 +405,15 @@ func (d *Dashboard) RenderTimeoutReport() string {
 		}
 	}
 
-	for _, errMsg := range d.SystemErrors {
+	for _, errMsg := range d.GetSystemErrors() {
 		result.WriteString(fmt.Sprintf("%s%s%s\n", Red, errMsg, Reset))
 	}
 
-	if d.Ledger != nil {
-		totalRan := d.Ledger.GetTotalRan()
-		totalPassed := d.Ledger.GetTotalPassed()
-		totalFailed := d.Ledger.GetTotalFailed()
-		totalFloor := d.Ledger.GetTotalFloor()
+	if ledger := d.GetLedger(); ledger != nil {
+		totalRan := ledger.GetTotalRan()
+		totalPassed := ledger.GetTotalPassed()
+		totalFailed := ledger.GetTotalFailed()
+		totalFloor := ledger.GetTotalFloor()
 		result.WriteString(fmt.Sprintf("\n%s══════════════════════════════════════════%s\n", Bold, Reset))
 		result.WriteString(fmt.Sprintf("%sTotal: %d passed, %d failed, %d ran, floor %d%s\n", White, totalPassed, totalFailed, totalRan, totalFloor, Reset))
 	}
@@ -433,7 +433,7 @@ type DashboardRenderer struct{}
 
 func (DashboardRenderer) floorString(d *Dashboard, p PipelineConfig) string {
 	ef := p.LedgerFloor
-	if e := d.Ledger.GetEntry(p.ID); e != nil && e.HistoricalFloor > ef {
+	if e := d.GetLedgerEntry(p.ID); e != nil && e.HistoricalFloor > ef {
 		ef = e.HistoricalFloor
 	}
 	return fmt.Sprintf("%d", ef)
@@ -449,11 +449,11 @@ func (DashboardRenderer) WriteBombDetonated(sb *strings.Builder) {
 }
 
 func (DashboardRenderer) WriteBombActive(sb *strings.Builder, d *Dashboard, floorStr string) {
-	sb.WriteString(RenderBombRing(d.BombFrame, floorStr))
+	sb.WriteString(RenderBombRing(d.GetBombFrame(), floorStr))
 }
 
 func (r DashboardRenderer) WriteBombLive(sb *strings.Builder, d *Dashboard, pipelines []PipelineConfig) {
-	if d.Bomb == BombDetonated {
+	if d.GetBomb() == BombDetonated {
 		r.WriteBombDetonated(sb)
 		return
 	}
@@ -463,7 +463,7 @@ func (r DashboardRenderer) WriteBombLive(sb *strings.Builder, d *Dashboard, pipe
 		floorStr = r.floorString(d, pipelines[0])
 	}
 
-	if d.Bomb == BombDefused {
+	if d.GetBomb() == BombDefused {
 		r.WriteBombDefused(sb, floorStr)
 	} else {
 		r.WriteBombActive(sb, d, floorStr)
@@ -472,10 +472,10 @@ func (r DashboardRenderer) WriteBombLive(sb *strings.Builder, d *Dashboard, pipe
 }
 
 func (r DashboardRenderer) WriteBombFinal(sb *strings.Builder, d *Dashboard, p PipelineConfig) {
-	if d.Bomb == BombDefused {
+	if d.GetBomb() == BombDefused {
 		floorStr := r.floorString(d, p)
 		r.WriteBombDefused(sb, floorStr)
-	} else if d.Bomb == BombDetonated {
+	} else if d.GetBomb() == BombDetonated {
 		r.WriteBombDetonated(sb)
 	} else {
 		sb.WriteString("\n")
@@ -483,7 +483,7 @@ func (r DashboardRenderer) WriteBombFinal(sb *strings.Builder, d *Dashboard, p P
 }
 
 func (DashboardRenderer) WriteTimeoutSection(sb *strings.Builder, d *Dashboard) {
-	if !d.TimeoutFired {
+	if !d.GetTimeoutFired() {
 		return
 	}
 	sb.WriteString(Red + Bold + "\n❌ TIMEOUT: pipeline execution exceeded global timeout\n" + Reset)
@@ -491,7 +491,7 @@ func (DashboardRenderer) WriteTimeoutSection(sb *strings.Builder, d *Dashboard) 
 }
 
 func (DashboardRenderer) WriteSuccessFooter(sb *strings.Builder, d *Dashboard) {
-	if d.Bomb != BombDefused {
+	if d.GetBomb() != BombDefused {
 		return
 	}
 	sb.WriteString(fmt.Sprintf("\n%s   ▶▶▶ 🟢 [SUCCESS] BOMB DEFUSED: ALL SYSTEMS SECURE ◀◀◀%s\n", Green+Bold, Reset))

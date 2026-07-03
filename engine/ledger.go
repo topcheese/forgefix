@@ -240,6 +240,16 @@ func (le *LedgerEngine) GetTotalFloor() int {
 }
 
 // FormatSummary aggregates and formats metrics in a single read lock pass
+func (le *LedgerEngine) GetAllEntries() map[string]*LedgerEntry {
+	le.mu.RLock()
+	defer le.mu.RUnlock()
+	cp := make(map[string]*LedgerEntry, len(le.entries))
+	for k, v := range le.entries {
+		cp[k] = v
+	}
+	return cp
+}
+
 func (le *LedgerEngine) FormatSummary(boldOpt, whiteOpt, greenOpt, redOpt, resetOpt string) string {
 	le.mu.RLock()
 	defer le.mu.RUnlock()
@@ -441,6 +451,16 @@ func (le *LedgerEngine) SyncFromSpecsDir(configDir string) error {
 		}
 		if status == "closed" {
 			continue
+		}
+
+		if le.specMappings[specID] == nil {
+			le.specMappings[specID] = &SpecEntry{
+				SpecID:       specID,
+				RepoIssueID:  0,
+				Status:       status,
+				LinkedCommits: []string{},
+				Type:          specType,
+			}
 		}
 		if le.specMappings[specID] == nil {
 			le.specMappings[specID] = &SpecEntry{

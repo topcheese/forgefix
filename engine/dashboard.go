@@ -15,7 +15,8 @@ const TestTimeoutSecs = 15
 type BombState int
 
 const (
-	BombActive   BombState = iota
+	BombIdle     BombState = iota
+	BombActive
 	BombDefused
 	BombDetonated
 )
@@ -213,16 +214,19 @@ func (u *UI) render() {
 		availableForTests = 0
 	}
 
-	if u.dashboard.Bomb != BombDetonated {
-		totalRan := u.dashboard.Ledger.GetTotalRan()
-		totalPassed := u.dashboard.Ledger.GetTotalPassed()
-		totalFailed := u.dashboard.Ledger.GetTotalFailed()
-		totalFloor := u.dashboard.Ledger.GetTotalFloor()
+	var totalRan, totalPassed, totalFailed, totalFloor int
+	if ledger := u.dashboard.GetLedger(); ledger != nil {
+		totalRan = ledger.GetTotalRan()
+		totalPassed = ledger.GetTotalPassed()
+		totalFailed = ledger.GetTotalFailed()
+		totalFloor = ledger.GetTotalFloor()
+	}
+	if u.dashboard.GetBomb() != BombDetonated {
 
 		var statusLine string
 		anyFailure := false
-		for _, p := range u.dashboard.Pipelines {
-			if e := u.dashboard.Ledger.GetEntry(p.ID); e != nil && e.TotalFailed > 0 {
+		for _, p := range u.dashboard.GetPipelinesSlice() {
+			if e := u.dashboard.GetLedgerEntry(p.ID); e != nil && e.TotalFailed > 0 {
 				anyFailure = true
 				break
 			}
@@ -302,7 +306,7 @@ func (u *UI) renderFinal(d *Dashboard, config *Config) {
 		sb.WriteString("\n" + d.RenderFailureReport())
 	}
 	r.WriteTimeoutSection(&sb, d)
-	sb.WriteString(d.Ledger.FormatSummary(Bold, White, Green, Red, Reset))
+	sb.WriteString(d.FormatLedgerSummary(Bold, White, Green, Red, Reset))
 	r.WriteSuccessFooter(&sb, d)
 
 	sb.WriteString(Reset + "\n")
@@ -453,7 +457,7 @@ func (d *Dashboard) GetActiveTestDurations(pipelineID string) []struct {
 } {
 	d.mu.RLock()
 	defer d.mu.RUnlock()
-	tracker := d.TestTrackers[pipelineID]
+	tracker := d.GetTestTrackersMap()[pipelineID]
 	if tracker == nil {
 		return nil
 	}
@@ -477,7 +481,7 @@ func (d *Dashboard) GetTimeoutTests(pipelineID string, timeoutSecs int) []struct
 } {
 	d.mu.RLock()
 	defer d.mu.RUnlock()
-	tracker := d.TestTrackers[pipelineID]
+	tracker := d.GetTestTrackersMap()[pipelineID]
 	if tracker == nil {
 		return nil
 	}
@@ -516,8 +520,8 @@ func (d *Dashboard) TriggerDetonation() {
 // These are tests that were killed/interrupted by the detonation and never completed.
 // Called under d.mu.Lock() from TriggerDetonation.
 func (d *Dashboard) drainOrphanedTests() {
-	for _, pipeline := range d.Pipelines {
-		tracker := d.TestTrackers[pipeline.ID]
+	for _, pipeline := range d.GetPipelinesSlice() {
+		tracker := d.GetTestTrackersMap()[pipeline.ID]
 		if tracker == nil {
 			continue
 		}
@@ -538,7 +542,7 @@ func (d *Dashboard) drainOrphanedTests() {
 			sawOrphan = true
 		}
 		if sawOrphan {
-			d.SystemErrors = append(d.SystemErrors, "⏹ Tests still running when bomb detonated")
+			d.AddSystemError("⏹ Tests still running when bomb detonated")
 		}
 	}
 }

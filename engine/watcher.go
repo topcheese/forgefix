@@ -141,10 +141,10 @@ func (w *Watcher) triggerRun() {
 
 	w.dashboard.ResetTrackers()
 	for _, pipeline := range w.config.Pipelines {
-		w.dashboard.Ledger.GetOrCreateEntry(pipeline.ID)
+		w.dashboard.GetLedger().GetOrCreateEntry(pipeline.ID)
 	}
-	w.dashboard.Bomb = BombActive
-	w.dashboard.BombFrame = 0
+	w.dashboard.SetBomb(BombActive)
+	w.dashboard.SetBombFrame(0)
 
 	wg := runPipelines(w.config, w.dashboard, w.config.Pipelines, w.dashboard)
 	go func() {
@@ -191,7 +191,7 @@ func runPipelines(config *Config, dashboard *Dashboard, pipelines []PipelineConf
 
 func (w *Watcher) EmitLSPDiagnostics() {
 	for _, pipeline := range w.config.Pipelines {
-		tracker := w.dashboard.TestTrackers[pipeline.ID]
+		tracker := w.dashboard.GetTestTrackersMap()[pipeline.ID]
 		if tracker == nil {
 			continue
 		}

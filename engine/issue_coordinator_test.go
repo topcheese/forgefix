@@ -1,4 +1,3 @@
-
 package engine
 
 import (
@@ -503,7 +502,7 @@ func TestCollectFailedTests(t *testing.T) {
 		{ID: "p1", Name: "Pipeline 1"},
 	})
 
-	d.TestTrackers["p1"] = &TestTracker{
+	d.GetTestTrackersMap()["p1"] = &TestTracker{
 		Completed: map[string]*TestInfo{
 			"test_a": {ID: "test_a", Name: "TestA", State: StateDud, Elapsed: 100},
 			"test_b": {ID: "test_b", Name: "TestB", State: StateDud, Elapsed: 200},
@@ -534,7 +533,7 @@ func TestCollectFailedTests_NoFailures(t *testing.T) {
 		{ID: "p1", Name: "Pipeline 1"},
 	})
 
-	d.TestTrackers["p1"] = &TestTracker{
+	d.GetTestTrackersMap()["p1"] = &TestTracker{
 		Completed: map[string]*TestInfo{
 			"test_a": {ID: "test_a", Name: "TestA", State: StatePopped, Elapsed: 100},
 		},
@@ -603,7 +602,7 @@ func TestHandleDetonationIssues(t *testing.T) {
 	coord, _ := newMockCoordinator()
 	d.Coord = coord
 
-	d.TestTrackers["p1"] = &TestTracker{
+	d.GetTestTrackersMap()["p1"] = &TestTracker{
 		Completed: map[string]*TestInfo{
 			"test_fail": {
 				ID:          "test_fail",
@@ -664,7 +663,7 @@ func TestHandleDetonationIssues_ExistingIssue(t *testing.T) {
 	coord, _ := newMockCoordinator()
 	d.Coord = coord
 
-	d.TestTrackers["p1"] = &TestTracker{
+	d.GetTestTrackersMap()["p1"] = &TestTracker{
 		Completed: map[string]*TestInfo{
 			"test_old": {
 				ID:      "test_old",
@@ -1082,7 +1081,7 @@ func TestHandleTimeoutIssues(t *testing.T) {
 	coord, _ := newMockCoordinator()
 	d.Coord = coord
 
-	d.TestTrackers["p1"] = &TestTracker{
+	d.GetTestTrackersMap()["p1"] = &TestTracker{
 		Completed: map[string]*TestInfo{
 			"test_timeout": {
 				ID:      "test_timeout",

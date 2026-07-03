@@ -53,13 +53,13 @@ type TestInfo struct {
 }
 
 type TestTracker struct {
-	mu            sync.RWMutex
-	ActiveTests   map[string]*TestInfo
-	Completed     map[string]*TestInfo
-	CompletedIDs  map[string]bool
-	History       []string
-	Ran           int
-	Passed        int
+	mu           sync.RWMutex
+	ActiveTests  map[string]*TestInfo
+	Completed    map[string]*TestInfo
+	CompletedIDs map[string]bool
+	History      []string
+	Ran          int
+	Passed       int
 }
 
 type TestResult struct {

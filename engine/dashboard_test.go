@@ -37,8 +37,8 @@ func TestFirecrackerRenderingShowsActiveTestsWithMilliseconds(t *testing.T) {
 func TestFirecrackerSingleSlotOnly(t *testing.T) {
 	d := NewDashboard(nil)
 	tracker := &TestTracker{
-		ActiveTests: make(map[string]*TestInfo),
-		Completed:   make(map[string]*TestInfo),
+		ActiveTests:  make(map[string]*TestInfo),
+		Completed:    make(map[string]*TestInfo),
 		CompletedIDs: make(map[string]bool),
 	}
 	base := time.Now().Add(-1 * time.Second)
@@ -51,7 +51,8 @@ func TestFirecrackerSingleSlotOnly(t *testing.T) {
 			Started: base.Add(time.Duration(i) * 100 * time.Millisecond),
 		}
 	}
-	d.TestTrackers["p"] = tracker
+	trackers := d.GetTestTrackersMap()
+	trackers["p"] = tracker
 
 	result := d.renderTestList(PipelineConfig{ID: "p"})
 	lines := strings.Split(strings.TrimSpace(result), "\n")
@@ -75,12 +76,12 @@ func TestDudExplosionRendersStrictTwoLines(t *testing.T) {
 	tracker := d.GetTracker("test-pipeline")
 	tracker.mu.Lock()
 	tracker.Completed["TestFailOne"] = &TestInfo{
-		ID:      "TestFailOne",
-		Name:    "TestFailOne",
-		State:   StateDud,
-		Elapsed: 3200,
-		Started: time.Now().Add(-3200 * time.Millisecond),
-		FilePath: "/home/user/project/foo_test.go",
+		ID:          "TestFailOne",
+		Name:        "TestFailOne",
+		State:       StateDud,
+		Elapsed:     3200,
+		Started:     time.Now().Add(-3200 * time.Millisecond),
+		FilePath:    "/home/user/project/foo_test.go",
 		FailureLine: 42,
 	}
 	tracker.CompletedIDs["TestFailOne"] = true
@@ -113,16 +114,16 @@ func TestFailureReportIncludesErrorTraceAndFilePath(t *testing.T) {
 	})
 	ledger := NewLedgerEngine()
 	ledger.GetOrCreateEntry("test-pipe")
-	d.Ledger = ledger
+	d.SetLedger(ledger)
 
 	tracker := d.GetTracker("test-pipe")
 	tracker.Completed["TestFailTwo"] = &TestInfo{
-		ID:      "TestFailTwo",
-		Name:    "TestFailTwo",
-		State:   StateDud,
-		Elapsed: 15000,
-		ErrorTrace: "assertion failed: expected 5, got 3\n    at foo_test.go:25",
-		FilePath: "/home/user/project/foo_test.go",
+		ID:          "TestFailTwo",
+		Name:        "TestFailTwo",
+		State:       StateDud,
+		Elapsed:     15000,
+		ErrorTrace:  "assertion failed: expected 5, got 3\n    at foo_test.go:25",
+		FilePath:    "/home/user/project/foo_test.go",
 		FailureLine: 25,
 	}
 	tracker.CompletedIDs["TestFailTwo"] = true
@@ -282,7 +283,7 @@ func TestUIRenderContainsBombRing(t *testing.T) {
 	ledger := NewLedgerEngine()
 	ledger.GetOrCreateEntry("pipe1")
 	ledger.UpdateEntry("pipe1", 10, 8, 2)
-	d.Ledger = ledger
+	d.SetLedger(ledger)
 	tracker := d.GetTracker("pipe1")
 	tracker.ActiveTests["t1"] = &TestInfo{
 		ID: "t1", Name: "ActiveTest", State: StateRunning,
@@ -324,7 +325,7 @@ func TestUIRenderWithStatsSection(t *testing.T) {
 	ledger := NewLedgerEngine()
 	ledger.GetOrCreateEntry("pipe1")
 	ledger.UpdateEntry("pipe1", 50, 48, 2)
-	d.Ledger = ledger
+	d.SetLedger(ledger)
 	tracker := d.GetTracker("pipe1")
 	tracker.ActiveTests["t1"] = &TestInfo{
 		ID: "t1", Name: "ActiveTest", State: StateRunning,
@@ -338,10 +339,10 @@ func TestUIRenderWithStatsSection(t *testing.T) {
 	sb.WriteString(d.RenderHeader(pipelines[0]))
 	sb.WriteString("\n" + RenderBombRing(0, "5"))
 	sb.WriteString("\n")
-	totalRan := d.Ledger.GetTotalRan()
-	totalPassed := d.Ledger.GetTotalPassed()
-	totalFailed := d.Ledger.GetTotalFailed()
-	totalFloor := d.Ledger.GetTotalFloor()
+	totalRan := d.GetTotalRan()
+	totalPassed := d.GetTotalPassed()
+	totalFailed := d.GetTotalFailed()
+	totalFloor := d.GetTotalFloor()
 	sb.WriteString("\n========================================\n")
 	sb.WriteString(fmt.Sprintf("%sTotal Tests: %d%s\n", White, totalRan, Reset))
 	sb.WriteString(fmt.Sprintf("%sPassed: %s%d%s\n", White, Green, totalPassed, Reset))
@@ -375,7 +376,7 @@ func TestRenderStartsWithHomeSequence(t *testing.T) {
 	d := NewDashboard(pipelines)
 	ledger := NewLedgerEngine()
 	ledger.GetOrCreateEntry("pipe1")
-	d.Ledger = ledger
+	d.SetLedger(ledger)
 
 	u := NewUI(d)
 	u.mu.Lock()
@@ -444,7 +445,7 @@ func TestRenderHeaderMatchesConfigPipelineCount(t *testing.T) {
 	for _, p := range pipelines {
 		ledger.GetOrCreateEntry(p.ID)
 	}
-	d.Ledger = ledger
+	d.SetLedger(ledger)
 
 	active := d.GetActivePipelines()
 	if len(active) != 3 {
@@ -469,7 +470,7 @@ func TestRenderFrameContainsBombRingExactlyOnce(t *testing.T) {
 		ledger.GetOrCreateEntry(p.ID)
 		ledger.UpdateEntry(p.ID, 10, 8, 2)
 	}
-	d.Ledger = ledger
+	d.SetLedger(ledger)
 
 	var sb strings.Builder
 	sb.WriteString("\033[H")
@@ -479,7 +480,7 @@ func TestRenderFrameContainsBombRingExactlyOnce(t *testing.T) {
 	sb.WriteString("\n")
 	sb.WriteString(RenderBombRing(0, "5"))
 	sb.WriteString("\n")
-	sb.WriteString(fmt.Sprintf("Total Tests: %d\n", d.Ledger.GetTotalRan()))
+	sb.WriteString(fmt.Sprintf("Total Tests: %d\n", d.GetTotalRan()))
 	for _, p := range pipelines {
 		sb.WriteString(d.RenderTestList(p))
 	}
@@ -507,7 +508,7 @@ func TestRenderEachPipelineHasHeaderLine(t *testing.T) {
 		ledger.GetOrCreateEntry(p.ID)
 		ledger.UpdateEntry(p.ID, 40, 38, 2)
 	}
-	d.Ledger = ledger
+	d.SetLedger(ledger)
 
 	var sb strings.Builder
 	sb.WriteString("\033[H")
@@ -578,7 +579,7 @@ func TestRenderFullFrameLayoutOrder(t *testing.T) {
 		ledger.GetOrCreateEntry(p.ID)
 		ledger.UpdateEntry(p.ID, 20, 18, 2)
 	}
-	d.Ledger = ledger
+	d.SetLedger(ledger)
 
 	tracker1 := d.GetTracker("pipe1")
 	tracker1.ActiveTests["t1"] = &TestInfo{
@@ -600,7 +601,7 @@ func TestRenderFullFrameLayoutOrder(t *testing.T) {
 	sb.WriteString("\n")
 	sb.WriteString(RenderBombRing(d.BombFrame, "5"))
 	sb.WriteString("\n")
-	sb.WriteString(fmt.Sprintf("Total Tests: %d\n", d.Ledger.GetTotalRan()))
+	sb.WriteString(fmt.Sprintf("Total Tests: %d\n", d.GetTotalRan()))
 	for _, p := range pipelines {
 		sb.WriteString(d.RenderTestList(p))
 	}
@@ -641,7 +642,7 @@ func TestRenderFullFrameLineCountBounded(t *testing.T) {
 		ledger.GetOrCreateEntry(p.ID)
 		ledger.UpdateEntry(p.ID, 50, 48, 2)
 	}
-	d.Ledger = ledger
+	d.SetLedger(ledger)
 
 	for _, p := range pipelines {
 		tracker := d.GetTracker(p.ID)
@@ -659,7 +660,7 @@ func TestRenderFullFrameLineCountBounded(t *testing.T) {
 	sb.WriteString("\n")
 	sb.WriteString(RenderBombRing(d.BombFrame, "5"))
 	sb.WriteString("\n")
-	sb.WriteString(fmt.Sprintf("Total Tests: %d\n", d.Ledger.GetTotalRan()))
+	sb.WriteString(fmt.Sprintf("Total Tests: %d\n", d.GetTotalRan()))
 	for _, p := range pipelines {
 		sb.WriteString(d.RenderTestList(p))
 	}
@@ -706,8 +707,8 @@ func TestTwoPipelinesEachGetOwnTwoLineSlot(t *testing.T) {
 	}
 	tracker2.CompletedIDs["dud1"] = true
 
-	list1 := d.renderTestList(d.Pipelines[0])
-	list2 := d.renderTestList(d.Pipelines[1])
+	list1 := d.renderTestList(d.GetPipelinesSlice()[0])
+	list2 := d.renderTestList(d.GetPipelinesSlice()[1])
 
 	newlineCount1 := strings.Count(list1, "\n")
 	newlineCount2 := strings.Count(list2, "\n")

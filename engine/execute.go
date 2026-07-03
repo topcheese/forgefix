@@ -38,7 +38,7 @@ func ExecuteSuite(config *Config, configDir string, aiMode bool, watchMode bool)
 		os.Exit(1)
 	}
 	ledger.ResetCurrentRun()
-	dashboard.Ledger = ledger
+	dashboard.SetLedger(ledger)
 	dashboard.ResetTrackers()
 
 	dashboard.Coord = NewCoordinatorFromConfig(config, configDir, aiMode)
@@ -155,7 +155,7 @@ mainLoop:
 				if dashboard.IsPipelineSkipped(p.ID) {
 					continue
 				}
-				e := dashboard.Ledger.GetEntry(p.ID)
+				e := dashboard.GetLedgerEntry(p.ID)
 				ef := p.LedgerFloor
 				if e != nil && ef == 0 {
 					ef = e.HistoricalFloor
@@ -189,7 +189,7 @@ mainLoop:
 			if ui != nil {
 				close(uiQuit)
 			}
-			dashboard.TimeoutFired = true
+			dashboard.SetTimeoutFired(true)
 			dashboard.SetPipelineActive(false)
 			manageIssues := dashboard.Coord != nil
 			if manageIssues {
@@ -217,7 +217,7 @@ mainLoop:
 	}
 
 	time.Sleep(200 * time.Millisecond)
-	if err := SaveLedger(dashboard.Ledger, configDir); err != nil && !aiMode {
+		if err := SaveLedger(dashboard.GetLedger(), configDir); err != nil && !aiMode {
 		fmt.Fprintf(os.Stderr, "warning: failed to save ledger metrics: %v\n", err)
 	}
 
@@ -226,14 +226,14 @@ mainLoop:
 		ui.renderFinal(dashboard, config)
 		ui.waitForExit()
 	} else if aiMode {
-		if dashboard.Bomb == BombDetonated {
+		if dashboard.GetBomb() == BombDetonated {
 			EmitDetonated(dashboard)
 		} else {
 			EmitJSON(dashboard)
 		}
 	}
 
-	if dashboard.Ledger.GetTotalRan() == 0 {
+	if ledger := dashboard.GetLedger(); ledger != nil && ledger.GetTotalRan() == 0 {
 		os.Exit(1)
 	}
 }
@@ -242,8 +242,8 @@ func collectFailedTests(d *Dashboard) []TestInfo {
 	d.mu.RLock()
 	defer d.mu.RUnlock()
 	var failed []TestInfo
-	for _, pipeline := range d.Pipelines {
-		tracker := d.TestTrackers[pipeline.ID]
+	for _, pipeline := range d.GetPipelinesSlice() {
+		tracker := d.GetTestTrackersMap()[pipeline.ID]
 		if tracker == nil {
 			continue
 		}
@@ -430,16 +430,16 @@ func renderFinalFrame(d *Dashboard, config *Config) string {
 		}
 	}
 
-	if d.Bomb == BombDetonated {
+	if d.GetBomb() == BombDetonated {
 		sb.WriteString("\n" + d.RenderFailureReport())
 		return sb.String()
 	}
-	if d.TimeoutFired {
+	if d.GetTimeoutFired() {
 		r.WriteTimeoutSection(&sb, d)
 		return sb.String()
 	}
 
-	sb.WriteString(d.Ledger.FormatSummary(Bold, White, Green, Red, Reset))
+	sb.WriteString(d.FormatLedgerSummary(Bold, White, Green, Red, Reset))
 	r.WriteSuccessFooter(&sb, d)
 	sb.WriteString(Reset)
 	return sb.String()
@@ -571,26 +571,42 @@ func checkShipGateSpecStatuses(configDir string) (shipSpecs []string, err error)
 	return shipSpecs, nil
 }
 
-func ShipReconciliation(config *Config, configDir string) {
+func ShipReconciliation(config *Config, configDir string, aiMode bool) {
 	if config.GitHub == nil || config.GitHub.Token == "" || config.GitHub.Owner == "" || config.GitHub.Repo == "" {
+		if aiMode {
+			EmitAIError("GITHUB_CONFIG_ERROR", "GitHub/Repo not configured. Ship requires issue coordinator credentials.")
+			os.Exit(1)
+		}
 		fmt.Fprintln(os.Stderr, "Error: GitHub/Repo not configured. Ship requires issue coordinator credentials.")
 		os.Exit(1)
 	}
-	coord := NewCoordinatorFromConfig(config, configDir, false)
+	coord := NewCoordinatorFromConfig(config, configDir, aiMode)
 
 	shipSpecs, err := checkShipGateSpecStatuses(configDir)
 	if err != nil {
+		if aiMode {
+			EmitAIError("SHIP_GATE_ERROR", fmt.Sprintf("Strict Shipping Gate: %s", err.Error()))
+			os.Exit(1)
+		}
 		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
 		os.Exit(1)
 	}
 
 	if err := verifyCommitSpecBindings(configDir); err != nil {
+		if aiMode {
+			EmitAIError("COMMIT_BINDING_ERROR", err.Error())
+			os.Exit(1)
+		}
 		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
 		os.Exit(1)
 	}
 
 	entries := ReadAuditLogEntries(configDir)
 	if len(entries) == 0 {
+		if aiMode {
+			EmitAIError("AUDIT_LOG_ERROR", "No audit log entries found. Nothing to ship.")
+			os.Exit(1)
+		}
 		fmt.Fprintln(os.Stderr, "No audit log entries found. Nothing to ship.")
 		os.Exit(0)
 	}
@@ -615,12 +631,16 @@ func ShipReconciliation(config *Config, configDir string) {
 
 	if len(resolved) == 0 {
 		fmt.Fprintln(os.Stderr, "Error: No resolved issues with [ForgeFix Resolution Report] tag found.")
-		if !confirmPrompt("No automated resolutions detected. Proceed manually?") {
+		if aiMode {
+			fmt.Println("AI mode: proceeding with ship despite no automated resolutions.")
+		} else if !confirmPrompt("No automated resolutions detected. Proceed manually?") {
 			fmt.Fprintln(os.Stderr, "Ship aborted.")
 			os.Exit(1)
 		}
-		fmt.Println("Proceeding with manual confirmation.")
-		return
+		if !aiMode {
+			fmt.Println("Proceeding with manual confirmation.")
+			return
+		}
 	}
 
 	if len(resolved) > 1 {
@@ -628,7 +648,9 @@ func ShipReconciliation(config *Config, configDir string) {
 		for _, r := range resolved {
 			fmt.Fprintf(os.Stderr, "  - #%d: %s\n", r.IssueNumber, r.TestName)
 		}
-		if !confirmPrompt("Multiple resolutions found. Proceed with all?") {
+		if aiMode {
+			fmt.Println("AI mode: proceeding with all resolutions.")
+		} else if !confirmPrompt("Multiple resolutions found. Proceed with all?") {
 			fmt.Fprintln(os.Stderr, "Ship aborted.")
 			os.Exit(1)
 		}
@@ -783,8 +805,8 @@ func verifyCommitSpecBindings(configDir string) error {
 			return fmt.Errorf("Orphaned commit detected: SpecID %s not found in ledger (commit %s)", specID, commitHash[:8])
 		}
 
-		if specEntry.Status != "in-progress" && specEntry.Status != "review" {
-			return fmt.Errorf("Orphaned commit detected: SpecID %s has invalid status '%s' (expected 'in-progress' or 'review') (commit %s)", specID, specEntry.Status, commitHash[:8])
+		if specEntry.Status != "in-progress" && specEntry.Status != "review" && specEntry.Status != "ship" {
+			return fmt.Errorf("Orphaned commit detected: SpecID %s has invalid status '%s' (expected 'in-progress', 'review', or 'ship') (commit %s)", specID, specEntry.Status, commitHash[:8])
 		}
 	}
 

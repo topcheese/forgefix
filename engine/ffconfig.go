@@ -9,10 +9,10 @@ import (
 )
 
 type StatusDef struct {
-	Name       string `yaml:"name"`
-	Color      string `yaml:"color"`
-	Active     bool   `yaml:"active"`
-	RepoLabel  string `yaml:"repo_label,omitempty"`
+	Name      string `yaml:"name"`
+	Color     string `yaml:"color"`
+	Active    bool   `yaml:"active"`
+	RepoLabel string `yaml:"repo_label,omitempty"`
 }
 
 type LabelCategory struct {
@@ -20,8 +20,8 @@ type LabelCategory struct {
 }
 
 type WorkflowConfig struct {
-	Statuses        []StatusDef               `yaml:"statuses"`
-	LabelCategories map[string]LabelCategory  `yaml:"label_categories,omitempty"`
+	Statuses        []StatusDef              `yaml:"statuses"`
+	LabelCategories map[string]LabelCategory `yaml:"label_categories,omitempty"`
 }
 
 func FFWorkflowConfigPath(configDir string) string {

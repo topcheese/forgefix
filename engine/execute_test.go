@@ -60,7 +60,7 @@ func TestExecuteSuite_CoordinatorInitializedWithGitHubConfig(t *testing.T) {
 	dashboard := NewDashboard(config.Pipelines)
 	ledger, _ := LoadLedger(t.TempDir())
 	ledger.ResetCurrentRun()
-	dashboard.Ledger = ledger
+	dashboard.SetLedger(ledger)
 	dashboard.ResetTrackers()
 
 	if config.GitHub != nil && config.GitHub.Token != "" {
@@ -83,7 +83,7 @@ func TestExecuteSuite_CoordinatorNotInitializedWithoutGitHubConfig(t *testing.T)
 	}
 
 	dashboard := NewDashboard(config.Pipelines)
-	dashboard.Ledger = NewLedgerEngine()
+	dashboard.SetLedger(NewLedgerEngine())
 
 	if dashboard.Coord != nil {
 		t.Error("Expected Coordinator to be nil when no GitHub config")
@@ -103,7 +103,7 @@ func TestExecuteSuite_CoordinatorNotInitializedWithoutToken(t *testing.T) {
 	}
 
 	dashboard := NewDashboard(config.Pipelines)
-	dashboard.Ledger = NewLedgerEngine()
+	dashboard.SetLedger(NewLedgerEngine())
 
 	if config.GitHub != nil && config.GitHub.Token != "" {
 		dashboard.Coord = NewIssueCoordinator(config.GitHub.Owner, config.GitHub.Repo, config.GitHub.Token, "https://api.github.com")
@@ -132,7 +132,7 @@ func TestIntegration_DetonationToDefusedFullCycle(t *testing.T) {
 	coord, _ := newMockCoordinator()
 	d.Coord = coord
 
-	d.TestTrackers["p1"] = &TestTracker{
+	d.GetTestTrackersMap()["p1"] = &TestTracker{
 		Completed: map[string]*TestInfo{
 			"test_fail": {
 				ID:          "test_fail",
@@ -206,7 +206,7 @@ func TestIntegration_NoFailedTestsNoIssues(t *testing.T) {
 	d := NewDashboard([]PipelineConfig{
 		{ID: "p1", Name: "Pipeline 1"},
 	})
-	d.TestTrackers["p1"] = &TestTracker{
+	d.GetTestTrackersMap()["p1"] = &TestTracker{
 		Completed: map[string]*TestInfo{
 			"test_pass": {
 				ID:    "test_pass",
@@ -231,14 +231,14 @@ func TestIntegration_MultiplePipelinesFailures(t *testing.T) {
 	coord, transport := newMockCoordinator()
 	d.Coord = coord
 
-	d.TestTrackers["p1"] = &TestTracker{
+	d.GetTestTrackersMap()["p1"] = &TestTracker{
 		Completed: map[string]*TestInfo{
 			"test_a": {ID: "test_a", Name: "TestA", State: StateDud, Elapsed: 100},
 			"test_b": {ID: "test_b", Name: "TestB", State: StateDud, Elapsed: 200},
 		},
 		CompletedIDs: map[string]bool{"test_a": true, "test_b": true},
 	}
-	d.TestTrackers["p2"] = &TestTracker{
+	d.GetTestTrackersMap()["p2"] = &TestTracker{
 		Completed: map[string]*TestInfo{
 			"test_c": {ID: "test_c", Name: "TestC", State: StateDud, Elapsed: 300},
 		},

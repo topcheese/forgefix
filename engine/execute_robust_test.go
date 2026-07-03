@@ -13,14 +13,14 @@ func TestRenderTestListShowsRunningWithGauges(t *testing.T) {
 	})
 	ledger := NewLedgerEngine()
 	ledger.GetOrCreateEntry("gauge-pipe")
-	d.Ledger = ledger
+	d.SetLedger(ledger)
 
 	tracker := d.GetTracker("gauge-pipe")
 	tracker.ActiveTests["t1"] = &TestInfo{
 		ID: "t1", Name: "GaugeTest_Alpha", State: StateRunning,
 	}
 
-	list := d.RenderTestList(d.Pipelines[0])
+	list := d.RenderTestList(d.GetPipelinesSlice()[0])
 	if !strings.Contains(list, "GaugeTest_Alpha") {
 		t.Errorf("expected running test name, got:\n%s", list)
 	}
@@ -38,7 +38,7 @@ func TestRenderTestListMaxFive(t *testing.T) {
 	})
 	ledger := NewLedgerEngine()
 	ledger.GetOrCreateEntry("max-pipe")
-	d.Ledger = ledger
+	d.SetLedger(ledger)
 
 	tracker := d.GetTracker("max-pipe")
 	for i := 0; i < 10; i++ {
@@ -50,7 +50,7 @@ func TestRenderTestListMaxFive(t *testing.T) {
 		ID: "running", Name: "RunningTest", State: StateRunning,
 	}
 
-	list := d.RenderTestList(d.Pipelines[0])
+	list := d.RenderTestList(d.GetPipelinesSlice()[0])
 	lines := strings.Split(strings.TrimRight(list, "\n"), "\n")
 	itemCount := 0
 	for _, l := range lines {
@@ -72,11 +72,11 @@ func TestRenderTestListEmptyOnSkipped(t *testing.T) {
 	})
 	ledger := NewLedgerEngine()
 	ledger.GetOrCreateEntry("skip-pipe")
-	d.Ledger = ledger
+	d.SetLedger(ledger)
 
 	d.MarkPipelineSkipped("skip-pipe")
 
-	list := d.RenderTestList(d.Pipelines[0])
+	list := d.RenderTestList(d.GetPipelinesSlice()[0])
 	if list != "" {
 		t.Errorf("expected empty test list for skipped pipeline, got:\n%s", list)
 	}
@@ -88,7 +88,7 @@ func TestTUIPanelHistoryTruncated(t *testing.T) {
 	})
 	ledger := NewLedgerEngine()
 	ledger.GetOrCreateEntry("test-pipe")
-	d.Ledger = ledger
+	d.SetLedger(ledger)
 
 	tracker := d.GetTracker("test-pipe")
 	n := 50
@@ -97,11 +97,11 @@ func TestTUIPanelHistoryTruncated(t *testing.T) {
 		tracker.CompletedIDs[id] = true
 		tracker.History = append(tracker.History, "✓ "+id)
 	}
-	entry := d.Ledger.GetEntry("test-pipe")
+	entry := d.GetLedger().GetEntry("test-pipe")
 	entry.TotalRan = n
 	entry.TotalPassed = n
 
-	panel := d.RenderPanel(d.Pipelines[0])
+	panel := d.RenderPanel(d.GetPipelinesSlice()[0])
 
 	lines := strings.Split(strings.TrimRight(panel, "\n"), "\n")
 	itemCount := 0
@@ -121,7 +121,7 @@ func TestTUIPanelHistoryAllShown(t *testing.T) {
 	})
 	ledger := NewLedgerEngine()
 	ledger.GetOrCreateEntry("test-pipe")
-	d.Ledger = ledger
+	d.SetLedger(ledger)
 
 	tracker := d.GetTracker("test-pipe")
 	n := 3
@@ -130,11 +130,11 @@ func TestTUIPanelHistoryAllShown(t *testing.T) {
 		tracker.CompletedIDs[id] = true
 		tracker.History = append(tracker.History, "✓ "+id)
 	}
-	entry := d.Ledger.GetEntry("test-pipe")
+	entry := d.GetLedger().GetEntry("test-pipe")
 	entry.TotalRan = n
 	entry.TotalPassed = n
 
-	panel := d.RenderPanel(d.Pipelines[0])
+	panel := d.RenderPanel(d.GetPipelinesSlice()[0])
 
 	lines := strings.Split(strings.TrimRight(panel, "\n"), "\n")
 	itemCount := 0
@@ -154,7 +154,7 @@ func TestTUIPanelPrioritizesRunningTests(t *testing.T) {
 	})
 	ledger := NewLedgerEngine()
 	ledger.GetOrCreateEntry("test-pipe")
-	d.Ledger = ledger
+	d.SetLedger(ledger)
 
 	tracker := d.GetTracker("test-pipe")
 	for i := 20; i < 30; i++ {
@@ -169,7 +169,7 @@ func TestTUIPanelPrioritizesRunningTests(t *testing.T) {
 		ID: "active-2", Name: "ActiveTest_2", State: StateRunning,
 	}
 
-	panel := d.RenderPanel(d.Pipelines[0])
+	panel := d.RenderPanel(d.GetPipelinesSlice()[0])
 
 	if !strings.Contains(panel, "Firing:") {
 		t.Errorf("expected running gauge indicator (Firing:) in panel output")
@@ -231,14 +231,14 @@ func TestTUIRunningGaugeHasTwoDecimalDuration(t *testing.T) {
 	})
 	ledger := NewLedgerEngine()
 	ledger.GetOrCreateEntry("test-pipe")
-	d.Ledger = ledger
+	d.SetLedger(ledger)
 
 	tracker := d.GetTracker("test-pipe")
 	tracker.ActiveTests["t1"] = &TestInfo{
 		ID: "t1", Name: "GaugeTest", State: StateRunning,
 	}
 
-	panel := d.RenderPanel(d.Pipelines[0])
+	panel := d.RenderPanel(d.GetPipelinesSlice()[0])
 	if !strings.Contains(panel, "Firing:") || !strings.Contains(panel, "GaugeTest") {
 		t.Errorf("expected running gauge with Firing: and duration: %s", panel)
 	}
@@ -250,7 +250,7 @@ func TestRenderFailureReportIncludesFailedTestNames(t *testing.T) {
 	})
 	ledger := NewLedgerEngine()
 	ledger.GetOrCreateEntry("test-pipe")
-	d.Ledger = ledger
+	d.SetLedger(ledger)
 
 	tracker := d.GetTracker("test-pipe")
 	tracker.CompletedIDs["TestFail1"] = true
@@ -277,7 +277,7 @@ func TestRenderTimeoutReportIncludesActiveTests(t *testing.T) {
 	})
 	ledger := NewLedgerEngine()
 	ledger.GetOrCreateEntry("test-pipe")
-	d.Ledger = ledger
+	d.SetLedger(ledger)
 
 	tracker := d.GetTracker("test-pipe")
 	tracker.ActiveTests["slow-test"] = &TestInfo{
@@ -325,7 +325,7 @@ func TestTUIHeaderBombTotalsStablePosition(t *testing.T) {
 			})
 			ledger := NewLedgerEngine()
 			ledger.GetOrCreateEntry("stable-pipe")
-			d.Ledger = ledger
+			d.SetLedger(ledger)
 
 			tracker := d.GetTracker("stable-pipe")
 			for i := 0; i < tc.historyN; i++ {
@@ -333,17 +333,17 @@ func TestTUIHeaderBombTotalsStablePosition(t *testing.T) {
 				tracker.CompletedIDs[id] = true
 				tracker.History = append(tracker.History, "✓ "+id)
 			}
-			entry := d.Ledger.GetEntry("stable-pipe")
+			entry := d.GetLedger().GetEntry("stable-pipe")
 			entry.TotalRan = tc.historyN
 			entry.TotalPassed = tc.historyN
 
 			// Simulate the TUI rendering order: header -> bomb -> totals -> test list
-			header := d.RenderHeader(d.Pipelines[0])
+			header := d.RenderHeader(d.GetPipelinesSlice()[0])
 			bombRing := RenderBombRing(0, "5")
 			totals := fmt.Sprintf("========================================\n")
 			totals += fmt.Sprintf("Total Tests: %d\n", tc.historyN)
 			totals += "========================================\n"
-			testList := d.RenderTestList(d.Pipelines[0])
+			testList := d.RenderTestList(d.GetPipelinesSlice()[0])
 
 			if header == "" {
 				t.Error("RenderHeader must not be empty")
@@ -385,7 +385,7 @@ func TestTUIRunningGaugesIndividualPerTest(t *testing.T) {
 	})
 	ledger := NewLedgerEngine()
 	ledger.GetOrCreateEntry("gauge-pipe")
-	d.Ledger = ledger
+	d.SetLedger(ledger)
 
 	tracker := d.GetTracker("gauge-pipe")
 	runningNames := []string{"RunTest_A", "RunTest_B", "RunTest_C"}
@@ -395,7 +395,7 @@ func TestTUIRunningGaugesIndividualPerTest(t *testing.T) {
 		}
 	}
 
-	list := d.RenderTestList(d.Pipelines[0])
+	list := d.RenderTestList(d.GetPipelinesSlice()[0])
 
 	if !strings.Contains(list, "RunTest_") {
 		t.Errorf("expected at least one running test in output, got:\n%s", list)
@@ -420,7 +420,7 @@ func TestTUIMaxFiveTestListHeaderTextUnchanged(t *testing.T) {
 	})
 	ledger := NewLedgerEngine()
 	ledger.GetOrCreateEntry("max-pipe")
-	d.Ledger = ledger
+	d.SetLedger(ledger)
 
 	tracker := d.GetTracker("max-pipe")
 	n := 50
@@ -429,12 +429,12 @@ func TestTUIMaxFiveTestListHeaderTextUnchanged(t *testing.T) {
 		tracker.CompletedIDs[id] = true
 		tracker.History = append(tracker.History, "✓ "+id)
 	}
-	entry := d.Ledger.GetEntry("max-pipe")
+	entry := d.GetLedger().GetEntry("max-pipe")
 	entry.TotalRan = n
 	entry.TotalPassed = n
 
 	// Header must be identical regardless of history size
-	header := d.RenderHeader(d.Pipelines[0])
+	header := d.RenderHeader(d.GetPipelinesSlice()[0])
 	if !strings.Contains(header, "Max Pipeline") {
 		t.Error("header must contain pipeline name")
 	}
@@ -443,7 +443,7 @@ func TestTUIMaxFiveTestListHeaderTextUnchanged(t *testing.T) {
 	}
 
 	// Test list must never exceed 5
-	list := d.RenderTestList(d.Pipelines[0])
+	list := d.RenderTestList(d.GetPipelinesSlice()[0])
 	lines := strings.Split(strings.TrimRight(list, "\n"), "\n")
 	itemCount := 0
 	for _, l := range lines {
@@ -462,7 +462,7 @@ func TestTUIRenderAtomicFrameLayout(t *testing.T) {
 	})
 	ledger := NewLedgerEngine()
 	ledger.GetOrCreateEntry("lay-pipe")
-	d.Ledger = ledger
+	d.SetLedger(ledger)
 
 	tracker := d.GetTracker("lay-pipe")
 	tracker.ActiveTests["running1"] = &TestInfo{
@@ -473,15 +473,15 @@ func TestTUIRenderAtomicFrameLayout(t *testing.T) {
 		tracker.CompletedIDs[id] = true
 		tracker.History = append(tracker.History, "✓ "+id)
 	}
-	entry := d.Ledger.GetEntry("lay-pipe")
+	entry := d.GetLedger().GetEntry("lay-pipe")
 	entry.TotalRan = 11
 	entry.TotalPassed = 10
 	entry.TotalFailed = 1
 
 	// Verify layout: header → bomb → totals → test list
 	// by checking each section in order
-	header := d.RenderHeader(d.Pipelines[0])
-	testList := d.RenderTestList(d.Pipelines[0])
+	header := d.RenderHeader(d.GetPipelinesSlice()[0])
+	testList := d.RenderTestList(d.GetPipelinesSlice()[0])
 
 	if !strings.Contains(header, "Layout Pipeline") {
 		t.Error("RenderHeader must start with pipeline name")
@@ -510,7 +510,7 @@ func TestRenderTestListDetonatedShowsHistoryNoGauges(t *testing.T) {
 	})
 	ledger := NewLedgerEngine()
 	ledger.GetOrCreateEntry("det-pipe")
-	d.Ledger = ledger
+	d.SetLedger(ledger)
 
 	tracker := d.GetTracker("det-pipe")
 	tracker.CompletedIDs["done-test"] = true
@@ -521,7 +521,7 @@ func TestRenderTestListDetonatedShowsHistoryNoGauges(t *testing.T) {
 
 	d.Bomb = BombDetonated
 
-	list := d.RenderTestList(d.Pipelines[0])
+	list := d.RenderTestList(d.GetPipelinesSlice()[0])
 	if strings.Contains(list, "⏳") {
 		t.Errorf("expected NO running gauge (⏳) in detonated state, got:\n%s", list)
 	}
@@ -536,7 +536,7 @@ func TestTriggerDetonationDrainsOrphanedTests(t *testing.T) {
 	})
 	ledger := NewLedgerEngine()
 	ledger.GetOrCreateEntry("drain-pipe")
-	d.Ledger = ledger
+	d.SetLedger(ledger)
 
 	tracker := d.GetTracker("drain-pipe")
 	tracker.CompletedIDs["passed-test"] = true
