@@ -1,7 +1,7 @@
 ---
 spec_id: "SPEC-1783079687"
 status: ship
-repo_issue: ""
+repo_issue: 440
 ---
 # Bug Not Creating Repo Issue On Creation
 ## Goal
