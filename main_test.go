@@ -53,7 +53,8 @@ func TestParseFlagsHandlesAllSemanticFlags(t *testing.T) {
 
 func TestPrintHelpContainsExpectedSections(t *testing.T) {
 	var buf strings.Builder
-	printHelp(&buf)
+	d := engine.NewCommandDispatcher("/tmp", "/tmp", &buf, &buf)
+	d.Execute("help", nil)
 	output := buf.String()
 
 	sections := []string{"ForgeFix", "--ai", "--help", "--version", "--message"}
@@ -66,7 +67,8 @@ func TestPrintHelpContainsExpectedSections(t *testing.T) {
 
 func TestPrintVersionContainsSemVer(t *testing.T) {
 	var buf strings.Builder
-	printVersion(&buf)
+	d := engine.NewCommandDispatcher("/tmp", "/tmp", &buf, &buf)
+	d.Execute("version", nil)
 	output := buf.String()
 	if !strings.Contains(output, engine.Version) {
 		t.Errorf("expected version output to contain %q, got: %s", engine.Version, output)

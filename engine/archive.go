@@ -84,7 +84,11 @@ func ArchiveResolvedSpecs(configDir string) (string, int, error) {
 			fmt.Fprintf(os.Stderr, "warning: failed to remove %s: %v\n", spec.filename, err)
 		}
 		if spec.specID != "" {
-			ledger.DeleteSpecEntry(spec.specID)
+			existing := ledger.GetSpecEntry(spec.specID)
+			if existing != nil {
+				existing.Status = "closed"
+				ledger.SetSpecEntry(spec.specID, existing)
+			}
 		}
 	}
 

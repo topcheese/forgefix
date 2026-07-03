@@ -791,7 +791,7 @@ func ShipReconciliation(config *Config, configDir string, aiMode bool) {
 						Title:     spec.Title,
 						Version:   spec.Version,
 						RepoIssue: spec.RepoIssue,
-						SpecURL:   specFileWebURL(baseURL, spec.FilePath),
+						SpecURL:   specFileWebURL(baseURL, config.GitHub.Owner, config.GitHub.Repo, spec.FilePath),
 					}
 					payloadRawBytes, _ := json.Marshal(payload)
 					payloadRaw = string(payloadRawBytes)
@@ -871,8 +871,8 @@ func verifyCommitSpecBindings(configDir string) error {
 			return fmt.Errorf("Orphaned commit detected: SpecID %s not found in ledger (commit %s)", specID, commitHash[:8])
 		}
 
-		if specEntry.Status != "in-progress" && specEntry.Status != "review" && specEntry.Status != "ship" {
-			return fmt.Errorf("Orphaned commit detected: SpecID %s has invalid status '%s' (expected 'in-progress', 'review', or 'ship') (commit %s)", specID, specEntry.Status, commitHash[:8])
+		if specEntry.Status != "in-progress" && specEntry.Status != "review" && specEntry.Status != "ship" && specEntry.Status != "closed" {
+			return fmt.Errorf("Orphaned commit detected: SpecID %s has invalid status '%s' (expected 'in-progress', 'review', 'ship', or 'closed') (commit %s)", specID, specEntry.Status, commitHash[:8])
 		}
 	}
 

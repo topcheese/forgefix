@@ -825,7 +825,7 @@ func (c *IssueCoordinator) PostResolutionComment(issueNumber int, spec *SpecFile
 	closedRef := fmt.Sprintf("#%d", issueNumber)
 	specRef := spec.SpecID
 	if spec.FilePath != "" {
-		specRef = fmt.Sprintf("[%s](%s)", spec.SpecID, specFileWebURL(c.baseURL, spec.FilePath))
+		specRef = fmt.Sprintf("[%s](%s)", spec.SpecID, specFileWebURL(c.baseURL, c.owner, c.repo, spec.FilePath))
 	}
 
 	body := fmt.Sprintf("## Resolution — [ForgeFix Resolution Report]\n\n**Status:** ✅ ALL TESTS PASSED\n\n")
@@ -849,12 +849,13 @@ func (c *IssueCoordinator) PostResolutionComment(issueNumber int, spec *SpecFile
 // specFileWebURL converts an API base URL and local spec file path into a
 // web URL for the file on the remote (GitHub/Gitea). It handles both
 // GitHub (api.github.com) and Gitea (/api/v1) URL patterns.
-func specFileWebURL(apiBase, filePath string) string {
+func specFileWebURL(apiBase, owner, repo, filePath string) string {
 	if apiBase == "" || filePath == "" {
 		return ""
 	}
 
 	apiBase = strings.TrimRight(apiBase, "/")
+	webRoot := apiBase
 
 	// Extract the filename from the local path
 	filename := filePath
@@ -862,30 +863,16 @@ func specFileWebURL(apiBase, filePath string) string {
 		filename = filename[idx+1:]
 	}
 
-	// Strip the /repos/owner/repo suffix from the API URL to get the web root
-	// GitHub API:  https://api.github.com/repos/owner/repo
-	// GitHub web:  https://github.com/owner/repo
-	// Gitea API:   http://host/api/v1/repos/owner/repo
-	// Gitea web:   http://host/owner/repo
-	reposIdx := strings.Index(apiBase, "/repos/")
-	if reposIdx < 0 {
-		// No /repos/ segment — treat API URL as web URL
-		return fmt.Sprintf("%s/blob/main/specs/%s", apiBase, filename)
-	}
-	ownerRepo := apiBase[reposIdx+len("/repos/"):] // "owner/repo"
-
-	webBase := apiBase[:reposIdx]
-	if strings.Contains(webBase, "api.github.com") {
-		webBase = strings.Replace(webBase, "api.github.com", "github.com", 1)
-		return fmt.Sprintf("%s/%s/blob/main/specs/%s", webBase, ownerRepo, filename)
+	if strings.Contains(webRoot, "api.github.com") {
+		return fmt.Sprintf("https://github.com/%s/%s/blob/main/specs/%s", owner, repo, filename)
 	}
 
-	// Gitea: strip /api/v1 (or any /api/* prefix)
-	if idx := strings.LastIndex(webBase, "/api/"); idx >= 0 {
-		webBase = webBase[:idx]
+	// Gitea: derive web root by stripping /api/* suffix
+	if idx := strings.LastIndex(webRoot, "/api/"); idx >= 0 {
+		webRoot = webRoot[:idx]
 	}
 
-	return fmt.Sprintf("%s/%s/src/branch/main/specs/%s", webBase, ownerRepo, filename)
+	return fmt.Sprintf("%s/%s/%s/src/branch/main/specs/%s", webRoot, owner, repo, filename)
 }
 
 func (c *IssueCoordinator) PostComment(issueNumber int, body string) error {
@@ -1710,7 +1697,7 @@ func (c *IssueCoordinator) SyncSpecs(configDir string) error {
 					Title:     spec.Title,
 					Version:   spec.Version,
 					RepoIssue: spec.RepoIssue,
-					SpecURL:   specFileWebURL(c.baseURL, filePath),
+					SpecURL:   specFileWebURL(c.baseURL, c.owner, c.repo, filePath),
 				}
 				payloadRaw, _ := json.Marshal(payload)
 				hq := housekeeper.NewHousekeepingQueue(configDir)

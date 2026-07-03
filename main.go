@@ -3,7 +3,6 @@ package main
 import (
 	"bufio"
 	"fmt"
-	"io"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -14,39 +13,9 @@ import (
 	"time"
 
 	"ForgeFix/engine"
+
 	"github.com/fatih/color"
 )
-
-func printHelp(w io.Writer) {
-	engine.PrintHelp(w)
-}
-
-func printVersion(w io.Writer) {
-	engine.PrintVersion(w)
-}
-
-const usage = `Usage:
-   ff <command> [arguments]
-
-Commands:
-   sync [path]         Reconcile audit log with Repo/GitHub issue tracker
-   ship [path]         Strict Shipping Gate: rejects specs not in ship status, pushes, enqueues close tasks
-   spec <name>         Create a new spec from template
-   spec --delete <id>  Delete a spec from ledger, filesystem, and remote
-   commit [msg]        Create a validated commit with SpecID
-   archive             Archive closed specs into a single document
-   specs               List all specs
-   help                Show this help documentation
-
-Flags:
-   --install                   Install ff globally to ~/.local/bin
-   --failure-decay, -d <secs>  Override failure_decay_seconds from config
-   --run, -r <pattern>         Run only tests matching <pattern> (passed as -run to go test)
-   --spec, -s <spec-id>        Specify SpecID for commit (bypasses interactive prompt)
-   --all                      Show all specs including closed ones
- `
-
-
 
 func main() {
 	wd, err := os.Getwd()
@@ -103,6 +72,8 @@ func main() {
 	if cmd != "version" && cmd != "help" && cmd != "--help" && cmd != "" {
 		fmt.Fprintf(os.Stderr, "ForgeFix %s\n", engine.Version)
 	}
+
+	disp := engine.NewCommandDispatcher(projectRoot, wd, os.Stdout, os.Stderr)
 
 	switch cmd {
 	case "spec":
@@ -216,12 +187,12 @@ func main() {
 		engine.ShipReconciliation(loaded.Config, loaded.ConfigDir, flags.AIMode)
 		fmt.Println("ship: running final verification and release pipeline…")
 		os.Exit(0)
-	case "version":
-		printVersion(os.Stdout)
-		os.Exit(0)
+	case "version", "-v":
+		result, _ := disp.Execute("version", nil)
+		os.Exit(result.ExitCode)
 	case "help", "--help":
-		fmt.Print(usage)
-		os.Exit(0)
+		result, _ := disp.Execute("help", nil)
+		os.Exit(result.ExitCode)
 	case "--install-shortcut":
 		binDir, warning, err := engine.InstallGlobal()
 		if err != nil {
@@ -242,12 +213,12 @@ func main() {
 	flags := engine.ParseFlags(os.Args[1:])
 
 	if flags.Help {
-		printHelp(os.Stdout)
-		os.Exit(0)
+		result, _ := disp.Execute("help", nil)
+		os.Exit(result.ExitCode)
 	}
 	if flags.Version {
-		printVersion(os.Stdout)
-		os.Exit(0)
+		result, _ := disp.Execute("version", nil)
+		os.Exit(result.ExitCode)
 	}
 
 	loaded, err := engine.LoadPipelineConfig(targetPath)
@@ -368,9 +339,9 @@ func createSpec(projectRoot, name string, aiMode bool) error {
 	ledger, lerr := engine.LoadLedger(ledgerDir)
 	if lerr == nil {
 		entry := &engine.SpecEntry{
-			SpecID:       specID,
-			RepoIssueID:  0,
-			Status:       "draft",
+			SpecID:        specID,
+			RepoIssueID:   0,
+			Status:        "draft",
 			LinkedCommits: []string{},
 		}
 		ledger.SetSpecEntry(specID, entry)
@@ -1007,9 +978,9 @@ created: %s
 	}
 
 	entry := &engine.SpecEntry{
-		SpecID:       newSpecID,
-		RepoIssueID:  0,
-		Status:       "draft",
+		SpecID:        newSpecID,
+		RepoIssueID:   0,
+		Status:        "draft",
 		LinkedCommits: []string{},
 	}
 	ledger.SetSpecEntry(newSpecID, entry)

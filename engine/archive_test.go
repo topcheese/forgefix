@@ -95,14 +95,17 @@ func TestArchiveResolvedSpecs_ArchivesClosedSpecs(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if reloaded.GetSpecEntry("SPEC-100") != nil {
-		t.Error("SPEC-100 should be removed from ledger after archiving")
+	if entry := reloaded.GetSpecEntry("SPEC-100"); entry == nil || entry.Status != "closed" {
+		t.Error("SPEC-100 should remain in ledger with status closed after archiving")
 	}
-	if reloaded.GetSpecEntry("SPEC-300") != nil {
-		t.Error("SPEC-300 should be removed from ledger after archiving")
+	if entry := reloaded.GetSpecEntry("SPEC-300"); entry == nil || entry.Status != "closed" {
+		t.Error("SPEC-300 should remain in ledger with status closed after archiving")
 	}
-	if reloaded.GetSpecEntry("SPEC-200") == nil {
-		t.Error("SPEC-200 should remain in ledger (ship, not archived)")
+	if entry := reloaded.GetSpecEntry("SPEC-200"); entry == nil || entry.Status != "ship" {
+		t.Error("SPEC-200 should remain in ledger with status ship (not archived)")
+	}
+	if entry := reloaded.GetSpecEntry("SPEC-400"); entry == nil || entry.Status != "draft" {
+		t.Error("SPEC-400 should remain in ledger with status draft (not archived)")
 	}
 }
 
