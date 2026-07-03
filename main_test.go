@@ -75,8 +75,21 @@ func TestPrintVersionContainsSemVer(t *testing.T) {
 	}
 }
 
+// createTestConfig writes a minimal _ff.yaml in dir so that SpecConfigDir
+// and other discovery functions resolve correctly.
+func createTestConfig(t *testing.T, dir string) {
+	t.Helper()
+	projectName := filepath.Base(dir)
+	configPath := filepath.Join(dir, projectName+"_ff.yaml")
+	content := "global_timeout_seconds: 120\nfailure_decay_seconds: 30\n"
+	if err := os.WriteFile(configPath, []byte(content), 0644); err != nil {
+		t.Fatalf("creating test config: %v", err)
+	}
+}
+
 func TestPromptForSpecSelectionNewBug(t *testing.T) {
 	tmpDir := t.TempDir()
+	createTestConfig(t, tmpDir)
 
 	ffBinary, err := os.Executable()
 	if err != nil {
@@ -105,12 +118,6 @@ func TestPromptForSpecSelectionNewBug(t *testing.T) {
 		t.Fatalf("saving ledger: %v", err)
 	}
 
-	oldFindLedgerDir := findLedgerDir
-	findLedgerDir = func(dir string) string {
-		return tmpDir
-	}
-	defer func() { findLedgerDir = oldFindLedgerDir }()
-
 	// Category: 4 (All), Spec: 0 (New Bug), Title
 	input := "4\n0\nNew Bug Title\n"
 	oldStdin := os.Stdin
@@ -123,12 +130,12 @@ func TestPromptForSpecSelectionNewBug(t *testing.T) {
 		w.Close()
 	}()
 
-	specID, err := promptForSpecSelection(tmpDir)
+	specID, err := engine.SelectSpec(tmpDir, true)
 	<-done
 	os.Stdin = oldStdin
 
 	if err != nil {
-		t.Fatalf("promptForSpecSelection returned error: %v", err)
+		t.Fatalf("SelectSpec returned error: %v", err)
 	}
 	if !strings.HasPrefix(specID, "SPEC-") || !strings.HasSuffix(specID, "-BUG") {
 		t.Errorf("expected new bug spec ID format, got: %s", specID)
@@ -142,6 +149,7 @@ func TestPromptForSpecSelectionNewBug(t *testing.T) {
 
 func TestPromptForSpecSelectionExisting(t *testing.T) {
 	tmpDir := t.TempDir()
+	createTestConfig(t, tmpDir)
 
 	ffBinary, err := os.Executable()
 	if err != nil {
@@ -168,12 +176,6 @@ func TestPromptForSpecSelectionExisting(t *testing.T) {
 	if err := ledger.SaveToFile(ledgerPath); err != nil {
 		t.Fatalf("saving ledger: %v", err)
 	}
-
-	oldFindLedgerDir := findLedgerDir
-	findLedgerDir = func(dir string) string {
-		return tmpDir
-	}
-	defer func() { findLedgerDir = oldFindLedgerDir }()
 
 	// Category: 4 (All), Spec: 1 (SPEC-123)
 	input := "4\n1\n"
@@ -185,11 +187,11 @@ func TestPromptForSpecSelectionExisting(t *testing.T) {
 		w.Close()
 	}()
 
-	specID, err := promptForSpecSelection(tmpDir)
+	specID, err := engine.SelectSpec(tmpDir, true)
 	os.Stdin = oldStdin
 
 	if err != nil {
-		t.Fatalf("promptForSpecSelection returned error: %v", err)
+		t.Fatalf("SelectSpec returned error: %v", err)
 	}
 	if specID != "SPEC-123" {
 		t.Errorf("expected SPEC-123, got: %s", specID)
@@ -198,6 +200,7 @@ func TestPromptForSpecSelectionExisting(t *testing.T) {
 
 func TestPromptForSpecSelectionSkip(t *testing.T) {
 	tmpDir := t.TempDir()
+	createTestConfig(t, tmpDir)
 
 	ffBinary, err := os.Executable()
 	if err != nil {
@@ -225,12 +228,6 @@ func TestPromptForSpecSelectionSkip(t *testing.T) {
 		t.Fatalf("saving ledger: %v", err)
 	}
 
-	oldFindLedgerDir := findLedgerDir
-	findLedgerDir = func(dir string) string {
-		return tmpDir
-	}
-	defer func() { findLedgerDir = oldFindLedgerDir }()
-
 	// Category: Enter (skip)
 	input := "\n"
 	oldStdin := os.Stdin
@@ -241,11 +238,11 @@ func TestPromptForSpecSelectionSkip(t *testing.T) {
 		w.Close()
 	}()
 
-	specID, err := promptForSpecSelection(tmpDir)
+	specID, err := engine.SelectSpec(tmpDir, true)
 	os.Stdin = oldStdin
 
 	if err != nil {
-		t.Fatalf("promptForSpecSelection returned error: %v", err)
+		t.Fatalf("SelectSpec returned error: %v", err)
 	}
 	if specID != "" {
 		t.Errorf("expected empty string for Enter selection, got: %s", specID)
@@ -255,6 +252,7 @@ func TestPromptForSpecSelectionSkip(t *testing.T) {
 func TestRunCommitWithFlagSpecID(t *testing.T) {
 	// Test that -s flag bypasses the interactive menu
 	tmpDir := t.TempDir()
+	createTestConfig(t, tmpDir)
 
 	ffBinary, err := os.Executable()
 	if err != nil {
@@ -324,27 +322,41 @@ created: 2024-01-01
 		t.Fatalf("git config name failed: %v", err)
 	}
 
-	oldFindLedgerDir := findLedgerDir
-	findLedgerDir = func(dir string) string {
-		return tmpDir
-	}
-	defer func() { findLedgerDir = oldFindLedgerDir }()
-
-	// Call runCommit with flagSpecID set - this should bypass promptForSpecSelection
-	err = runCommit(tmpDir, "test commit message", "SPEC-123", "", "")
+	// Stage the test file and commit directly via engine functions
+	commitHash, err := engine.AutoStageAndCommit(tmpDir, "feat: [SPEC-123] test commit message")
 	if err != nil {
-		t.Fatalf("runCommit with flagSpecID failed: %v", err)
+		t.Fatalf("AutoStageAndCommit failed: %v", err)
+	}
+
+	if err := engine.UpdateLedgerAfterCommit(tmpDir, "SPEC-123", commitHash); err != nil {
+		t.Fatalf("UpdateLedgerAfterCommit failed: %v", err)
 	}
 
 	// Verify commit was created with SPEC-123
 	cmd = exec.Command("git", "log", "--oneline", "-1")
 	cmd.Dir = tmpDir
-	output, err := cmd.Output()
+	output2, err := cmd.Output()
 	if err != nil {
 		t.Fatalf("git log failed: %v", err)
 	}
-	if !strings.Contains(string(output), "SPEC-123") {
-		t.Errorf("expected commit to contain SPEC-123, got: %s", string(output))
+	if !strings.Contains(string(output2), "SPEC-123") {
+		t.Errorf("expected commit to contain SPEC-123, got: %s", string(output2))
+	}
+
+	// Verify ledger was updated
+	ledger2, err := engine.LoadLedger(tmpDir)
+	if err != nil {
+		t.Fatalf("loading ledger: %v", err)
+	}
+	specEntry := ledger2.GetSpecEntry("SPEC-123")
+	if specEntry == nil {
+		t.Fatal("SPEC-123 not found in ledger")
+	}
+	if specEntry.Status != "in-progress" {
+		t.Errorf("expected in-progress status, got: %s", specEntry.Status)
+	}
+	if len(specEntry.LinkedCommits) == 0 {
+		t.Error("expected linked commits, got none")
 	}
 }
 

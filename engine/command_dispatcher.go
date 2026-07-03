@@ -53,6 +53,8 @@ func (d *CommandDispatcher) Execute(cmd string, args []string) (CommandResult, e
 		return d.handleSync(args)
 	case "spec":
 		return d.handleSpec(args)
+	case "commit":
+		return d.handleCommit(args)
 	default:
 		return CommandResult{}, fmt.Errorf("unknown command: %s", cmd)
 	}
