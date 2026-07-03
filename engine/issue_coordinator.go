@@ -822,21 +822,55 @@ func (c *IssueCoordinator) CreateIssue(testName string, details *ErrorDetails) (
 }
 
 func (c *IssueCoordinator) PostResolutionComment(issueNumber int, spec *SpecFile) error {
+	closedRef := fmt.Sprintf("#%d", issueNumber)
+	specRef := spec.SpecID
+	if spec.FilePath != "" {
+		specRef = fmt.Sprintf("[%s](%s)", spec.SpecID, specFileWebURL(c.baseURL, spec.FilePath))
+	}
+
 	body := fmt.Sprintf("## Resolution — [ForgeFix Resolution Report]\n\n**Status:** ✅ ALL TESTS PASSED\n\n")
-	body += fmt.Sprintf("**Spec:** `%s`\n", spec.SpecID)
-	body += fmt.Sprintf("**Title:** %s\n", spec.Title)
+	body += fmt.Sprintf("**Spec:** %s  \n", specRef)
+	body += fmt.Sprintf("**Title:** %s  \n", spec.Title)
+	body += fmt.Sprintf("**Issue:** %s  \n", closedRef)
 	if spec.RootCause != "" {
-		body += fmt.Sprintf("**Root Cause:** %s\n", spec.RootCause)
+		body += fmt.Sprintf("**Root Cause:** %s  \n", spec.RootCause)
 	}
 	if spec.Resolution != "" {
-		body += fmt.Sprintf("**Resolution:** %s\n", spec.Resolution)
+		body += fmt.Sprintf("**Resolution:** %s  \n", spec.Resolution)
 	}
-	body += "\n### Details\n\n"
+	body += "\n### Implementation\n\n"
 	if spec.Body != "" {
 		body += spec.Body + "\n\n"
 	}
-	body += "**Closed by:** ForgeFix Auto-Resolution"
+	body += "---\n**Closed by:** ForgeFix Auto-Resolution"
 	return c.PostComment(issueNumber, body)
+}
+
+// specFileWebURL converts an API base URL and local spec file path into a
+// web URL for the file on the remote (GitHub/Gitea). It handles both
+// GitHub (api.github.com) and Gitea (/api/v1) URL patterns.
+func specFileWebURL(apiBase, filePath string) string {
+	if apiBase == "" || filePath == "" {
+		return ""
+	}
+	// Normalise: build a web base from the API URL.
+	// GitHub:   https://api.github.com/repos/owner/repo  → https://github.com/owner/repo
+	// Gitea:    https://host/api/v1/repos/owner/repo     → https://host/owner/repo
+	base := strings.TrimRight(apiBase, "/")
+	if strings.Contains(base, "api.github.com") {
+		base = strings.Replace(base, "api.github.com", "github.com", 1)
+		base = strings.TrimSuffix(base, "/repos")
+	} else if idx := strings.LastIndex(base, "/api/"); idx >= 0 {
+		base = base[:idx]
+	}
+
+	// Extract the filename from the local path
+	filename := filePath
+	if idx := strings.LastIndexByte(filename, '/'); idx >= 0 {
+		filename = filename[idx+1:]
+	}
+
+	return fmt.Sprintf("%s/blob/main/specs/%s", base, filename)
 }
 
 func (c *IssueCoordinator) PostComment(issueNumber int, body string) error {
@@ -1657,9 +1691,11 @@ func (c *IssueCoordinator) SyncSpecs(configDir string) error {
 					}
 
 				payload := housekeeper.ResolutionPayload{
-					SpecID:  spec.SpecID,
-					Title:   spec.Title,
-					Version: spec.Version,
+					SpecID:    spec.SpecID,
+					Title:     spec.Title,
+					Version:   spec.Version,
+					RepoIssue: spec.RepoIssue,
+					SpecURL:   specFileWebURL(c.baseURL, filePath),
 				}
 				payloadRaw, _ := json.Marshal(payload)
 				hq := housekeeper.NewHousekeepingQueue(configDir)

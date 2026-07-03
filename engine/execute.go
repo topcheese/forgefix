@@ -782,10 +782,16 @@ func ShipReconciliation(config *Config, configDir string, aiMode bool) {
 				payloadRaw := ""
 				if specErr == nil && spec != nil {
 					repoIssueID = spec.RepoIssue
+						baseURL := ""
+					if config.GitHub != nil {
+						baseURL = config.GitHub.BaseURL
+					}
 					payload := housekeeper.ResolutionPayload{
-						SpecID:  spec.SpecID,
-						Title:   spec.Title,
-						Version: spec.Version,
+						SpecID:    spec.SpecID,
+						Title:     spec.Title,
+						Version:   spec.Version,
+						RepoIssue: spec.RepoIssue,
+						SpecURL:   specFileWebURL(baseURL, spec.FilePath),
 					}
 					payloadRawBytes, _ := json.Marshal(payload)
 					payloadRaw = string(payloadRawBytes)

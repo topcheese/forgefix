@@ -24,9 +24,11 @@ type IssueCloser interface {
 
 // ResolutionPayload contains the data needed to format a resolution report.
 type ResolutionPayload struct {
-	SpecID  string `json:"spec_id"`
-	Title   string `json:"title"`
-	Version string `json:"version"`
+	SpecID    string `json:"spec_id"`
+	Title     string `json:"title"`
+	Version   string `json:"version"`
+	RepoIssue int    `json:"repo_issue"`
+	SpecURL   string `json:"spec_url"`
 }
 
 // ResolutionCommentService implements IssueAction to post a resolution report
@@ -45,12 +47,20 @@ func (s *ResolutionCommentService) Execute(ctx context.Context, task Housekeepin
 	if err := json.Unmarshal([]byte(task.Payload), &payload); err != nil {
 		return fmt.Errorf("unmarshaling resolution payload: %w", err)
 	}
+
+	closedRef := fmt.Sprintf("#%d", task.RepoIssueID)
+	specRef := payload.SpecID
+	if payload.SpecURL != "" {
+		specRef = fmt.Sprintf("[%s](%s)", payload.SpecID, payload.SpecURL)
+	}
+
 	body := fmt.Sprintf("## Resolution — [ForgeFix Resolution Report]\n\n**Status:** ✅ ALL TESTS PASSED\n\n")
-	body += fmt.Sprintf("**Spec:** `%s`\n", payload.SpecID)
-	body += fmt.Sprintf("**Title:** %s\n", payload.Title)
+	body += fmt.Sprintf("**Spec:** %s  \n", specRef)
+	body += fmt.Sprintf("**Title:** %s  \n", payload.Title)
+	body += fmt.Sprintf("**Issue:** %s  \n", closedRef)
 	body += "\n### Implementation\n\n"
-	body += fmt.Sprintf("The changes for **%s** (`%s`) have been implemented and shipped (version %s).\n", payload.Title, payload.SpecID, payload.Version)
-	body += "\n**Closed by:** ForgeFix Auto-Resolution"
+	body += fmt.Sprintf("The changes for **%s** have been implemented and shipped (version %s).\n", payload.Title, payload.Version)
+	body += "\n---\n**Closed by:** ForgeFix Auto-Resolution"
 	return s.commenter.PostComment(task.RepoIssueID, body)
 }
 
