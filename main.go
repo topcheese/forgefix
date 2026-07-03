@@ -4,7 +4,6 @@ import (
 	"bufio"
 	"fmt"
 	"os"
-	"os/exec"
 	"path/filepath"
 	"regexp"
 	"strconv"
@@ -74,36 +73,12 @@ func main() {
 
 	switch cmd {
 	case "spec":
-		flags := engine.ParseFlags(os.Args[2:])
-		specName := ""
-		for _, arg := range os.Args[2:] {
-			if !strings.HasPrefix(arg, "-") {
-				specName = arg
-				break
-			}
-		}
-		if flags.Delete {
-			if specName == "" {
-				fmt.Fprintln(os.Stderr, "error: --delete requires a spec ID")
-				fmt.Fprintln(os.Stderr, "usage: ff spec --delete <spec_id>")
-				os.Exit(1)
-			}
-			if err := deleteSpec(projectRoot, specName); err != nil {
-				fmt.Fprintf(os.Stderr, "error: %v\n", err)
-				os.Exit(1)
-			}
-			os.Exit(0)
-		}
-		if specName == "" {
-			fmt.Fprintln(os.Stderr, "error: spec command requires a name")
-			fmt.Fprintln(os.Stderr, "usage: ff spec <name>")
+		result, err := disp.Execute("spec", os.Args[2:])
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "internal error: %v\n", err)
 			os.Exit(1)
 		}
-		if err := createSpec(projectRoot, specName, flags.AIMode); err != nil {
-			fmt.Fprintf(os.Stderr, "error: %v\n", err)
-			os.Exit(1)
-		}
-		os.Exit(0)
+		os.Exit(result.ExitCode)
 	case "specs":
 		result, err := disp.Execute("specs", os.Args[2:])
 		if err != nil {
@@ -144,44 +119,19 @@ func main() {
 		}
 		os.Exit(0)
 	case "sync":
-		flags := engine.ParseFlags(os.Args[2:])
-		specID := flags.SpecID
-
-		loaded, err := engine.LoadPipelineConfig(targetPath)
+		result, err := disp.Execute("sync", os.Args[2:])
 		if err != nil {
-			fmt.Fprintf(os.Stderr, "error: %v\n", err)
+			fmt.Fprintf(os.Stderr, "internal error: %v\n", err)
 			os.Exit(1)
 		}
-
-		if loaded.Config.GitHub == nil || loaded.Config.GitHub.Token == "" || loaded.Config.GitHub.Owner == "" || loaded.Config.GitHub.Repo == "" {
-			fmt.Println("No GitHub/Repo credentials configured — skipping remote issue sync.")
-			os.Exit(0)
-		}
-
-		fmt.Println("Syncing workspace tokens and endpoints system-wide...")
-		if loaded.Config.GitHub.BaseURL != "" {
-			fmt.Printf("Configuring Git NAS Gateway -> %s\n", loaded.Config.GitHub.BaseURL)
-		}
-
-		if err := engine.RunBackgroundSync(loaded.ConfigDir, specID); err != nil {
-			fmt.Fprintf(os.Stderr, "sync failed: %v\n", err)
-			os.Exit(1)
-		}
-		fmt.Println("Sync completed successfully.")
-		if err := engine.ClearSyncFailures(loaded.ConfigDir); err != nil {
-			fmt.Fprintf(os.Stderr, "warning: failed to clear sync failures: %v\n", err)
-		}
-		os.Exit(0)
+		os.Exit(result.ExitCode)
 	case "ship":
-		flags := engine.ParseFlags(os.Args[2:])
-		loaded, err := engine.LoadPipelineConfig(targetPath)
+		result, err := disp.Execute("ship", os.Args[2:])
 		if err != nil {
-			fmt.Fprintf(os.Stderr, "error: %v\n", err)
+			fmt.Fprintf(os.Stderr, "internal error: %v\n", err)
 			os.Exit(1)
 		}
-		engine.ShipReconciliation(loaded.Config, loaded.ConfigDir, flags.AIMode)
-		fmt.Println("ship: running final verification and release pipeline…")
-		os.Exit(0)
+		os.Exit(result.ExitCode)
 	case "version", "-v":
 		result, _ := disp.Execute("version", nil)
 		os.Exit(result.ExitCode)
@@ -277,105 +227,6 @@ func promptForInit(wd string) bool {
 	return false
 }
 
-func createSpec(projectRoot, name string, aiMode bool) error {
-	templatePath := filepath.Join(projectRoot, "templates", "spec_template.md")
-	templateContent, err := os.ReadFile(templatePath)
-	if err != nil {
-		return fmt.Errorf("reading template: %w", err)
-	}
-
-	specID := fmt.Sprintf("SPEC-%d", time.Now().Unix())
-	now := time.Now().Format("2006-01-02")
-
-	title := strings.ReplaceAll(name, "-", " ")
-	title = strings.Title(strings.ToLower(title))
-
-	ledgerDir := findLedgerDir(projectRoot)
-
-	origSpecID, origTitle, isDup := engine.FindDuplicateSpec(ledgerDir, title)
-	if isDup {
-		action := promptForDuplicateAction(title, origTitle, origSpecID, aiMode)
-		switch action {
-		case "link":
-			fmt.Printf("Linking to existing spec %s (%s).\n", origSpecID, origTitle)
-			return nil
-		case "update":
-			fmt.Printf("Updating existing spec %s (%s).\n", origSpecID, origTitle)
-			return updateExistingSpec(ledgerDir, origSpecID, title)
-		case "create":
-			title += " [Dupe]"
-			fmt.Printf("Creating new spec with [Dupe] suffix.\n")
-		}
-	}
-
-	content := string(templateContent)
-	content = strings.ReplaceAll(content, `spec_id: ""`, fmt.Sprintf(`spec_id: "%s"`, specID))
-	content = strings.ReplaceAll(content, "# [Title]", fmt.Sprintf("# %s", title))
-	content = strings.ReplaceAll(content, "created: YYYY-MM-DD", fmt.Sprintf("created: %s", now))
-
-	if isDup {
-		ref := fmt.Sprintf("\n\n> This spec has been identified as a duplicate of `%s`.", origSpecID)
-		content += ref
-	}
-
-	specDir := filepath.Join(projectRoot, "specs")
-	if err := os.MkdirAll(specDir, 0755); err != nil {
-		return fmt.Errorf("creating specs directory: %w", err)
-	}
-
-	fileName := fmt.Sprintf("%s.md", name)
-	filePath := filepath.Join(specDir, fileName)
-
-	if err := os.WriteFile(filePath, []byte(content), 0644); err != nil {
-		return fmt.Errorf("writing spec file: %w", err)
-	}
-
-	fmt.Printf("Created spec: %s\n", filePath)
-	ledger, lerr := engine.LoadLedger(ledgerDir)
-	if lerr == nil {
-		entry := &engine.SpecEntry{
-			SpecID:        specID,
-			RepoIssueID:   0,
-			Status:        "draft",
-			LinkedCommits: []string{},
-		}
-		ledger.SetSpecEntry(specID, entry)
-		_ = engine.SaveLedger(ledger, ledgerDir)
-	}
-
-	// Queue sync operation and spawn background sync for remote issue creation
-	loaded, loadErr := engine.LoadPipelineConfig(projectRoot)
-	if loadErr == nil && loaded.Config != nil {
-		if err := engine.QueueSyncSpec(loaded.ConfigDir, specID); err != nil {
-			fmt.Fprintf(os.Stderr, "warning: failed to queue spec sync: %v\n", err)
-		} else {
-			fmt.Printf("Queued sync for spec %s\n", specID)
-		}
-
-		if loaded.Config.AutoIssueManagement {
-			if err := engine.SpawnBackgroundSync(loaded.ConfigDir, specID); err != nil {
-				fmt.Fprintf(os.Stderr, "warning: failed to spawn background sync: %v\n", err)
-			} else {
-				fmt.Println("Triggered background sync for remote issue creation")
-			}
-		}
-	}
-
-	if aiMode {
-		return nil
-	}
-
-	editor := os.Getenv("EDITOR")
-	if editor == "" {
-		editor = "vim"
-	}
-	cmd := exec.Command(editor, filePath)
-	cmd.Stdin = os.Stdin
-	cmd.Stdout = os.Stdout
-	cmd.Stderr = os.Stderr
-	return cmd.Run()
-}
-
 func promptForDuplicateAction(newTitle, existingTitle, existingSpecID string, aiMode bool) string {
 	if aiMode {
 		return "link"
@@ -419,45 +270,6 @@ func updateExistingSpec(ledgerDir, existingSpecID, newTitle string) error {
 	entry.Status = "draft"
 	ledger.SetSpecEntry(existingSpecID, entry)
 	return engine.SaveLedger(ledger, ledgerDir)
-}
-
-func deleteSpec(projectRoot, specID string) error {
-	ledgerDir := findLedgerDir(projectRoot)
-	ledger, err := engine.LoadLedger(ledgerDir)
-	if err != nil {
-		return fmt.Errorf("loading ledger: %w", err)
-	}
-
-	entry := ledger.GetSpecEntry(specID)
-	if entry == nil {
-		return fmt.Errorf("spec %s not found in ledger", specID)
-	}
-
-	repoIssueID, err := ledger.DeleteSpec(specID, ledgerDir)
-	if err != nil {
-		return fmt.Errorf("deleting spec: %w", err)
-	}
-
-	fmt.Printf("Deleted spec %s\n", specID)
-
-	loaded, err := engine.LoadPipelineConfig(projectRoot)
-	if err == nil && loaded.Config != nil && repoIssueID > 0 {
-		if err := engine.QueueDeleteIssue(loaded.ConfigDir, specID, repoIssueID); err != nil {
-			fmt.Fprintf(os.Stderr, "warning: failed to queue delete issue: %v\n", err)
-		} else {
-			fmt.Printf("Queued delete_issue for spec %s (issue #%d)\n", specID, repoIssueID)
-		}
-
-		if loaded.Config.AutoIssueManagement {
-			if err := engine.SpawnBackgroundSync(loaded.ConfigDir, specID); err != nil {
-				fmt.Fprintf(os.Stderr, "warning: failed to spawn background sync: %v\n", err)
-			} else {
-				fmt.Println("Triggered background sync for remote reconciliation")
-			}
-		}
-	}
-
-	return nil
 }
 
 var findLedgerDir = func(dir string) string {

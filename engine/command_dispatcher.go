@@ -47,6 +47,12 @@ func (d *CommandDispatcher) Execute(cmd string, args []string) (CommandResult, e
 		return d.handleArchive(args)
 	case "specs":
 		return d.handleListSpecs(args)
+	case "ship":
+		return d.handleShip(args)
+	case "sync":
+		return d.handleSync(args)
+	case "spec":
+		return d.handleSpec(args)
 	default:
 		return CommandResult{}, fmt.Errorf("unknown command: %s", cmd)
 	}
