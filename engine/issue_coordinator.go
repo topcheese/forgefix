@@ -853,16 +853,8 @@ func specFileWebURL(apiBase, filePath string) string {
 	if apiBase == "" || filePath == "" {
 		return ""
 	}
-	// Normalise: build a web base from the API URL.
-	// GitHub:   https://api.github.com/repos/owner/repo  → https://github.com/owner/repo
-	// Gitea:    https://host/api/v1/repos/owner/repo     → https://host/owner/repo
-	base := strings.TrimRight(apiBase, "/")
-	if strings.Contains(base, "api.github.com") {
-		base = strings.Replace(base, "api.github.com", "github.com", 1)
-		base = strings.TrimSuffix(base, "/repos")
-	} else if idx := strings.LastIndex(base, "/api/"); idx >= 0 {
-		base = base[:idx]
-	}
+
+	apiBase = strings.TrimRight(apiBase, "/")
 
 	// Extract the filename from the local path
 	filename := filePath
@@ -870,7 +862,30 @@ func specFileWebURL(apiBase, filePath string) string {
 		filename = filename[idx+1:]
 	}
 
-	return fmt.Sprintf("%s/blob/main/specs/%s", base, filename)
+	// Strip the /repos/owner/repo suffix from the API URL to get the web root
+	// GitHub API:  https://api.github.com/repos/owner/repo
+	// GitHub web:  https://github.com/owner/repo
+	// Gitea API:   http://host/api/v1/repos/owner/repo
+	// Gitea web:   http://host/owner/repo
+	reposIdx := strings.Index(apiBase, "/repos/")
+	if reposIdx < 0 {
+		// No /repos/ segment — treat API URL as web URL
+		return fmt.Sprintf("%s/blob/main/specs/%s", apiBase, filename)
+	}
+	ownerRepo := apiBase[reposIdx+len("/repos/"):] // "owner/repo"
+
+	webBase := apiBase[:reposIdx]
+	if strings.Contains(webBase, "api.github.com") {
+		webBase = strings.Replace(webBase, "api.github.com", "github.com", 1)
+		return fmt.Sprintf("%s/%s/blob/main/specs/%s", webBase, ownerRepo, filename)
+	}
+
+	// Gitea: strip /api/v1 (or any /api/* prefix)
+	if idx := strings.LastIndex(webBase, "/api/"); idx >= 0 {
+		webBase = webBase[:idx]
+	}
+
+	return fmt.Sprintf("%s/%s/src/branch/main/specs/%s", webBase, ownerRepo, filename)
 }
 
 func (c *IssueCoordinator) PostComment(issueNumber int, body string) error {
