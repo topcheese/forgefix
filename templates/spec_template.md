@@ -1,9 +1,19 @@
 ---
 spec_id: ""
-status: backlog # backlog, in-progress, review, ship, closed
+status: backlog
 repo_issue: ""
+type: feature
+root_cause: ""
+resolution: ""
 ---
 # [Title]
-## Goal
-## Technical Requirements
+
+## Objective
+
+## Requirements
+
+## Implementation
+
 ## Acceptance Criteria
+
+## Verification

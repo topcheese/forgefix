@@ -1,1 +1,46 @@
-[]
+[
+  {
+    "id": "task-1783113938929065000",
+    "type": "SYNC_METADATA",
+    "spec_id": "SPEC-1783079687",
+    "repo_issue_id": 0,
+    "priority": 1,
+    "payload": "",
+    "context": null,
+    "attempts": 0,
+    "created_at": "2026-07-03T14:25:38.929075-07:00"
+  },
+  {
+    "id": "task-1783113938929868000",
+    "type": "SYNC_METADATA",
+    "spec_id": "SPEC-1783045153",
+    "repo_issue_id": 0,
+    "priority": 1,
+    "payload": "",
+    "context": null,
+    "attempts": 0,
+    "created_at": "2026-07-03T14:25:38.929869-07:00"
+  },
+  {
+    "id": "task-1783113938930035000",
+    "type": "SYNC_METADATA",
+    "spec_id": "SPEC-1783113194",
+    "repo_issue_id": 0,
+    "priority": 1,
+    "payload": "",
+    "context": null,
+    "attempts": 0,
+    "created_at": "2026-07-03T14:25:38.930036-07:00"
+  },
+  {
+    "id": "task-1783113938930196000",
+    "type": "SYNC_METADATA",
+    "spec_id": "SPEC-1783113220",
+    "repo_issue_id": 0,
+    "priority": 1,
+    "payload": "",
+    "context": null,
+    "attempts": 0,
+    "created_at": "2026-07-03T14:25:38.930197-07:00"
+  }
+]

@@ -45,10 +45,12 @@ func (s *ResolutionCommentService) Execute(ctx context.Context, task Housekeepin
 	if err := json.Unmarshal([]byte(task.Payload), &payload); err != nil {
 		return fmt.Errorf("unmarshaling resolution payload: %w", err)
 	}
-	body := fmt.Sprintf(
-		"# [ForgeFix Resolution Report]\n\n**Status:** ✅ ALL TESTS PASSED\n\n**Root Cause:** %s\n**Resolution:** %s\n\n### Test Execution\n- **Test:** `%s`\n- **Verification Suite:** `%s`\n- **Closed by:** ForgeFix Auto-Resolution\n\n### Related Issues\n",
-		payload.SpecID, payload.Title, payload.SpecID, payload.Version,
-	)
+	body := fmt.Sprintf("## Resolution — [ForgeFix Resolution Report]\n\n**Status:** ✅ ALL TESTS PASSED\n\n")
+	body += fmt.Sprintf("**Spec:** `%s`\n", payload.SpecID)
+	body += fmt.Sprintf("**Title:** %s\n", payload.Title)
+	body += "\n### Implementation\n\n"
+	body += fmt.Sprintf("The changes for **%s** (`%s`) have been implemented and shipped (version %s).\n", payload.Title, payload.SpecID, payload.Version)
+	body += "\n**Closed by:** ForgeFix Auto-Resolution"
 	return s.commenter.PostComment(task.RepoIssueID, body)
 }
 

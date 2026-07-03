@@ -533,6 +533,30 @@ func confirmPrompt(prompt string) bool {
 	return response == "y" || response == "yes"
 }
 
+func LoadSpecByID(configDir, specID string) (*SpecFile, error) {
+	specDir := filepath.Join(configDir, "specs")
+	if _, statErr := os.Stat(specDir); os.IsNotExist(statErr) {
+		specDir = filepath.Join(filepath.Dir(configDir), "specs")
+	}
+	entries, readErr := os.ReadDir(specDir)
+	if readErr != nil {
+		return nil, readErr
+	}
+	for _, entry := range entries {
+		if entry.IsDir() || !strings.HasSuffix(entry.Name(), ".md") {
+			continue
+		}
+		spec, parseErr := parseSpecFile(filepath.Join(specDir, entry.Name()))
+		if parseErr != nil {
+			continue
+		}
+		if spec.SpecID == specID {
+			return spec, nil
+		}
+	}
+	return nil, fmt.Errorf("spec %s not found", specID)
+}
+
 func checkShipGateSpecStatuses(configDir string) (shipSpecs []string, err error) {
 	specDir := filepath.Join(configDir, "specs")
 	if _, statErr := os.Stat(specDir); os.IsNotExist(statErr) {
@@ -753,6 +777,36 @@ func ShipReconciliation(config *Config, configDir string, aiMode bool) {
 			fmt.Fprintf(os.Stderr, "Warning: failed to load housekeeping queue: %v\n", loadErr)
 		} else {
 			for _, id := range shipSpecs {
+				spec, specErr := LoadSpecByID(configDir, id)
+				repoIssueID := 0
+				payloadRaw := ""
+				if specErr == nil && spec != nil {
+					repoIssueID = spec.RepoIssue
+					payload := housekeeper.ResolutionPayload{
+						SpecID:  spec.SpecID,
+						Title:   spec.Title,
+						Version: spec.Version,
+					}
+					payloadRawBytes, _ := json.Marshal(payload)
+					payloadRaw = string(payloadRawBytes)
+				}
+
+				if repoIssueID > 0 {
+					hq.Enqueue(housekeeper.HousekeepingTask{
+						Type:        housekeeper.TaskTypePostResolution,
+						SpecID:      id,
+						RepoIssueID: repoIssueID,
+						Priority:    housekeeper.PriorityHigh,
+						Payload:     payloadRaw,
+					})
+					hq.Enqueue(housekeeper.HousekeepingTask{
+						Type:        housekeeper.TaskTypeCloseIssue,
+						SpecID:      id,
+						RepoIssueID: repoIssueID,
+						Priority:    housekeeper.PriorityHigh,
+					})
+				}
+
 				hq.Enqueue(housekeeper.HousekeepingTask{
 					Type:     housekeeper.TaskTypeSyncMetadata,
 					SpecID:   id,
