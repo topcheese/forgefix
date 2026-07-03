@@ -1,6 +1,7 @@
 package engine
 
 import (
+	"os"
 	"strings"
 	"testing"
 )
@@ -87,5 +88,43 @@ func TestNewCommandDispatcherSetsFields(t *testing.T) {
 	}
 	if d.Stderr != nil {
 		t.Errorf("Stderr should be nil, got %v", d.Stderr)
+	}
+}
+
+func TestCommandDispatcher_ArchiveOnMissingSpecsDir(t *testing.T) {
+	var stdout, stderr strings.Builder
+	tmpDir := t.TempDir()
+	d := NewCommandDispatcher(tmpDir, tmpDir, &stdout, &stderr)
+	result, err := d.Execute("archive", nil)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	// A missing specs/ dir is an error condition in ArchiveResolvedSpecs
+	if result.ExitCode != 1 {
+		t.Errorf("expected ExitCode 1 for missing specs dir, got %d", result.ExitCode)
+	}
+	if !strings.Contains(stderr.String(), "reading specs directory") {
+		t.Errorf("expected stderr to mention missing specs dir, got: %s", stderr.String())
+	}
+}
+
+func TestCommandDispatcher_ArchiveNoResolvedSpecs(t *testing.T) {
+	var stdout, stderr strings.Builder
+	tmpDir := t.TempDir()
+	// Create an empty specs/ dir so ArchiveResolvedSpecs runs without I/O error
+	specsDir := tmpDir + "/specs"
+	if err := os.Mkdir(specsDir, 0755); err != nil {
+		t.Fatal(err)
+	}
+	d := NewCommandDispatcher(tmpDir, tmpDir, &stdout, &stderr)
+	result, err := d.Execute("archive", nil)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if result.ExitCode != 0 {
+		t.Errorf("expected ExitCode 0, got %d; stderr: %s", result.ExitCode, stderr.String())
+	}
+	if !strings.Contains(stdout.String(), "No resolved specs to archive.") {
+		t.Errorf("expected no-op message, got stdout: %s", stdout.String())
 	}
 }

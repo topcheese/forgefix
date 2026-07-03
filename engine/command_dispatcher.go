@@ -43,6 +43,8 @@ func (d *CommandDispatcher) Execute(cmd string, args []string) (CommandResult, e
 		return d.handleHelp(), nil
 	case "version", "-v":
 		return d.handleVersion(), nil
+	case "archive":
+		return d.handleArchive(args)
 	default:
 		return CommandResult{}, fmt.Errorf("unknown command: %s", cmd)
 	}

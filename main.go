@@ -115,17 +115,15 @@ func main() {
 		}
 		os.Exit(0)
 	case "archive":
-		archiveName, count, err := engine.ArchiveResolvedSpecs(projectRoot)
+		result, err := disp.Execute("archive", os.Args[2:])
 		if err != nil {
-			fmt.Fprintf(os.Stderr, "error: %v\n", err)
+			fmt.Fprintf(os.Stderr, "internal error: %v\n", err)
 			os.Exit(1)
 		}
-		if count == 0 {
-			fmt.Println("No resolved specs to archive.")
-			os.Exit(0)
+		if result.Message != "" {
+			fmt.Println(result.Message)
 		}
-		fmt.Printf("Archived %d resolved specs to %s\n", count, archiveName)
-		os.Exit(0)
+		os.Exit(result.ExitCode)
 	case "commit":
 		flags := engine.ParseFlags(os.Args[2:])
 		msg := flags.Message
