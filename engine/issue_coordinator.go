@@ -822,7 +822,20 @@ func (c *IssueCoordinator) CreateIssue(testName string, details *ErrorDetails) (
 }
 
 func (c *IssueCoordinator) PostResolutionComment(issueNumber int, spec *SpecFile) error {
-	body := fmt.Sprintf("# [ForgeFix Resolution Report]\n\n**Status:** ✅ ALL TESTS PASSED\n\n**Root Cause:** %s\n**Resolution:** %s\n\n### Test Execution\n- **Test:** `%s`\n- **Verification Suite:** `%s`\n- **Closed by:** ForgeFix Auto-Resolution\n\n### Related Issues\n", spec.SpecID, spec.Title, spec.SpecID, spec.Version)
+	body := fmt.Sprintf("## Resolution — [ForgeFix Resolution Report]\n\n**Status:** ✅ ALL TESTS PASSED\n\n")
+	body += fmt.Sprintf("**Spec:** `%s`\n", spec.SpecID)
+	body += fmt.Sprintf("**Title:** %s\n", spec.Title)
+	if spec.RootCause != "" {
+		body += fmt.Sprintf("**Root Cause:** %s\n", spec.RootCause)
+	}
+	if spec.Resolution != "" {
+		body += fmt.Sprintf("**Resolution:** %s\n", spec.Resolution)
+	}
+	body += "\n### Details\n\n"
+	if spec.Body != "" {
+		body += spec.Body + "\n\n"
+	}
+	body += "**Closed by:** ForgeFix Auto-Resolution"
 	return c.PostComment(issueNumber, body)
 }
 
@@ -1411,6 +1424,8 @@ type SpecFile struct {
 	FilePath    string
 	Type        string
 	Version     string
+	RootCause   string
+	Resolution  string
 }
 
 func parseSpecFile(filePath string) (*SpecFile, error) {
@@ -1460,6 +1475,12 @@ func parseSpecFile(filePath string) (*SpecFile, error) {
 			if val != "" && val != `""` {
 				fmt.Sscanf(val, "%d", &spec.RepoIssue)
 			}
+		} else if strings.HasPrefix(line, "root_cause:") {
+			spec.RootCause = strings.TrimSpace(strings.TrimPrefix(line, "root_cause:"))
+			spec.RootCause = strings.Trim(spec.RootCause, `"`)
+		} else if strings.HasPrefix(line, "resolution:") {
+			spec.Resolution = strings.TrimSpace(strings.TrimPrefix(line, "resolution:"))
+			spec.Resolution = strings.Trim(spec.Resolution, `"`)
 		}
 	}
 

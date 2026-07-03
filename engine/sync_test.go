@@ -116,15 +116,15 @@ func TestIsResolvedStatus(t *testing.T) {
 		status string
 		want   bool
 	}{
-		{"ship", true},
 		{"closed", true},
 		{"done", true},
 		{"fixed", true},
+		{"ship", false},
+		{"SHIP", false},
 		{"backlog", false},
 		{"in-progress", false},
 		{"review", false},
 		{"", false},
-		{"SHIP", true},
 		{"Closed", true},
 	}
 	for _, tc := range tests {
