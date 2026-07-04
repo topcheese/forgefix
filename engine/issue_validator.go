@@ -14,9 +14,11 @@ var (
 		"fix":      true,
 		"docs":     true,
 		"refactor": true,
+		"ops":      true,
+		"chore":    true,
 	}
 
-	issueTitleRegex = regexp.MustCompile(`^(feat|fix|docs|refactor)/[a-z0-9-]+: [^.!?]+$`)
+	issueTitleRegex = regexp.MustCompile(`^(feat|fix|docs|refactor|ops|chore)/[a-z0-9-]+: [^.!?]+$`)
 	maxTitleLength  = 60
 )
 

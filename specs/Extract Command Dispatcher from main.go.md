@@ -1,10 +1,10 @@
 ---
 spec_id: "SPEC-1783118155"
-status: review
+status: closed
 repo_issue: ""
 type: refactor
 root_cause: "main() function is ~226 lines with cognitive complexity 128 — monolithic switch-based command dispatcher violates SRP"
-resolution: ""
+resolution: "Extracted CommandDispatcher into engine/command_dispatcher.go with 10 dedicated handler files. Slimmed main() from ~226 lines to 72 lines. All handlers accept io.Writer, return CommandResult, and are independently unit-testable. Go build and test suite pass. See commits 329977a through 7c25970."
 ---
 # Extract Command Dispatcher from main.go
 

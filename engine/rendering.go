@@ -30,20 +30,21 @@ var smokeCloudFrames = []string{
 	"░░░░░░░░░░░░░",
 }
 
-var firecrackerFrames = []string{"🧨", "💫", "✨", "💥"}
-
 var musketFrames = []string{
-	"[▄︻┳═一] 💥",
-	"[▄︻┳═一] 💨",
+	"[▄︻┳═一] 🔥",
 	"[▄︻┳═一] 💫",
 	"[▄︻┳═一] ✨",
+	"[▄︻┳═一] 💨",
 }
 
 var dudSmokeCloudFrames = []string{
 	"  ░░░░░  ",
 	" ░░░░░░░ ",
 	"░░░░░░░░░",
+	"░░░░░░░░░",
 	" ░░░░░░░ ",
+	"  ░░░░░  ",
+	"   ░░░   ",
 	"  ░░░░░  ",
 }
 
@@ -449,7 +450,8 @@ func (DashboardRenderer) WriteBombDetonated(sb *strings.Builder) {
 }
 
 func (DashboardRenderer) WriteBombActive(sb *strings.Builder, d *Dashboard, floorStr string) {
-	sb.WriteString(RenderBombRing(d.GetBombFrame(), floorStr))
+	frame := int(time.Now().UnixMilli() / 150)
+	sb.WriteString(RenderBombRing(frame, floorStr))
 }
 
 func (r DashboardRenderer) WriteBombLive(sb *strings.Builder, d *Dashboard, pipelines []PipelineConfig) {

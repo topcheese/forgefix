@@ -161,10 +161,7 @@ func (u *UI) StartRenderLoop(quit chan struct{}) {
 		case <-u.dashboard.StopCh():
 			return
 		case <-ticker.C:
-			if u.dashboard.IsDirty() {
-				u.dashboard.ClearDirty()
-				u.render()
-			}
+			u.render()
 		}
 	}
 }
@@ -276,8 +273,6 @@ func (u *UI) render() {
 	// so the cursor returns to column 0 on every new line.
 	output := strings.ReplaceAll(sb.String(), "\n", "\r\n")
 	fmt.Fprint(os.Stdout, output)
-
-	u.dashboard.BombFrame++
 }
 
 func (u *UI) Stop() {
@@ -396,17 +391,9 @@ func (os *OutputStreamer) Clear() {
 
 var bombRing = []string{"█", "▄", "▀", "░"}
 
-// 5x5 radial circular fuse matrix positions (clockwise from top)
-var bombMatrixPositions = []int{
-	0, 1, 2, 3, 4, // top row
-	5, 6, 7, 8, 9, // second row
-	10, 11, 12, 13, 14, // third row (center is 12)
-	15, 16, 17, 18, 19, // fourth row
-	20, 21, 22, 23, 24, // bottom row
-}
-
 func getBombChar(pos, frame int) string {
-	return bombRing[(pos+frame)%4]
+	wave := (pos*3 + frame) % len(bombRing)
+	return bombRing[wave]
 }
 
 func RenderBombRing(frame int, floorStr string) string {

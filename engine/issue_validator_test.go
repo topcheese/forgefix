@@ -15,6 +15,8 @@ func TestIssueTitleValidator_ValidTypes(t *testing.T) {
 		"refactor/engine: simplify issue coordinator",
 		"feat/config: add multi-backend support",
 		"fix/driver: handle 404 errors",
+		"ops/engine: maintenance cleanup",
+		"chore/config: update dependencies",
 	}
 
 	for _, tt := range tests {
@@ -31,7 +33,6 @@ func TestIssueTitleValidator_InvalidTypes(t *testing.T) {
 	tests := []string{
 		"feature/engine: add new feature",
 		"bug/sync: fix something",
-		"chore/engine: cleanup",
 		"test/sync: add tests",
 		"invalid/engine: test",
 		"FEAT/engine: test",
@@ -173,6 +174,8 @@ func TestIsValidIssueTitle_Helper(t *testing.T) {
 		{title: "fix/sync: fix bug", valid: true},
 		{title: "docs/config: update", valid: true},
 		{title: "refactor/engine: clean", valid: true},
+		{title: "ops/engine: maintenance", valid: true},
+		{title: "chore/config: update deps", valid: true},
 		{title: "invalid: test", valid: false},
 		{title: "feat: missing category", valid: false},
 		{title: "feat/engine missing colon", valid: false},
