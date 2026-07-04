@@ -473,3 +473,40 @@ func TestDeleteSpec_FullIntegration(t *testing.T) {
 		t.Error("spec entry should remain removed after fresh reload from disk")
 	}
 }
+
+// TestLedgerPreservesProjectVersion verifies that the project release version
+// (written by `ff ship`) is not overwritten by the application Version constant
+// when the ledger is saved via SaveToFile.
+func TestLedgerPreservesProjectVersion(t *testing.T) {
+	tmpDir := t.TempDir()
+	ledgerFile := filepath.Join(tmpDir, ".forgefix_ledger.json")
+
+	engine := NewLedgerEngine()
+	engine.Version = "0.9.5"
+	if err := engine.SaveToFile(ledgerFile); err != nil {
+		t.Fatalf("SaveToFile: %v", err)
+	}
+
+	loaded := NewLedgerEngine()
+	if err := loaded.LoadFromFile(ledgerFile); err != nil {
+		t.Fatalf("LoadFromFile: %v", err)
+	}
+	if loaded.Version != "0.9.5" {
+		t.Errorf("expected project version 0.9.5 after save/load, got %q", loaded.Version)
+	}
+
+	loaded.Version = "1.0.0"
+	if err := loaded.SaveToFile(ledgerFile); err != nil {
+		t.Fatalf("second SaveToFile: %v", err)
+	}
+	reloaded := NewLedgerEngine()
+	if err := reloaded.LoadFromFile(ledgerFile); err != nil {
+		t.Fatalf("second LoadFromFile: %v", err)
+	}
+	if reloaded.Version != "1.0.0" {
+		t.Errorf("expected updated project version 1.0.0, got %q", reloaded.Version)
+	}
+	if reloaded.Version == Version {
+		t.Errorf("project version must not be overwritten by app constant %q", Version)
+	}
+}

@@ -77,7 +77,7 @@ func NewLedgerEngine() *LedgerEngine {
 	return &LedgerEngine{
 		entries:      make(map[string]*LedgerEntry),
 		specMappings: make(map[string]*SpecEntry),
-		Version:      Version,
+		Version:      "0.0.0",
 	}
 }
 
@@ -130,7 +130,9 @@ func (le *LedgerEngine) LoadFromFile(path string) error {
 
 func (le *LedgerEngine) SaveToFile(path string) error {
 	le.mu.Lock()
-	le.Version = Version
+	if le.Version == "" {
+		le.Version = "0.0.0"
+	}
 	if le.entries == nil {
 		le.entries = make(map[string]*LedgerEntry)
 	}
