@@ -137,7 +137,6 @@ func ExecuteSuite(config *Config, configDir string, aiMode bool, watchMode bool)
 		parseWG.Wait()
 		dashboard.TestCommandCompleted = true
 		dashboard.markDirty()
-		time.Sleep(300 * time.Millisecond)
 		close(done)
 	}()
 
@@ -191,6 +190,10 @@ mainLoop:
 			}
 			dashboard.SetTimeoutFired(true)
 			dashboard.SetPipelineActive(false)
+			dashboard.TriggerDetonation()
+			for _, pr := range runners {
+				pr.Runner.Kill()
+			}
 			manageIssues := dashboard.Coord != nil
 			if manageIssues {
 				handleTimeoutIssues(dashboard, configDir)

@@ -95,7 +95,7 @@ func (d *DashboardFacade) ToAIPayload() AIResponsePayload {
 		overallStatus = "fail"
 	} else if totalFloor > 0 && totalPassed < totalFloor {
 		overallStatus = "regression"
-	} else if d.TestCommandCompleted {
+	} else if d.GetTimeoutFired() && !d.TestCommandCompleted {
 		overallStatus = "timeout"
 	}
 
@@ -133,7 +133,7 @@ func (d *DashboardFacade) ToAIPayload() AIResponsePayload {
 			status = "fail"
 			suggestedAction = fmt.Sprintf("TEST FAILURE: %d test(s) failed. Review the failed test names below and inspect the corresponding source files for assertion errors.", entry.TotalFailed)
 			errorDetails = fmt.Sprintf("%d of %d tests failed", entry.TotalFailed, entry.TotalRan)
-		} else if d.TestCommandCompleted {
+		} else if d.GetTimeoutFired() && !d.TestCommandCompleted {
 			status = "timeout"
 			suggestedAction = "TIMEOUT: The pipeline execution exceeded the global timeout. Consider increasing the timeout value in forgefix.yaml or optimizing slow tests."
 			errorDetails = fmt.Sprintf("%d tests passed before timeout", entry.TotalRan)
