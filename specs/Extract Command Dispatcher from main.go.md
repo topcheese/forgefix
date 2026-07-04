@@ -1,6 +1,6 @@
 ---
 spec_id: "SPEC-1783118155"
-status: in-progress
+status: review
 repo_issue: ""
 type: refactor
 root_cause: "main() function is ~226 lines with cognitive complexity 128 — monolithic switch-based command dispatcher violates SRP"
@@ -182,14 +182,14 @@ Remaining helper functions in `main.go` (e.g., `promptRetrySyncFailures`, `findC
 
 ## Acceptance Criteria
 
-1. [ ] `main()` is reduced from ~226 lines to ≤80 lines
-2. [ ] `main.go` never calls `os.Exit` from inside a switch case — only at the top-level control flow
-3. [ ] Every subcommand handler is independently unit-testable via `CommandDispatcher.Execute()`
-4. [ ] Handlers accept `io.Writer` for output — no direct writes to `os.Stdout`/`os.Stderr`
-5. [ ] No handler function calls `os.Exit` — all errors are returned as `error` or `CommandResult.ExitCode`
-6. [ ] All existing CLI behavior is preserved (help text, version output, sync flow, ship gate, commit flow, spec CRUD, archive, test runner)
-7. [ ] `go build ./...` compiles without errors
-8. [ ] `go test ./...` passes without regressions
+1. [x] `main()` is reduced from ~226 lines to ≤80 lines
+2. [x] `main.go` never calls `os.Exit` from inside a switch case — only at the top-level control flow
+3. [x] Every subcommand handler is independently unit-testable via `CommandDispatcher.Execute()`
+4. [x] Handlers accept `io.Writer` for output — no direct writes to `os.Stdout`/`os.Stderr`
+5. [x] No handler function calls `os.Exit` — all errors are returned as `error` or `CommandResult.ExitCode`
+6. [x] All existing CLI behavior is preserved (help text, version output, sync flow, ship gate, commit flow, spec CRUD, archive, test runner)
+7. [x] `go build ./...` compiles without errors
+8. [x] `go test ./...` passes without regressions
 
 ## Verification
 
