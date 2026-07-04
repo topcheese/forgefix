@@ -2,76 +2,82 @@
   "version": "0.8.1",
   "entries": {
     "forgefix": {
-      "historical_floor": 341,
-      "last_update": "2026-07-04T03:56:27-07:00",
       "pipeline_id": "forgefix",
-      "total_failed": 0,
+      "total_ran": 341,
       "total_passed": 341,
-      "total_ran": 341
+      "total_failed": 0,
+      "historical_floor": 341,
+      "last_update": "2026-07-04T03:56:27-07:00"
     }
   },
   "spec_mappings": {
     "SPEC-1783150591": {
-      "linked_commits": [],
-      "repo_issue_id": 452,
       "spec_id": "SPEC-1783150591",
-      "status": "ship"
+      "repo_issue_id": 452,
+      "status": "ship",
+      "linked_commits": []
     },
     "SPEC-1783151970": {
-      "linked_commits": [],
-      "repo_issue_id": 453,
       "spec_id": "SPEC-1783151970",
-      "status": "backlog"
+      "repo_issue_id": 453,
+      "status": "backlog",
+      "linked_commits": []
     },
     "SPEC-1783152969": {
-      "linked_commits": [],
-      "repo_issue_id": 454,
       "spec_id": "SPEC-1783152969",
-      "status": "ship"
+      "repo_issue_id": 454,
+      "status": "ship",
+      "linked_commits": []
     },
     "SPEC-1783153514": {
-      "linked_commits": [],
-      "repo_issue_id": 455,
       "spec_id": "SPEC-1783153514",
-      "status": "ship"
+      "repo_issue_id": 455,
+      "status": "ship",
+      "linked_commits": []
     },
     "SPEC-1783153739": {
+      "spec_id": "SPEC-1783153739",
+      "repo_issue_id": 456,
+      "status": "ship",
       "linked_commits": [
         "32400a9"
-      ],
-      "repo_issue_id": 456,
-      "spec_id": "SPEC-1783153739",
-      "status": "ship"
+      ]
     },
     "SPEC-1783157281": {
-      "linked_commits": [],
-      "repo_issue_id": 460,
       "spec_id": "SPEC-1783157281",
-      "status": "backlog"
+      "repo_issue_id": 460,
+      "status": "backlog",
+      "linked_commits": []
     },
     "SPEC-1783157282": {
-      "linked_commits": [],
-      "repo_issue_id": 461,
       "spec_id": "SPEC-1783157282",
-      "status": "backlog"
+      "repo_issue_id": 461,
+      "status": "backlog",
+      "linked_commits": []
     },
     "SPEC-1783157283": {
-      "linked_commits": [],
-      "repo_issue_id": 462,
       "spec_id": "SPEC-1783157283",
-      "status": "backlog"
+      "repo_issue_id": 462,
+      "status": "backlog",
+      "linked_commits": []
     },
     "SPEC-1783159999": {
-      "linked_commits": [],
-      "repo_issue_id": 0,
       "spec_id": "SPEC-1783159999",
-      "status": "ship"
+      "repo_issue_id": 0,
+      "status": "ship",
+      "linked_commits": []
     },
     "SPEC-1783162752": {
-      "linked_commits": [],
-      "repo_issue_id": 464,
       "spec_id": "SPEC-1783162752",
-      "status": "ship"
+      "repo_issue_id": 464,
+      "status": "ship",
+      "linked_commits": []
+    },
+    "SPEC-1783197911": {
+      "spec_id": "SPEC-1783197911",
+      "repo_issue_id": 0,
+      "status": "draft",
+      "linked_commits": []
     }
   }
 }

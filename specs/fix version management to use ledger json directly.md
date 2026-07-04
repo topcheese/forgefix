@@ -2,7 +2,7 @@
 spec_id: SPEC-1783159999
 type: fix
 status: ship
-version: "0.8.0"
+version: "0.8.1"
 ---
 
 # Fix version management to use ledger JSON directly
