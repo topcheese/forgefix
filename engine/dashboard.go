@@ -15,7 +15,7 @@ const TestTimeoutSecs = 15
 type BombState int
 
 const (
-	BombIdle     BombState = iota
+	BombIdle BombState = iota
 	BombActive
 	BombDefused
 	BombDetonated
@@ -138,8 +138,6 @@ func (u *UI) focusLeftPanel() {
 	defer u.mu.Unlock()
 	u.showTitle = true
 }
-
-
 
 func NewUI(dashboard *Dashboard) *UI {
 	return &UI{
@@ -274,7 +272,10 @@ func (u *UI) render() {
 	}
 
 	sb.WriteString("\033[J")
-	fmt.Fprint(os.Stdout, sb.String())
+	// In raw terminal mode, \\n is LF without CR. Convert all line breaks to CRLF
+	// so the cursor returns to column 0 on every new line.
+	output := strings.ReplaceAll(sb.String(), "\n", "\r\n")
+	fmt.Fprint(os.Stdout, output)
 
 	u.dashboard.BombFrame++
 }
@@ -312,7 +313,8 @@ func (u *UI) renderFinal(d *Dashboard, config *Config) {
 	sb.WriteString(Reset + "\n")
 	sb.WriteString(Yellow + "Press 'q' to exit..." + Reset)
 
-	fmt.Fprint(os.Stdout, sb.String())
+	output := strings.ReplaceAll(sb.String(), "\n", "\r\n")
+	fmt.Fprint(os.Stdout, output)
 }
 
 type ConcurrentRenderer struct {
@@ -396,8 +398,8 @@ var bombRing = []string{"█", "▄", "▀", "░"}
 
 // 5x5 radial circular fuse matrix positions (clockwise from top)
 var bombMatrixPositions = []int{
-	0, 1, 2, 3, 4,      // top row
-	5, 6, 7, 8, 9,      // second row
+	0, 1, 2, 3, 4, // top row
+	5, 6, 7, 8, 9, // second row
 	10, 11, 12, 13, 14, // third row (center is 12)
 	15, 16, 17, 18, 19, // fourth row
 	20, 21, 22, 23, 24, // bottom row
@@ -476,7 +478,7 @@ func (d *Dashboard) GetActiveTestDurations(pipelineID string) []struct {
 
 // GetTimeoutTests returns tests that have exceeded the timeout threshold
 func (d *Dashboard) GetTimeoutTests(pipelineID string, timeoutSecs int) []struct {
-	Name  string
+	Name    string
 	Elapsed int
 } {
 	d.mu.RLock()
@@ -486,14 +488,14 @@ func (d *Dashboard) GetTimeoutTests(pipelineID string, timeoutSecs int) []struct
 		return nil
 	}
 	var timeoutTests []struct {
-		Name  string
+		Name    string
 		Elapsed int
 	}
 	for _, info := range tracker.ActiveTests {
 		elapsed := time.Since(info.Started).Seconds()
 		if elapsed >= float64(timeoutSecs) {
 			timeoutTests = append(timeoutTests, struct {
-				Name  string
+				Name    string
 				Elapsed int
 			}{info.Name, int(elapsed)})
 		}
