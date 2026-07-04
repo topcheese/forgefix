@@ -476,7 +476,8 @@ func TestDeleteSpec_FullIntegration(t *testing.T) {
 
 // TestLedgerPreservesProjectVersion verifies that the project release version
 // (written by `ff ship`) is not overwritten by the application Version constant
-// when the ledger is saved via SaveToFile.
+// when the ledger is saved via SaveToFile, and that version stays at the top of
+// the file as a header — not sorted to the bottom.
 func TestLedgerPreservesProjectVersion(t *testing.T) {
 	tmpDir := t.TempDir()
 	ledgerFile := filepath.Join(tmpDir, ".forgefix_ledger.json")
@@ -508,5 +509,14 @@ func TestLedgerPreservesProjectVersion(t *testing.T) {
 	}
 	if reloaded.Version == Version {
 		t.Errorf("project version must not be overwritten by app constant %q", Version)
+	}
+
+	raw, err := os.ReadFile(ledgerFile)
+	if err != nil {
+		t.Fatalf("reading ledger file: %v", err)
+	}
+	rawStr := string(raw)
+	if !strings.HasPrefix(strings.TrimSpace(rawStr), "{\n  \"version\"") {
+		t.Errorf("version must be the first key at the top of the file, got:\n%s", rawStr[:80])
 	}
 }

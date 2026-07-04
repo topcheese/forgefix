@@ -592,21 +592,12 @@ func readProjectVersion(configDir string) string {
 }
 
 func writeProjectVersion(configDir, version string) error {
-	path := ledgerPath(configDir)
-	data, err := os.ReadFile(path)
+	ledger, err := LoadLedger(configDir)
 	if err != nil {
-		return fmt.Errorf("reading ledger file: %w", err)
+		return fmt.Errorf("loading ledger: %w", err)
 	}
-	var raw map[string]any
-	if err := json.Unmarshal(data, &raw); err != nil {
-		return fmt.Errorf("unmarshaling ledger: %w", err)
-	}
-	raw["version"] = version
-	out, err := json.MarshalIndent(raw, "", "  ")
-	if err != nil {
-		return fmt.Errorf("marshaling updated ledger: %w", err)
-	}
-	return os.WriteFile(path, out, 0644)
+	ledger.Version = version
+	return SaveLedger(ledger, configDir)
 }
 
 func incrementPatchVersion(version string) string {
@@ -1013,8 +1004,8 @@ func verifyCommitSpecBindings(configDir string) error {
 			return fmt.Errorf("orphaned commit detected: specID %s not found in ledger (commit %s)", specID, commitHash[:8])
 		}
 
-		if specEntry.Status != "in-progress" && specEntry.Status != "review" && specEntry.Status != "ship" && specEntry.Status != "closed" {
-			return fmt.Errorf("orphaned commit detected: specID %s has invalid status '%s' (expected 'in-progress', 'review', 'ship', or 'closed') (commit %s)", specID, specEntry.Status, commitHash[:8])
+		if specEntry.Status != "backlog" && specEntry.Status != "draft" && specEntry.Status != "in-progress" && specEntry.Status != "review" && specEntry.Status != "ship" && specEntry.Status != "closed" {
+			return fmt.Errorf("orphaned commit detected: specID %s has invalid status '%s' (expected 'backlog', 'draft', 'in-progress', 'review', 'ship', or 'closed') (commit %s)", specID, specEntry.Status, commitHash[:8])
 		}
 	}
 
