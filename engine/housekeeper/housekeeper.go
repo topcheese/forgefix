@@ -8,6 +8,7 @@ import (
 	"os"
 	"path/filepath"
 	"sort"
+	"strings"
 	"sync"
 	"time"
 )
@@ -312,6 +313,10 @@ func (q *HousekeepingQueue) Process(ctx context.Context, registry map[TaskType]I
 
 		err := action.Execute(ctx, task)
 		if err != nil {
+			if strings.Contains(err.Error(), "resource not found") {
+				fmt.Fprintf(os.Stderr, "warning: %s for issue #%d returned 404, dropping from housekeeping queue\n", task.Type, task.RepoIssueID)
+				continue
+			}
 			task.Attempts++
 			task.LastError = err.Error()
 			if err := q.Enqueue(task); err != nil {

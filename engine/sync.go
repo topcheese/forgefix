@@ -3,6 +3,7 @@ package engine
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"os"
 	"os/exec"
@@ -420,6 +421,11 @@ func processSyncQueue(coord *IssueCoordinator, configDir string, ledger *LedgerE
 
 		if opErr != nil {
 			lastErr = opErr
+			if errors.Is(opErr, ErrResourceNotFound) {
+				// Issue no longer exists on remote — drop operation immediately
+				fmt.Fprintf(os.Stderr, "warning: %s for issue #%d returned 404, dropping from sync queue\n", op.Type, op.IssueNum)
+				continue
+			}
 			op.RetryCount++
 			if op.RetryCount < 3 {
 				remaining = append(remaining, op)

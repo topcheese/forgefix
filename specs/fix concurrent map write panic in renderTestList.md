@@ -1,7 +1,7 @@
 ---
 spec_id: "SPEC-1783150591"
 status: in-progress
-repo_issue: ""
+repo_issue: 452
 type: bug
 root_cause: "Two independent bugs: (1) TestTracker.mu was defined but never used; UpdateMetrics locked TestTrackerService.mu while renderTestList locked nothing, causing concurrent map iteration/write panics. (2) DashboardFacade.GetTimeoutFired() returned f.TestCommandCompleted with a comment 'repurposed' — so whenever tests completed (TestCommandCompleted=true), GetTimeoutFired() also returned true. This caused the TUI to render the timeout section alongside the success section, producing the contradictory 'BOMB DEFUSED + TIMEOUT' output."
 resolution: ""
