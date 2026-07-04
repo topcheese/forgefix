@@ -36,35 +36,44 @@ func (s *TestTrackerService) GetTracker(pipelineID string) *TestTracker {
 
 func (s *TestTrackerService) ResetTrackers() {
 	s.mu.Lock()
-	defer s.mu.Unlock()
-	s.markDirty()
+	trackers := make([]*TestTracker, 0, len(s.trackers))
 	for _, tracker := range s.trackers {
+		trackers = append(trackers, tracker)
+	}
+	s.mu.Unlock()
+
+	for _, tracker := range trackers {
+		tracker.mu.Lock()
 		tracker.ActiveTests = make(map[string]*TestInfo)
 		tracker.Completed = make(map[string]*TestInfo)
 		tracker.CompletedIDs = make(map[string]bool)
 		tracker.History = make([]string, 0)
 		tracker.Ran = 0
 		tracker.Passed = 0
+		tracker.mu.Unlock()
 	}
+	s.markDirty()
 }
 
 func (s *TestTrackerService) UpdateMetrics(pipelineID, action, testID, testName string, elapsed int, result string, errorTrace, filePath string, failureLine, failureColumn int) {
 	s.mu.Lock()
-	defer s.mu.Unlock()
-	s.markDirty()
-
 	tracker := s.getOrCreateTrackerLocked(pipelineID)
+	s.mu.Unlock()
+
+	tracker.mu.Lock()
+	defer tracker.mu.Unlock()
+	s.markDirty()
 
 	switch action {
 	case "run":
 		if _, exists := tracker.ActiveTests[testID]; !exists {
 			tracker.ActiveTests[testID] = &TestInfo{
-				ID:      testID,
-				Name:    testName,
-				TestID:  testID,
+				ID:       testID,
+				Name:     testName,
+				TestID:   testID,
 				TestName: testName,
-				State:   StateFiring,
-				Started: time.Now(),
+				State:    StateFiring,
+				Started:  time.Now(),
 			}
 		} else {
 			tracker.ActiveTests[testID].State = StateFiring
@@ -137,11 +146,13 @@ func (s *TestTrackerService) UpdateMetrics(pipelineID, action, testID, testName 
 
 func (s *TestTrackerService) GetMetrics(pipelineID string) (ran, passed, failed int, active, completed map[string]*TestInfo) {
 	s.mu.RLock()
-	defer s.mu.RUnlock()
 	tracker := s.trackers[pipelineID]
+	s.mu.RUnlock()
 	if tracker == nil {
 		return 0, 0, 0, make(map[string]*TestInfo), make(map[string]*TestInfo)
 	}
+	tracker.mu.RLock()
+	defer tracker.mu.RUnlock()
 	active = make(map[string]*TestInfo, len(tracker.ActiveTests))
 	for k, v := range tracker.ActiveTests {
 		cp := *v
