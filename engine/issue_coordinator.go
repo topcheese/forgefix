@@ -560,31 +560,24 @@ func (c *IssueCoordinator) ListOpenIssues() ([]GitHubIssue, error) {
 	params.Set("per_page", "100")
 	queryURL := c.url("") + "?" + params.Encode()
 
-	req, _ := http.NewRequest("GET", queryURL, nil)
+	req, err := http.NewRequest("GET", queryURL, nil)
+	if err != nil {
+		return nil, fmt.Errorf("creating GET request: %w", err)
+	}
 	req.Header.Set("Authorization", "Bearer "+c.apiToken)
 	req.Header.Set("Accept", "application/vnd.github.v3+json")
 
-	fmt.Fprintf(os.Stderr, "[DEBUG] Repo/GitHub GET %s\n", queryURL)
-
 	resp, err := c.client.Do(req)
 	if err != nil {
-		var netErr net.Error
-		var urlErr *url.Error
-		fmt.Fprintf(os.Stderr, "[DEBUG] GET request error: %v (type: %T)\n", err, err)
-		if errors.As(err, &urlErr) {
-			fmt.Fprintf(os.Stderr, "[DEBUG] URL Error: %v, Timeout: %v, Temporary: %v\n", urlErr.Err, urlErr.Timeout(), urlErr.Temporary())
-		}
-		if errors.As(err, &netErr) {
-			fmt.Fprintf(os.Stderr, "[DEBUG] Net Error: Timeout=%v, Temporary=%v\n", netErr.Timeout(), netErr.Temporary())
-		}
-		return nil, err
+		return nil, fmt.Errorf("fetching issues: %w", err)
 	}
 	defer resp.Body.Close()
 
-	respBody, _ := io.ReadAll(resp.Body)
-	fmt.Fprintf(os.Stderr, "[DEBUG] GET response status: %d\n", resp.StatusCode)
+	respBody, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return nil, fmt.Errorf("reading issues response: %w", err)
+	}
 	if resp.StatusCode != http.StatusOK {
-		fmt.Fprintf(os.Stderr, "[DEBUG] GET response body: %s\n", string(respBody))
 		return nil, fmt.Errorf("fetch issues failed with status: %d, body: %s", resp.StatusCode, string(respBody))
 	}
 
@@ -707,44 +700,38 @@ func (c *IssueCoordinator) CreateIssueWithBody(title, body string) (*GitHubIssue
 		"title": title,
 		"body":  body,
 	}
-	jsonBody, _ := json.Marshal(bodyMap)
+	jsonBody, err := json.Marshal(bodyMap)
+	if err != nil {
+		return nil, fmt.Errorf("marshaling issue body: %w", err)
+	}
 
 	postURL := c.url("")
 	req, err := http.NewRequest("POST", postURL, strings.NewReader(string(jsonBody)))
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("creating POST request: %w", err)
 	}
 
 	req.Header.Set("Authorization", "Bearer "+c.apiToken)
 	req.Header.Set("Content-Type", "application/json")
 
-	fmt.Fprintf(os.Stderr, "[DEBUG] Repo/GitHub POST %s\n", postURL)
-	fmt.Fprintf(os.Stderr, "[DEBUG] POST body: %s\n", string(jsonBody))
-
 	resp, err := c.client.Do(req)
 	if err != nil {
-		var netErr net.Error
-		var urlErr *url.Error
-		fmt.Fprintf(os.Stderr, "[DEBUG] POST request error: %v (type: %T)\n", err, err)
-		if errors.As(err, &urlErr) {
-			fmt.Fprintf(os.Stderr, "[DEBUG] URL Error: %v, Timeout: %v, Temporary: %v\n", urlErr.Err, urlErr.Timeout(), urlErr.Temporary())
-		}
-		if errors.As(err, &netErr) {
-			fmt.Fprintf(os.Stderr, "[DEBUG] Net Error: Timeout=%v, Temporary=%v\n", netErr.Timeout(), netErr.Temporary())
-		}
-		return nil, err
+		return nil, fmt.Errorf("sending create issue request: %w", err)
 	}
 	defer resp.Body.Close()
 
-	respBody, _ := io.ReadAll(resp.Body)
-	fmt.Fprintf(os.Stderr, "[DEBUG] POST response status: %d\n", resp.StatusCode)
+	respBody, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return nil, fmt.Errorf("reading create issue response: %w", err)
+	}
 	if resp.StatusCode != http.StatusCreated {
-		fmt.Fprintf(os.Stderr, "[DEBUG] POST response body: %s\n", string(respBody))
 		return nil, fmt.Errorf("issue creation failed (%d): %s", resp.StatusCode, string(respBody))
 	}
 
 	var createdIssue GitHubIssue
-	_ = json.NewDecoder(bytes.NewReader(respBody)).Decode(&createdIssue)
+	if err := json.NewDecoder(bytes.NewReader(respBody)).Decode(&createdIssue); err != nil {
+		return nil, fmt.Errorf("decoding created issue: %w", err)
+	}
 
 	c.mu.Lock()
 	c.issueCache[title] = &createdIssue
@@ -774,44 +761,38 @@ func (c *IssueCoordinator) CreateIssue(testName string, details *ErrorDetails) (
 		"title": testName,
 		"body":  c.generateIssueBody(testName, details),
 	}
-	jsonBody, _ := json.Marshal(bodyMap)
+	jsonBody, err := json.Marshal(bodyMap)
+	if err != nil {
+		return nil, fmt.Errorf("marshaling issue body: %w", err)
+	}
 
 	postURL := c.url("")
 	req, err := http.NewRequest("POST", postURL, strings.NewReader(string(jsonBody)))
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("creating POST request: %w", err)
 	}
 
 	req.Header.Set("Authorization", "Bearer "+c.apiToken)
 	req.Header.Set("Content-Type", "application/json")
 
-	fmt.Fprintf(os.Stderr, "[DEBUG] Repo/GitHub POST %s\n", postURL)
-	fmt.Fprintf(os.Stderr, "[DEBUG] POST body: %s\n", string(jsonBody))
-
 	resp, err := c.client.Do(req)
 	if err != nil {
-		var netErr net.Error
-		var urlErr *url.Error
-		fmt.Fprintf(os.Stderr, "[DEBUG] POST request error: %v (type: %T)\n", err, err)
-		if errors.As(err, &urlErr) {
-			fmt.Fprintf(os.Stderr, "[DEBUG] URL Error: %v, Timeout: %v, Temporary: %v\n", urlErr.Err, urlErr.Timeout(), urlErr.Temporary())
-		}
-		if errors.As(err, &netErr) {
-			fmt.Fprintf(os.Stderr, "[DEBUG] Net Error: Timeout=%v, Temporary=%v\n", netErr.Timeout(), netErr.Temporary())
-		}
-		return nil, err
+		return nil, fmt.Errorf("sending create issue request: %w", err)
 	}
 	defer resp.Body.Close()
 
-	respBody, _ := io.ReadAll(resp.Body)
-	fmt.Fprintf(os.Stderr, "[DEBUG] POST response status: %d\n", resp.StatusCode)
+	respBody, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return nil, fmt.Errorf("reading create issue response: %w", err)
+	}
 	if resp.StatusCode != http.StatusCreated {
-		fmt.Fprintf(os.Stderr, "[DEBUG] POST response body: %s\n", string(respBody))
 		return nil, fmt.Errorf("issue creation failed (%d): %s", resp.StatusCode, string(respBody))
 	}
 
 	var createdIssue GitHubIssue
-	_ = json.NewDecoder(bytes.NewReader(respBody)).Decode(&createdIssue)
+	if err := json.NewDecoder(bytes.NewReader(respBody)).Decode(&createdIssue); err != nil {
+		return nil, fmt.Errorf("decoding created issue: %w", err)
+	}
 
 	c.mu.Lock()
 	c.issueCache[testName] = &createdIssue
@@ -919,30 +900,20 @@ func (c *IssueCoordinator) CloseIssueByNumber(issueNumber int) error {
 	req.Header.Set("Authorization", "Bearer "+c.apiToken)
 	req.Header.Set("Content-Type", "application/json")
 
-	fmt.Fprintf(os.Stderr, "[DEBUG] Repo/GitHub PATCH %s\n", patchURL)
-
 	resp, err := c.client.Do(req)
 	if err != nil {
-		var netErr net.Error
-		var urlErr *url.Error
-		fmt.Fprintf(os.Stderr, "[DEBUG] PATCH request error: %v (type: %T)\n", err, err)
-		if errors.As(err, &urlErr) {
-			fmt.Fprintf(os.Stderr, "[DEBUG] URL Error: %v, Timeout: %v, Temporary: %v\n", urlErr.Err, urlErr.Timeout(), urlErr.Temporary())
-		}
-		if errors.As(err, &netErr) {
-			fmt.Fprintf(os.Stderr, "[DEBUG] Net Error: Timeout=%v, Temporary=%v\n", netErr.Timeout(), netErr.Temporary())
-		}
-		return err
+		return fmt.Errorf("closing issue #%d: %w", issueNumber, err)
 	}
 	defer resp.Body.Close()
 
-	respBody, _ := io.ReadAll(resp.Body)
-	fmt.Fprintf(os.Stderr, "[DEBUG] PATCH response status: %d\n", resp.StatusCode)
+	respBody, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return fmt.Errorf("reading close issue response: %w", err)
+	}
 	if resp.StatusCode == http.StatusNotFound {
 		return fmt.Errorf("issue close failed on #%d: %w", issueNumber, ErrResourceNotFound)
 	}
 	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
-		fmt.Fprintf(os.Stderr, "[DEBUG] PATCH response body: %s\n", string(respBody))
 		return fmt.Errorf("issue close failed (%d): %s", resp.StatusCode, string(respBody))
 	}
 	return nil

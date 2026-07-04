@@ -25,7 +25,7 @@ func isKnownAnchor(name string) bool {
 func DiscoverProjectRoot(startDir string) (string, error) {
 	entries, err := os.ReadDir(startDir)
 	if err != nil {
-		return "", fmt.Errorf("failed to read directory: %v", err)
+		return "", fmt.Errorf("failed to read directory: %w", err)
 	}
 
 	for _, entry := range entries {

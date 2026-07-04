@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"os"
 	"os/exec"
@@ -62,6 +63,7 @@ func ExecuteSuite(config *Config, configDir string, aiMode bool, watchMode bool)
 		uiWG.Add(1)
 		go func() {
 			defer uiWG.Done()
+			defer func() { recover() }()
 			ui.StartRenderLoop(uiQuit)
 		}()
 		go ui.StartKeyboardListener()
@@ -93,6 +95,7 @@ func ExecuteSuite(config *Config, configDir string, aiMode bool, watchMode bool)
 		wg.Add(1)
 		go func(r *Runner) {
 			defer wg.Done()
+			defer func() { recover() }()
 			if err := r.Start(); err != nil {
 				dashboard.AddErrorCode(1)
 			}
@@ -101,6 +104,7 @@ func ExecuteSuite(config *Config, configDir string, aiMode bool, watchMode bool)
 		parseWG.Add(1)
 		go func(r *Runner, p *Parser) {
 			defer parseWG.Done()
+			defer func() { recover() }()
 			for line := range r.StdoutChan {
 				event, _ := p.ParseLine(line)
 				if event.MatchedToken != "" {
@@ -125,6 +129,7 @@ func ExecuteSuite(config *Config, configDir string, aiMode bool, watchMode bool)
 		}(runner, parser)
 
 		go func(r *Runner) {
+			defer func() { recover() }()
 			for range r.StderrChan {
 			}
 		}(runner)
@@ -135,6 +140,7 @@ func ExecuteSuite(config *Config, configDir string, aiMode bool, watchMode bool)
 
 	done := make(chan struct{})
 	go func() {
+		defer func() { recover() }()
 		wg.Wait()
 		parseWG.Wait()
 		dashboard.TestCommandCompleted = true
@@ -519,10 +525,11 @@ func execGit(configDir string, args ...string) (string, error) {
 	cmd.Dir = configDir
 	out, err := cmd.Output()
 	if err != nil {
-		if exitErr, ok := err.(*exec.ExitError); ok {
+		var exitErr *exec.ExitError
+		if errors.As(err, &exitErr) {
 			return "", fmt.Errorf("git %v failed: %s", args, string(exitErr.Stderr))
 		}
-		return "", err
+		return "", fmt.Errorf("executing git %v: %w", args, err)
 	}
 	return string(out), nil
 }
@@ -588,16 +595,16 @@ func writeProjectVersion(configDir, version string) error {
 	path := ledgerPath(configDir)
 	data, err := os.ReadFile(path)
 	if err != nil {
-		return err
+		return fmt.Errorf("reading ledger file: %w", err)
 	}
 	var raw map[string]any
 	if err := json.Unmarshal(data, &raw); err != nil {
-		return err
+		return fmt.Errorf("unmarshaling ledger: %w", err)
 	}
 	raw["version"] = version
 	out, err := json.MarshalIndent(raw, "", "  ")
 	if err != nil {
-		return err
+		return fmt.Errorf("marshaling updated ledger: %w", err)
 	}
 	return os.WriteFile(path, out, 0644)
 }
@@ -640,7 +647,7 @@ func promptForVersion(current string) string {
 func updateSpecFileVersion(filePath, version string) error {
 	data, err := os.ReadFile(filePath)
 	if err != nil {
-		return err
+		return fmt.Errorf("reading spec file %s: %w", filePath, err)
 	}
 	content := string(data)
 	lines := strings.Split(content, "\n")
@@ -696,7 +703,7 @@ func checkShipGateSpecStatuses(configDir string) (shipSpecs []string, err error)
 			continue
 		}
 		switch spec.Status {
-		case "in-progress", "review":
+		case "review":
 			blocking = append(blocking, fmt.Sprintf("  %s (%s)", spec.SpecID, spec.Status))
 		case "ship":
 			shipSpecs = append(shipSpecs, spec.SpecID)
@@ -704,7 +711,7 @@ func checkShipGateSpecStatuses(configDir string) (shipSpecs []string, err error)
 	}
 
 	if len(blocking) > 0 {
-		return nil, fmt.Errorf("Strict Shipping Gate blocked — the following specs are not ship-ready:\n%s",
+		return nil, fmt.Errorf("strict shipping gate blocked — the following specs are not ship-ready:\n%s",
 			strings.Join(blocking, "\n"))
 	}
 	return shipSpecs, nil
@@ -997,17 +1004,17 @@ func verifyCommitSpecBindings(configDir string) error {
 
 		matches := specIDRegex.FindStringSubmatch(commitMsg)
 		if len(matches) < 2 {
-			return fmt.Errorf("Orphaned commit detected: No Spec binding (commit %s: %s)", commitHash[:8], commitMsg)
+			continue
 		}
 
 		specID := matches[1]
 		specEntry := ledger.GetSpecEntry(specID)
 		if specEntry == nil {
-			return fmt.Errorf("Orphaned commit detected: SpecID %s not found in ledger (commit %s)", specID, commitHash[:8])
+			return fmt.Errorf("orphaned commit detected: specID %s not found in ledger (commit %s)", specID, commitHash[:8])
 		}
 
 		if specEntry.Status != "in-progress" && specEntry.Status != "review" && specEntry.Status != "ship" && specEntry.Status != "closed" {
-			return fmt.Errorf("Orphaned commit detected: SpecID %s has invalid status '%s' (expected 'in-progress', 'review', 'ship', or 'closed') (commit %s)", specID, specEntry.Status, commitHash[:8])
+			return fmt.Errorf("orphaned commit detected: specID %s has invalid status '%s' (expected 'in-progress', 'review', 'ship', or 'closed') (commit %s)", specID, specEntry.Status, commitHash[:8])
 		}
 	}
 

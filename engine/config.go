@@ -37,7 +37,7 @@ func LoadPipelineConfig(targetPath string) (*LoadedConfig, error) {
 		var err error
 		wd, err = os.Getwd()
 		if err != nil {
-			return nil, fmt.Errorf("failed to get current working directory: %v", err)
+			return nil, fmt.Errorf("failed to get current working directory: %w", err)
 		}
 	}
 	folderName := filepath.Base(wd)
@@ -252,7 +252,7 @@ func FindWorkspaceConfig(targetSCN string) (string, error) {
 	targetName := fmt.Sprintf("%s_ff.yaml", targetSCN)
 	startDir, err := os.Getwd()
 	if err != nil {
-		return "", fmt.Errorf("failed to get current directory: %v", err)
+		return "", fmt.Errorf("failed to get current directory: %w", err)
 	}
 	currentDir := startDir
 	for {
@@ -287,17 +287,17 @@ func FindAnyConfig(startDir string) (string, error) {
 func loadConfigFromPath(path string) (*LoadedConfig, error) {
 	absPath, err := filepath.Abs(path)
 	if err != nil {
-		return nil, fmt.Errorf("failed to resolve config path: %v", err)
+		return nil, fmt.Errorf("failed to resolve config path: %w", err)
 	}
 	configDir := filepath.Dir(absPath)
 
 	data, err := os.ReadFile(path)
 	if err != nil {
-		return nil, fmt.Errorf("failed to read config: %v", err)
+		return nil, fmt.Errorf("failed to read config: %w", err)
 	}
 	var config Config
 	if err := yaml.Unmarshal(data, &config); err != nil {
-		return nil, fmt.Errorf("failed to parse YAML: %v", err)
+		return nil, fmt.Errorf("failed to parse YAML: %w", err)
 	}
 
 	if len(config.Pipelines) == 0 {
@@ -390,7 +390,7 @@ func BuildInitConfig(wd string) ([]byte, error) {
 
 	data, err := yaml.Marshal(cfg)
 	if err != nil {
-		return nil, fmt.Errorf("failed to marshal config: %v", err)
+		return nil, fmt.Errorf("failed to marshal config: %w", err)
 	}
 	yamlStr := string(data)
 	failureDecayLine := "failure_decay_seconds:"
@@ -465,11 +465,11 @@ func InitConfig(wd string) (string, error) {
 
 	data, err := BuildInitConfig(wd)
 	if err != nil {
-		return "", fmt.Errorf("error building config: %v", err)
+		return "", fmt.Errorf("error building config: %w", err)
 	}
 
 	if err := os.WriteFile(targetPath, data, 0644); err != nil {
-		return "", fmt.Errorf("error writing config: %v", err)
+		return "", fmt.Errorf("error writing config: %w", err)
 	}
 
 	return target, nil

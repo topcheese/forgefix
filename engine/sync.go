@@ -94,6 +94,18 @@ func EnqueueSyncOp(configDir string, op SyncOperation) error {
 		return nil
 	}
 	ops, _ := LoadSyncQueue(configDir)
+
+	// Skip if an identical pending operation (same type, specID, issue number, test name) already exists
+	for _, existing := range ops {
+		if existing.Type == op.Type &&
+			existing.SpecID == op.SpecID &&
+			existing.IssueNum == op.IssueNum &&
+			existing.TestName == op.TestName &&
+			existing.RetryCount == 0 {
+			return nil
+		}
+	}
+
 	op.ID = fmt.Sprintf("%d-%s", time.Now().UnixNano(), op.Type)
 	op.Timestamp = time.Now()
 	op.RetryCount = 0
@@ -420,12 +432,12 @@ func processSyncQueue(coord *IssueCoordinator, configDir string, ledger *LedgerE
 		}
 
 		if opErr != nil {
-			lastErr = opErr
 			if errors.Is(opErr, ErrResourceNotFound) {
 				// Issue no longer exists on remote — drop operation immediately
 				fmt.Fprintf(os.Stderr, "warning: %s for issue #%d returned 404, dropping from sync queue\n", op.Type, op.IssueNum)
 				continue
 			}
+			lastErr = opErr
 			op.RetryCount++
 			if op.RetryCount < 3 {
 				remaining = append(remaining, op)

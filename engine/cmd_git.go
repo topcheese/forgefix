@@ -1,6 +1,7 @@
 package engine
 
 import (
+	"errors"
 	"fmt"
 	"os"
 	"os/exec"
@@ -54,7 +55,8 @@ func (d *CommandDispatcher) handleGitPassthrough(cmd string, args []string) (Com
 	err := c.Run()
 	exitCode := 0
 	if err != nil {
-		if exitErr, ok := err.(*exec.ExitError); ok {
+		var exitErr *exec.ExitError
+		if errors.As(err, &exitErr) {
 			exitCode = exitErr.ExitCode()
 		} else {
 			fmt.Fprintf(d.Stderr, "git passthrough error: %v\n", err)

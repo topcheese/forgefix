@@ -34,7 +34,7 @@ func (p *Parser) ParseLine(line string) (GenericTestEvent, error) {
 
 	var raw map[string]interface{}
 	if err := json.Unmarshal([]byte(line), &raw); err != nil {
-		return GenericTestEvent{}, fmt.Errorf("json parse error: %v", err)
+		return GenericTestEvent{}, fmt.Errorf("json parse error: %w", err)
 	}
 
 	if action, ok := raw["Action"].(string); ok && action == "output" {
@@ -231,7 +231,7 @@ func CompileTokenPatterns(patterns TokenPatterns) (map[string]*regexp.Regexp, er
 	if patterns.TokenRun != "" {
 		re, err := regexp.Compile(patterns.TokenRun)
 		if err != nil {
-			return nil, fmt.Errorf("invalid token_run pattern: %v", err)
+			return nil, fmt.Errorf("invalid token_run pattern: %w", err)
 		}
 		compiled["run"] = re
 	}
@@ -239,7 +239,7 @@ func CompileTokenPatterns(patterns TokenPatterns) (map[string]*regexp.Regexp, er
 	if patterns.TokenPass != "" {
 		re, err := regexp.Compile(patterns.TokenPass)
 		if err != nil {
-			return nil, fmt.Errorf("invalid token_pass pattern: %v", err)
+			return nil, fmt.Errorf("invalid token_pass pattern: %w", err)
 		}
 		compiled["pass"] = re
 	}
@@ -247,7 +247,7 @@ func CompileTokenPatterns(patterns TokenPatterns) (map[string]*regexp.Regexp, er
 	if patterns.TokenFail != "" {
 		re, err := regexp.Compile(patterns.TokenFail)
 		if err != nil {
-			return nil, fmt.Errorf("invalid token_fail pattern: %v", err)
+			return nil, fmt.Errorf("invalid token_fail pattern: %w", err)
 		}
 		compiled["fail"] = re
 	}

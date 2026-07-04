@@ -3,6 +3,7 @@ package engine
 import (
 	"bytes"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"os/exec"
@@ -46,7 +47,7 @@ func (r *Runner) SetWorkDir(dir string) {
 func (r *Runner) Start() error {
 	cmdStr, err := ExecuteCommand(r.config.Command, r.config.Command.Paths)
 	if err != nil {
-		return fmt.Errorf("failed to execute command: %v", err)
+		return fmt.Errorf("failed to execute command: %w", err)
 	}
 
 	cmd := exec.Command("bash", "-c", cmdStr)
@@ -58,21 +59,21 @@ func (r *Runner) Start() error {
 
 	stdoutPipe, err := cmd.StdoutPipe()
 	if err != nil {
-		return fmt.Errorf("failed to create stdout pipe: %v", err)
+		return fmt.Errorf("failed to create stdout pipe: %w", err)
 	}
 	stderrPipe, err := cmd.StderrPipe()
 	if err != nil {
-		return fmt.Errorf("failed to create stderr pipe: %v", err)
+		return fmt.Errorf("failed to create stderr pipe: %w", err)
 	}
 
 	if err := cmd.Start(); err != nil {
-		return fmt.Errorf("failed to start command: %v", err)
+		return fmt.Errorf("failed to start command: %w", err)
 	}
 
-	go r.streamStdout(stdoutPipe)
-	go r.streamStderr(stderrPipe)
-	go r.waitForExit(cmd)
-	go r.monitorTestTimeouts(cmd)
+	go func() { defer func() { recover() }(); r.streamStdout(stdoutPipe) }()
+	go func() { defer func() { recover() }(); r.streamStderr(stderrPipe) }()
+	go func() { defer func() { recover() }(); r.waitForExit(cmd) }()
+	go func() { defer func() { recover() }(); r.monitorTestTimeouts(cmd) }()
 
 	return nil
 }
@@ -168,7 +169,8 @@ func (r *Runner) streamStderr(reader io.Reader) {
 
 func (r *Runner) waitForExit(cmd *exec.Cmd) {
 	if err := cmd.Wait(); err != nil {
-		if exitErr, ok := err.(*exec.ExitError); ok {
+		var exitErr *exec.ExitError
+		if errors.As(err, &exitErr) {
 			r.dashboard.AddErrorCode(exitErr.ExitCode())
 			r.ExitChan <- exitErr.ExitCode()
 		} else {
@@ -225,6 +227,7 @@ func (s *Subprocess) Start() {
 	s.cmd.Stdout = &s.stdout
 	s.cmd.Stderr = &s.stderr
 	go func() {
+		defer func() { recover() }()
 		if err := s.cmd.Run(); err != nil {
 			s.exitCode <- s.cmd.ProcessState.ExitCode()
 		} else {

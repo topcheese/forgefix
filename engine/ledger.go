@@ -29,7 +29,7 @@ func LoadLedger(configDir string) (*LedgerEngine, error) {
 	_, err := os.Stat(path)
 	if err == nil {
 		if err := ledger.LoadFromFile(path); err != nil {
-			return nil, fmt.Errorf("ledger corruption detected: %v", err)
+			return nil, fmt.Errorf("ledger corruption detected: %w", err)
 		}
 	}
 	if len(ledger.specMappings) == 0 {

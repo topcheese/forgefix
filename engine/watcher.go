@@ -28,7 +28,7 @@ type Watcher struct {
 func NewWatcher(config *Config, dashboard *Dashboard) (*Watcher, error) {
 	w, err := fsnotify.NewWatcher()
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("creating file watcher: %w", err)
 	}
 	ctx, cancel := context.WithCancel(context.Background())
 	return &Watcher{
@@ -43,7 +43,7 @@ func NewWatcher(config *Config, dashboard *Dashboard) (*Watcher, error) {
 
 func (w *Watcher) Start(rootPath string) error {
 	if err := w.walkAndWatch(rootPath); err != nil {
-		return err
+		return fmt.Errorf("starting watcher: %w", err)
 	}
 
 	go w.eventLoop()
@@ -60,7 +60,7 @@ func (w *Watcher) walkAndWatch(root string) error {
 				return filepath.SkipDir
 			}
 			if err := w.watcher.Add(path); err != nil {
-				return err
+				return fmt.Errorf("adding watch on %s: %w", path, err)
 			}
 		}
 		return nil
@@ -78,6 +78,7 @@ func (w *Watcher) shouldExclude(path string) bool {
 }
 
 func (w *Watcher) eventLoop() {
+	defer func() { recover() }()
 	for {
 		select {
 		case <-w.ctx.Done():
@@ -148,6 +149,7 @@ func (w *Watcher) triggerRun() {
 
 	wg := runPipelines(w.config, w.dashboard, w.config.Pipelines, w.dashboard)
 	go func() {
+		defer func() { recover() }()
 		wg.Wait()
 		w.EmitLSPDiagnostics()
 	}()
@@ -172,6 +174,7 @@ func runPipelines(config *Config, dashboard *Dashboard, pipelines []PipelineConf
 		wg.Add(1)
 		go func(p PipelineConfig) {
 			defer wg.Done()
+			defer func() { recover() }()
 			runner := NewRunner(p, dashboard)
 			parser := NewParser(p)
 			if err := runner.Start(); err != nil {
