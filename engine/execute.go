@@ -1,6 +1,7 @@
 package engine
 
 import (
+	"bufio"
 	"context"
 	"encoding/json"
 	"fmt"
@@ -9,6 +10,7 @@ import (
 	"os/signal"
 	"path/filepath"
 	"regexp"
+	"strconv"
 	"strings"
 	"sync"
 	"syscall"
@@ -560,6 +562,98 @@ func LoadSpecByID(configDir, specID string) (*SpecFile, error) {
 	return nil, fmt.Errorf("spec %s not found", specID)
 }
 
+// ============================================================================
+// PROJECT VERSION MANAGEMENT
+// ============================================================================
+
+func projectVersionPath(configDir string) string {
+	return filepath.Join(FFDir(configDir), "version")
+}
+
+func readProjectVersion(configDir string) string {
+	path := projectVersionPath(configDir)
+	data, err := os.ReadFile(path)
+	if err != nil {
+		return "0.0.0"
+	}
+	return strings.TrimSpace(string(data))
+}
+
+func writeProjectVersion(configDir, version string) error {
+	path := projectVersionPath(configDir)
+	return os.WriteFile(path, []byte(version+"\n"), 0644)
+}
+
+func incrementPatchVersion(version string) string {
+	parts := strings.Split(version, ".")
+	if len(parts) != 3 {
+		return "0.0.1"
+	}
+	patch, err := strconv.Atoi(parts[2])
+	if err != nil {
+		return "0.0.1"
+	}
+	parts[2] = strconv.Itoa(patch + 1)
+	return strings.Join(parts, ".")
+}
+
+func isValidSemver(version string) bool {
+	re := regexp.MustCompile(`^\d+\.\d+\.\d+`)
+	return re.MatchString(version)
+}
+
+func promptForVersion(current string) string {
+	defaultVersion := incrementPatchVersion(current)
+	reader := bufio.NewReader(os.Stdin)
+	fmt.Printf("Current project version: %s\n", current)
+	fmt.Printf("Release version for this ship [%s]: ", defaultVersion)
+	input, _ := reader.ReadString('\n')
+	input = strings.TrimSpace(input)
+	if input == "" {
+		input = defaultVersion
+	}
+	if !isValidSemver(input) {
+		fmt.Fprintf(os.Stderr, "Invalid semver format. Using default: %s\n", defaultVersion)
+		return defaultVersion
+	}
+	return input
+}
+
+func updateSpecFileVersion(filePath, version string) error {
+	data, err := os.ReadFile(filePath)
+	if err != nil {
+		return err
+	}
+	content := string(data)
+	lines := strings.Split(content, "\n")
+	inFrontmatter := false
+	found := false
+	for i, line := range lines {
+		trimmed := strings.TrimSpace(line)
+		if trimmed == "---" && !inFrontmatter {
+			inFrontmatter = true
+			continue
+		}
+		if trimmed == "---" && inFrontmatter {
+			break
+		}
+		if strings.HasPrefix(trimmed, "version:") {
+			lines[i] = fmt.Sprintf("version: \"%s\"", version)
+			found = true
+		}
+	}
+	if !found {
+		// Insert version before the closing ---
+		for i, line := range lines {
+			if strings.TrimSpace(line) == "---" && i > 0 {
+				lines = append(lines[:i], append([]string{fmt.Sprintf("version: \"%s\"", version)}, lines[i:]...)...)
+				break
+			}
+		}
+	}
+	return os.WriteFile(filePath, []byte(strings.Join(lines, "\n")), 0644)
+}
+
 func checkShipGateSpecStatuses(configDir string) (shipSpecs []string, err error) {
 	specDir := filepath.Join(configDir, "specs")
 	if _, statErr := os.Stat(specDir); os.IsNotExist(statErr) {
@@ -764,6 +858,25 @@ func ShipReconciliation(config *Config, configDir string, aiMode bool) {
 		}
 	} else {
 		fmt.Printf("Ship validation passed. %d spec(s) ready to ship.\n", len(shipSpecs))
+	}
+
+	// Prompt for release version before pushing
+	currentVersion := readProjectVersion(configDir)
+	shipVersion := promptForVersion(currentVersion)
+	if shipVersion != currentVersion {
+		if err := writeProjectVersion(configDir, shipVersion); err != nil {
+			fmt.Fprintf(os.Stderr, "Warning: failed to write project version: %v\n", err)
+		}
+	}
+
+	// Update version field on all shipped specs
+	for _, id := range shipSpecs {
+		spec, specErr := LoadSpecByID(configDir, id)
+		if specErr == nil && spec != nil {
+			if err := updateSpecFileVersion(spec.FilePath, shipVersion); err != nil {
+				fmt.Fprintf(os.Stderr, "Warning: failed to update version in spec %s: %v\n", id, err)
+			}
+		}
 	}
 
 	fmt.Println("Pushing to remote...")
