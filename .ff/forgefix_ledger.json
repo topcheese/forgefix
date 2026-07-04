@@ -10,5 +10,12 @@
       "last_update": "2026-07-04T00:27:17-07:00"
     }
   },
-  "spec_mappings": {}
+  "spec_mappings": {
+    "SPEC-1783150591": {
+      "spec_id": "SPEC-1783150591",
+      "repo_issue_id": 0,
+      "status": "draft",
+      "linked_commits": []
+    }
+  }
 }

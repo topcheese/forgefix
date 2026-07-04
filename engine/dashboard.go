@@ -474,6 +474,8 @@ func (d *Dashboard) GetTimeoutTests(pipelineID string, timeoutSecs int) []struct
 	if tracker == nil {
 		return nil
 	}
+	tracker.mu.RLock()
+	defer tracker.mu.RUnlock()
 	var timeoutTests []struct {
 		Name    string
 		Elapsed int
@@ -514,6 +516,7 @@ func (d *Dashboard) drainOrphanedTests() {
 		if tracker == nil {
 			continue
 		}
+		tracker.mu.Lock()
 		var orphanIDs []string
 		for id := range tracker.ActiveTests {
 			if !tracker.CompletedIDs[id] {
@@ -530,6 +533,7 @@ func (d *Dashboard) drainOrphanedTests() {
 			delete(tracker.ActiveTests, id)
 			sawOrphan = true
 		}
+		tracker.mu.Unlock()
 		if sawOrphan {
 			d.AddSystemError("⏹ Tests still running when bomb detonated")
 		}

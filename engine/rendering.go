@@ -111,6 +111,8 @@ func (d *Dashboard) renderTestList(pipeline PipelineConfig) string {
 	if tracker == nil {
 		return "\n\n"
 	}
+	tracker.mu.RLock()
+	defer tracker.mu.RUnlock()
 
 	var list strings.Builder
 
