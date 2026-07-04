@@ -1,11 +1,12 @@
 ---
 spec_id: "SPEC-1783126960"
 status: review
-repo_issue: 444
-version: "0.9.0"
+status: closed
+repo_issue: "444"
+version: "0.8.0"
 type: feature
-root_cause: ""
-resolution: ""
+root_cause: "os.Args[2:] slice bounds panic on zero-argument invocation; --version and --ai flags consumed as cmd and never forwarded to args; raw terminal mode disables ONLCR so \\n outputs as LF-only, causing progressive staircase cursor drift in TUI"
+resolution: "Fixed three regressions from command dispatcher refactoring: (1) guard os.Args[2:] with bounds check, (2) prepend flag-like cmd back to args in default dispatch, (3) convert \\n to \\r\\n in render() and renderFinal() output for raw terminal CRLF compatibility. Added preferLocalBinary tests, fixed macOS /var→/private/var symlink issue in test assertion."
 ---
 # ff git Passthrough for Unsupported Commands
 

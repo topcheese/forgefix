@@ -184,8 +184,11 @@ func TestPreferLocalBinaryFindsLocalFF(t *testing.T) {
 	}
 
 	src := preferLocalBinary()
-	if src != localPath {
-		t.Errorf("expected %q, got %q", localPath, src)
+	// Resolve symlinks (macOS /var → /private/var) for comparison
+	want, _ := filepath.EvalSymlinks(localPath)
+	got, _ := filepath.EvalSymlinks(src)
+	if got != want {
+		t.Errorf("expected %q (resolved: %q), got %q (resolved: %q)", localPath, want, src, got)
 	}
 }
 

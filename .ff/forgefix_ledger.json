@@ -7,7 +7,7 @@
       "total_passed": 339,
       "total_failed": 1,
       "historical_floor": 340,
-      "last_update": "2026-07-03T18:57:34-07:00"
+      "last_update": "2026-07-03T19:07:35-07:00"
     }
   },
   "spec_mappings": {
@@ -79,7 +79,8 @@
       "linked_commits": [
         "45c319b",
         "a80a176",
-        "9d2c70c"
+        "9d2c70c",
+        "167bae2"
       ]
     }
   }
