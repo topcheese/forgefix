@@ -39,7 +39,9 @@
       "spec_id": "SPEC-1783153739",
       "repo_issue_id": 456,
       "status": "in-progress",
-      "linked_commits": []
+      "linked_commits": [
+        "32400a9"
+      ]
     }
   }
 }
