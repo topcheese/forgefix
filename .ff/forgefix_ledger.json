@@ -20,8 +20,10 @@
     "SPEC-1783151970": {
       "spec_id": "SPEC-1783151970",
       "repo_issue_id": 0,
-      "status": "draft",
-      "linked_commits": []
+      "status": "in-progress",
+      "linked_commits": [
+        "3c09245"
+      ]
     }
   }
 }

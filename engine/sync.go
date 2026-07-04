@@ -523,6 +523,10 @@ func syncSingleSpec(coord *IssueCoordinator, configDir, specID string, cfg *Conf
 		if entry.IsDir() || !strings.HasSuffix(entry.Name(), ".md") {
 			continue
 		}
+		// Skip archive files — they are aggregated spec dumps, not individual specs
+		if strings.HasPrefix(entry.Name(), "archive_") {
+			continue
+		}
 
 		filePath := filepath.Join(specDir, entry.Name())
 		spec, err := parseSpecFile(filePath)
@@ -538,6 +542,14 @@ func syncSingleSpec(coord *IssueCoordinator, configDir, specID string, cfg *Conf
 			title := spec.Title
 			if !IsValidIssueTitle(title) {
 				title = fmt.Sprintf("feat/spec: %s", title)
+			}
+			if len(title) > maxTitleLength {
+				// Truncate and append ellipsis, preserving the prefix
+				cutAt := maxTitleLength - 3
+				if cutAt < 10 {
+					cutAt = 10
+				}
+				title = title[:cutAt] + "..."
 			}
 			issue, err := coord.CreateIssueWithBody(title, spec.Body)
 			if err != nil {

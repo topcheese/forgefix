@@ -25,6 +25,8 @@ Eliminate the data race between the render loop and test parser that causes fata
 - `engine/testtracker.go` ResetTrackers: collect tracker pointers under s.mu, then lock each tracker.mu individually during reset.
 - `engine/testtracker.go` GetMetrics: release s.mu after getting tracker pointer, then acquire tracker.mu.RLock() before iterating maps.
 - `engine/dashboard_facade.go`: Add dedicated TimeoutFired field; fix GetTimeoutFired() and SetTimeoutFired() to use it instead of TestCommandCompleted.
+- `engine/sync.go` syncSingleSpec: Skip archive files (names starting with `archive_`) when scanning the specs directory.
+- `engine/sync.go` syncSingleSpec: Truncate issue titles that exceed `maxTitleLength` after prefixing with `feat/spec:`.
 
 ## Acceptance Criteria
 - [ ] No concurrent map iteration/write panics during `ff` test runs.
