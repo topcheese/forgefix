@@ -11,85 +11,11 @@
     }
   },
   "spec_mappings": {
-    "SPEC-1781317039": {
-      "spec_id": "SPEC-1781317039",
-      "repo_issue_id": 162,
-      "status": "closed",
+    "SPEC-1783149066": {
+      "spec_id": "SPEC-1783149066",
+      "repo_issue_id": 0,
+      "status": "draft",
       "linked_commits": []
-    },
-    "SPEC-1781317040": {
-      "spec_id": "SPEC-1781317040",
-      "repo_issue_id": 447,
-      "status": "closed",
-      "linked_commits": []
-    },
-    "SPEC-1781317041": {
-      "spec_id": "SPEC-1781317041",
-      "repo_issue_id": 155,
-      "status": "closed",
-      "linked_commits": []
-    },
-    "SPEC-1781317045": {
-      "spec_id": "SPEC-1781317045",
-      "repo_issue_id": 446,
-      "status": "closed",
-      "linked_commits": []
-    },
-    "SPEC-1783004952": {
-      "spec_id": "SPEC-1783004952",
-      "repo_issue_id": 433,
-      "status": "closed",
-      "linked_commits": []
-    },
-    "SPEC-1783045153": {
-      "spec_id": "SPEC-1783045153",
-      "repo_issue_id": 438,
-      "status": "closed",
-      "linked_commits": []
-    },
-    "SPEC-1783079687": {
-      "spec_id": "SPEC-1783079687",
-      "repo_issue_id": 440,
-      "status": "closed",
-      "linked_commits": []
-    },
-    "SPEC-1783113194": {
-      "spec_id": "SPEC-1783113194",
-      "repo_issue_id": 439,
-      "status": "closed",
-      "linked_commits": [
-        "0efd524"
-      ]
-    },
-    "SPEC-1783113220": {
-      "spec_id": "SPEC-1783113220",
-      "repo_issue_id": 441,
-      "status": "closed",
-      "linked_commits": []
-    },
-    "SPEC-1783115551": {
-      "spec_id": "SPEC-1783115551",
-      "repo_issue_id": 443,
-      "status": "closed",
-      "linked_commits": []
-    },
-    "SPEC-1783118155": {
-      "spec_id": "SPEC-1783118155",
-      "repo_issue_id": 449,
-      "status": "closed",
-      "linked_commits": []
-    },
-    "SPEC-1783126960": {
-      "spec_id": "SPEC-1783126960",
-      "repo_issue_id": 444,
-      "status": "closed",
-      "linked_commits": [
-        "45c319b",
-        "a80a176",
-        "9d2c70c",
-        "167bae2",
-        "053a587"
-      ]
     }
   }
 }

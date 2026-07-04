@@ -49,6 +49,48 @@ func ArchiveResolvedSpecs(configDir string) (string, int, error) {
 		}
 	}
 
+	ledger, err := LoadLedger(configDir)
+	if err != nil {
+		return "", 0, fmt.Errorf("loading ledger: %w", err)
+	}
+
+	// Also find resolved/closed specs in the ledger whose files are missing
+	seenIDs := make(map[string]bool, len(resolved))
+	for _, spec := range resolved {
+		seenIDs[spec.specID] = true
+	}
+
+	for specID, entry := range ledger.GetAllSpecEntries() {
+		if entry.Status != "resolved" && entry.Status != "closed" {
+			continue
+		}
+		if seenIDs[specID] {
+			continue
+		}
+		// File is missing; reconstruct minimal archive entry from ledger data
+		var sb strings.Builder
+		sb.WriteString("---\n")
+		sb.WriteString(fmt.Sprintf("spec_id: \"%s\"\n", entry.SpecID))
+		sb.WriteString(fmt.Sprintf("status: %s\n", entry.Status))
+		if entry.RepoIssueID > 0 {
+			sb.WriteString(fmt.Sprintf("repo_issue: %d\n", entry.RepoIssueID))
+		}
+		if entry.Type != "" {
+			sb.WriteString(fmt.Sprintf("type: %s\n", entry.Type))
+		}
+		if len(entry.LinkedCommits) > 0 {
+			sb.WriteString(fmt.Sprintf("linked_commits: %s\n", strings.Join(entry.LinkedCommits, ", ")))
+		}
+		sb.WriteString("---\n")
+		sb.WriteString(fmt.Sprintf("# %s\n\n", entry.SpecID))
+		sb.WriteString("*Spec file was missing at time of archive. Content reconstructed from ledger.*\n")
+		resolved = append(resolved, archivedSpec{
+			content:  sb.String(),
+			specID:   entry.SpecID,
+			filename: "",
+		})
+	}
+
 	if len(resolved) == 0 {
 		return "", 0, nil
 	}
@@ -73,22 +115,15 @@ func ArchiveResolvedSpecs(configDir string) (string, int, error) {
 		return "", 0, fmt.Errorf("writing archive file: %w", err)
 	}
 
-	ledger, err := LoadLedger(configDir)
-	if err != nil {
-		return "", 0, fmt.Errorf("loading ledger: %w", err)
-	}
-
 	for _, spec := range resolved {
-		filePath := filepath.Join(specDir, spec.filename)
-		if err := os.Remove(filePath); err != nil {
-			fmt.Fprintf(os.Stderr, "warning: failed to remove %s: %v\n", spec.filename, err)
+		if spec.filename != "" {
+			filePath := filepath.Join(specDir, spec.filename)
+			if err := os.Remove(filePath); err != nil {
+				fmt.Fprintf(os.Stderr, "warning: failed to remove %s: %v\n", spec.filename, err)
+			}
 		}
 		if spec.specID != "" {
-			existing := ledger.GetSpecEntry(spec.specID)
-			if existing != nil {
-				existing.Status = "closed"
-				ledger.SetSpecEntry(spec.specID, existing)
-			}
+			ledger.DeleteSpecEntry(spec.specID)
 		}
 	}
 

@@ -95,11 +95,11 @@ func TestArchiveResolvedSpecs_ArchivesClosedSpecs(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if entry := reloaded.GetSpecEntry("SPEC-100"); entry == nil || entry.Status != "closed" {
-		t.Error("SPEC-100 should remain in ledger with status closed after archiving")
+	if entry := reloaded.GetSpecEntry("SPEC-100"); entry != nil {
+		t.Error("SPEC-100 should have been removed from ledger after archiving")
 	}
-	if entry := reloaded.GetSpecEntry("SPEC-300"); entry == nil || entry.Status != "closed" {
-		t.Error("SPEC-300 should remain in ledger with status closed after archiving")
+	if entry := reloaded.GetSpecEntry("SPEC-300"); entry != nil {
+		t.Error("SPEC-300 should have been removed from ledger after archiving")
 	}
 	if entry := reloaded.GetSpecEntry("SPEC-200"); entry == nil || entry.Status != "ship" {
 		t.Error("SPEC-200 should remain in ledger with status ship (not archived)")
@@ -137,6 +137,67 @@ func TestArchiveResolvedSpecs_NoClosedSpecs(t *testing.T) {
 	}
 	if archiveName != "" {
 		t.Errorf("expected empty archive name, got %s", archiveName)
+	}
+}
+
+func TestArchiveResolvedSpecs_ArchivesOrphanedLedgerEntries(t *testing.T) {
+	configDir := t.TempDir()
+	specsDir := filepath.Join(configDir, "specs")
+	if err := os.MkdirAll(specsDir, 0755); err != nil {
+		t.Fatal(err)
+	}
+
+	// Only create one file on disk; leave the other as an orphaned ledger entry
+	writeArchiveSpecFile(t, specsDir, "SPEC-100", "closed")
+
+	ledger := NewLedgerEngine()
+	ledger.WorkflowConfig = DefaultWorkflowConfig()
+	ledger.SetSpecEntry("SPEC-100", &SpecEntry{SpecID: "SPEC-100", Status: "closed"})
+	ledger.SetSpecEntry("SPEC-200", &SpecEntry{
+		SpecID:        "SPEC-200",
+		Status:        "closed",
+		RepoIssueID:   42,
+		Type:          "bug",
+		LinkedCommits: []string{"abc123"},
+	})
+	if err := SaveLedger(ledger, configDir); err != nil {
+		t.Fatal(err)
+	}
+
+	archiveName, count, err := ArchiveResolvedSpecs(configDir)
+	if err != nil {
+		t.Fatalf("ArchiveResolvedSpecs failed: %v", err)
+	}
+
+	if count != 2 {
+		t.Fatalf("expected 2 archived specs (1 file + 1 orphaned ledger), got %d", count)
+	}
+
+	archivePath := filepath.Join(specsDir, archiveName)
+	data, err := os.ReadFile(archivePath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	content := string(data)
+	if !strings.Contains(content, "SPEC-100") {
+		t.Error("archive should contain SPEC-100 from file")
+	}
+	if !strings.Contains(content, "SPEC-200") {
+		t.Error("archive should contain orphaned SPEC-200 from ledger")
+	}
+	if !strings.Contains(content, "Spec file was missing at time of archive") {
+		t.Error("archive should note that SPEC-200 was reconstructed from ledger")
+	}
+
+	reloaded, err := LoadLedger(configDir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if entry := reloaded.GetSpecEntry("SPEC-100"); entry != nil {
+		t.Error("SPEC-100 should have been removed from ledger after archiving")
+	}
+	if entry := reloaded.GetSpecEntry("SPEC-200"); entry != nil {
+		t.Error("SPEC-200 should have been removed from ledger after archiving")
 	}
 }
 
