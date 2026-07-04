@@ -849,19 +849,27 @@ func (c *IssueCoordinator) PostResolutionComment(issueNumber int, spec *SpecFile
 // specFileWebURL converts an API base URL and local spec file path into a
 // web URL for the file on the remote (GitHub/Gitea). It handles both
 // GitHub (api.github.com) and Gitea (/api/v1) URL patterns.
+// Returns empty string if the file doesn't exist locally (e.g., archived).
 func specFileWebURL(apiBase, owner, repo, filePath string) string {
 	if apiBase == "" || filePath == "" {
+		return ""
+	}
+
+	// If the spec file no longer exists locally (e.g., it was archived),
+	// return empty so callers can fall back to just the spec ID text
+	if _, err := os.Stat(filePath); os.IsNotExist(err) {
 		return ""
 	}
 
 	apiBase = strings.TrimRight(apiBase, "/")
 	webRoot := apiBase
 
-	// Extract the filename from the local path
+	// Extract the filename from the local path and URL-encode it
 	filename := filePath
 	if idx := strings.LastIndexByte(filename, '/'); idx >= 0 {
 		filename = filename[idx+1:]
 	}
+	filename = url.PathEscape(filename)
 
 	if strings.Contains(webRoot, "api.github.com") {
 		return fmt.Sprintf("https://github.com/%s/%s/blob/main/specs/%s", owner, repo, filename)
