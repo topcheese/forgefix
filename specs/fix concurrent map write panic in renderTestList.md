@@ -1,10 +1,10 @@
 ---
 spec_id: "SPEC-1783150591"
-status: in-progress
+status: ship
 repo_issue: 452
 type: bug
 root_cause: "Two independent bugs: (1) TestTracker.mu was defined but never used; UpdateMetrics locked TestTrackerService.mu while renderTestList locked nothing, causing concurrent map iteration/write panics. (2) DashboardFacade.GetTimeoutFired() returned f.TestCommandCompleted with a comment 'repurposed' — so whenever tests completed (TestCommandCompleted=true), GetTimeoutFired() also returned true. This caused the TUI to render the timeout section alongside the success section, producing the contradictory 'BOMB DEFUSED + TIMEOUT' output."
-resolution: ""
+resolution: "Fixed concurrent map write panic by acquiring TestTracker locks (RLock for reads, Lock for writes) in renderTestList, GetTimeoutTests, drainOrphanedTests, UpdateMetrics, ResetTrackers, and GetMetrics. Fixed contradictory TUI output by adding dedicated TimeoutFired field to DashboardFacade. Added archive-file skip and title truncation in syncSingleSpec. See commits fb57910, 0c448d7, f5287a8, 2b4f5ca."
 ---
 # Fix Concurrent Map Write Panic In RenderTestList
 

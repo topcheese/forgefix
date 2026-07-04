@@ -1,7 +1,7 @@
 ---
-id: SPEC-1783159999
+spec_id: SPEC-1783159999
 type: fix
-status: in-progress
+status: ship
 version: "0.8.0"
 ---
 

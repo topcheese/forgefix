@@ -1,11 +1,11 @@
 ---
 spec_id: "SPEC-1783153739"
-status: in-progress
+status: ship
 repo_issue: 456
 type: bug
 version: "v0.8.0"
 root_cause: "`ff ship` had no concept of release versioning. It pushed code to remote but didn't record what version was shipped, and spec files retained their original version values. This made it impossible to track which specs shipped in which release, and the version labels on remote issues became stale."
-resolution: ""
+resolution: "Added release version prompt to ff ship with auto-incremented patch default. Ship now updates all shipped spec version fields and persists the new version to the ledger. Added readProjectVersion, writeProjectVersion, incrementPatchVersion, isValidSemver, promptForVersion, and updateSpecFileVersion. See commits c32ea57, 32400a9."
 ---
 # Add Mandatory Version Prompt To Ff Ship With Auto-Increment Default
 

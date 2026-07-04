@@ -1,10 +1,10 @@
 ---
 spec_id: "SPEC-1783153514"
-status: in-progress
+status: ship
 repo_issue: 455
 type: feature
 root_cause: "The spec template did not include a version field, so newly created specs had no version label applied during sync. Only the status label was being set. Users had to manually add the version field, and many specs were created without it, resulting in incomplete labeling on remote issues."
-resolution: ""
+resolution: "Added version field with current release (v0.8.0) as default to templates/spec_template.md, plus HTML comment block documenting available types and versions. New specs now include version automatically. See commit 5c4c377."
 ---
 # Make Version Mandatory In Spec Template With Current Version As Default
 
