@@ -35,6 +35,19 @@ func (d *CommandDispatcher) handleSync(args []string) (CommandResult, error) {
 		fmt.Fprintf(d.Stdout, "Configuring Git NAS Gateway -> %s\n", loaded.Config.GitHub.BaseURL)
 	}
 
+	if err := Bootstrap(loaded.ConfigDir); err != nil {
+		fmt.Fprintf(d.Stderr, "warning: binary bootstrap failed: %v\n", err)
+	}
+	binDir, installWarning, installErr := InstallGlobal()
+	if installErr != nil {
+		fmt.Fprintf(d.Stderr, "warning: global binary update failed: %v\n", installErr)
+	} else {
+		fmt.Fprintf(d.Stdout, "Updated ff binary globally to %s\n", binDir)
+		if installWarning != "" {
+			fmt.Fprintln(d.Stderr, installWarning)
+		}
+	}
+
 	if err := RunBackgroundSync(loaded.ConfigDir, specID); err != nil {
 		fmt.Fprintf(d.Stderr, "sync failed: %v\n", err)
 		return CommandResult{ExitCode: 1}, nil
