@@ -581,7 +581,7 @@ func checkShipGateSpecStatuses(configDir string) (shipSpecs []string, err error)
 			continue
 		}
 		switch spec.Status {
-		case "backlog", "in-progress", "review":
+		case "in-progress", "review":
 			blocking = append(blocking, fmt.Sprintf("  %s (%s)", spec.SpecID, spec.Status))
 		case "ship":
 			shipSpecs = append(shipSpecs, spec.SpecID)

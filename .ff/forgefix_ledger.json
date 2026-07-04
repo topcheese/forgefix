@@ -91,6 +91,12 @@
         "167bae2",
         "053a587"
       ]
+    },
+    "SPEC-1783138695": {
+      "spec_id": "SPEC-1783138695",
+      "repo_issue_id": 0,
+      "status": "draft",
+      "linked_commits": []
     }
   }
 }

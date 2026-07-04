@@ -48,22 +48,19 @@ func TestCheckShipGateSpecStatuses_AllShip(t *testing.T) {
 	}
 }
 
-func TestCheckShipGateSpecStatuses_BacklogBlocks(t *testing.T) {
+func TestCheckShipGateSpecStatuses_BacklogPasses(t *testing.T) {
 	configDir := setupSpecsDir(t, map[string]string{
 		"SPEC-100": "ship",
 		"SPEC-200": "backlog",
 		"SPEC-300": "ship",
 	})
 
-	_, err := checkShipGateSpecStatuses(configDir)
-	if err == nil {
-		t.Fatal("expected error for backlog spec, got nil")
+	shipSpecs, err := checkShipGateSpecStatuses(configDir)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
 	}
-	if !strings.Contains(err.Error(), "SPEC-200") {
-		t.Errorf("error should mention SPEC-200, got: %v", err)
-	}
-	if !strings.Contains(err.Error(), "backlog") {
-		t.Errorf("error should mention 'backlog', got: %v", err)
+	if len(shipSpecs) != 2 {
+		t.Fatalf("expected 2 ship specs (backlog should not block), got %d", len(shipSpecs))
 	}
 }
 
@@ -128,16 +125,15 @@ func TestCheckShipGateSpecStatuses_DraftPasses(t *testing.T) {
 
 func TestCheckShipGateSpecStatuses_MultipleBlocking(t *testing.T) {
 	configDir := setupSpecsDir(t, map[string]string{
-		"SPEC-100": "backlog",
-		"SPEC-200": "in-progress",
-		"SPEC-300": "review",
+		"SPEC-100": "in-progress",
+		"SPEC-200": "review",
 	})
 
 	_, err := checkShipGateSpecStatuses(configDir)
 	if err == nil {
 		t.Fatal("expected error for blocking only, got nil")
 	}
-	for _, id := range []string{"SPEC-100", "SPEC-200", "SPEC-300"} {
+	for _, id := range []string{"SPEC-100", "SPEC-200"} {
 		if !strings.Contains(err.Error(), id) {
 			t.Errorf("error should mention %s, got: %v", id, err)
 		}
