@@ -1,6 +1,6 @@
 ---
 spec_id: "SPEC-1781317041"
-status: "backlog"
+status: "closed"
 type: "type/feature"
 version: "version/v0.9.0"
 repo_issue: 155
