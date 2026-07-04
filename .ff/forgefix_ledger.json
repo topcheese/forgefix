@@ -10,20 +10,5 @@
       "last_update": "2026-07-04T00:27:17-07:00"
     }
   },
-  "spec_mappings": {
-    "SPEC-1783149066": {
-      "spec_id": "SPEC-1783149066",
-      "repo_issue_id": 0,
-      "status": "in-progress",
-      "linked_commits": [
-        "08db073"
-      ]
-    },
-    "SPEC-1783149788": {
-      "spec_id": "SPEC-1783149788",
-      "repo_issue_id": 0,
-      "status": "draft",
-      "linked_commits": []
-    }
-  }
+  "spec_mappings": {}
 }
