@@ -40,7 +40,7 @@ func (d *CommandDispatcher) Execute(cmd string, args []string) (CommandResult, e
 	switch cmd {
 	case "help", "--help":
 		return d.handleHelp(), nil
-	case "version", "-v":
+	case "version", "-v", "--version":
 		return d.handleVersion(), nil
 	case "archive":
 		return d.handleArchive(args)

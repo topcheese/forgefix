@@ -49,7 +49,7 @@ func main() {
 		cmd = strings.ToLower(os.Args[1])
 	}
 
-	skipConfigCheck := cmd == "help" || cmd == "--help" || cmd == "version" || cmd == "-v" || cmd == "sync" || cmd == "ship" || cmd == "archive" || cmd == "specs" || engine.GitPassthroughCommands[cmd]
+	skipConfigCheck := cmd == "help" || cmd == "--help" || cmd == "version" || cmd == "-v" || cmd == "--version" || cmd == "sync" || cmd == "ship" || cmd == "archive" || cmd == "specs" || engine.GitPassthroughCommands[cmd]
 
 	if !skipConfigCheck {
 		if _, found := findConfigFile(wd); !found {
@@ -58,23 +58,36 @@ func main() {
 		}
 	}
 
-	if cmd != "version" && cmd != "help" && cmd != "--help" && cmd != "" {
+	if cmd != "version" && cmd != "-v" && cmd != "--version" && cmd != "help" && cmd != "--help" && cmd != "" {
 		fmt.Fprintf(os.Stderr, "ForgeFix %s\n", engine.Version)
 	}
 
 	disp := engine.NewCommandDispatcher(projectRoot, wd, os.Stdout, os.Stderr)
 
 	switch cmd {
-	case "version", "-v", "help", "--help", "spec", "specs", "archive", "commit", "sync", "ship", "--install-shortcut":
-		result, err := disp.Execute(cmd, os.Args[2:])
+	case "version", "-v", "--version", "help", "--help", "spec", "specs", "archive", "commit", "sync", "ship", "--install-shortcut":
+		var specArgs []string
+		if len(os.Args) > 2 {
+			specArgs = os.Args[2:]
+		}
+		result, err := disp.Execute(cmd, specArgs)
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "internal error: %v\n", err)
 			os.Exit(1)
 		}
 		os.Exit(result.ExitCode)
 	default:
-		// Unknown command — try git passthrough or run test suite
-		result, err := disp.Execute(cmd, os.Args[2:])
+		// For unrecognized commands, pass cmd and remaining args to dispatcher.
+		// If cmd looks like a flag (e.g. --ai, -r), prepend it to args so the
+		// flag is not lost — the dispatcher's handleRun will parse it correctly.
+		var args []string
+		if len(os.Args) > 2 {
+			args = os.Args[2:]
+		}
+		if strings.HasPrefix(cmd, "-") {
+			args = append([]string{cmd}, args...)
+		}
+		result, err := disp.Execute(cmd, args)
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "internal error: %v\n", err)
 			os.Exit(1)
