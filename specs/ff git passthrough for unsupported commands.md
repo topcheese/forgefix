@@ -1,6 +1,6 @@
 ---
 spec_id: "SPEC-1783126960"
-status: in-progress
+status: review
 repo_issue: ""
 version: "0.9.0"
 type: feature
@@ -149,16 +149,16 @@ case "git":
 
 ## Acceptance Criteria
 
-1. [ ] `ff log --oneline -5` outputs `git log --oneline -5`
-2. [ ] `ff status` outputs `git status` (short format)
-3. [ ] `ff branch` lists branches
-4. [ ] `ff git log` works as alias for `ff log`
-5. [ ] `ff commit` (a normal git commit) still works as a ForgeFix subcommand (not proxied)
-6. [ ] `ff diff --cached` shows staged diff
-7. [ ] Passthrough preserves exit codes (`ff log -999` → non-zero)
-8. [ ] Setting `git_passthrough: false` in config restores old behavior (unknown commands → test runner)
-9. [ ] `go build ./...` compiles without errors
-10. [ ] `go test ./...` passes without regressions
+1. [x] `ff log --oneline -5` outputs `git log --oneline -5`
+2. [x] `ff status` outputs `git status` (short format)
+3. [x] `ff branch` lists branches
+4. [x] `ff git log` works as alias for `ff log`
+5. [x] `ff commit` (a normal git commit) still works as a ForgeFix subcommand (not proxied)
+6. [x] `ff diff --cached` shows staged diff
+7. [x] Passthrough preserves exit codes (`ff log -999` → non-zero)
+8. [x] Setting `git_passthrough: false` in config restores old behavior (unknown commands → test runner)
+9. [x] `go build ./...` compiles without errors
+10. [x] `go test ./...` passes without regressions
 
 ## Verification
 
