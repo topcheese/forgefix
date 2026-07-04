@@ -1,7 +1,7 @@
 ---
 spec_id: "SPEC-1783152969"
 status: in-progress
-repo_issue: ""
+repo_issue: 454
 type: bug
 root_cause: "`performReconciliation` in `issue_coordinator.go` identified orphaned remote issues (issues with no matching local spec) but only printed a report. It never closed them. This left stale open issues on the remote tracker that accumulated over time — e.g., 7 open issues on the remote but only 2 active local specs. Additionally, the reconciliation ran BEFORE the main sync loop, so issues that were about to be bound by title matching were incorrectly identified as orphans and would have been closed prematurely."
 resolution: ""
