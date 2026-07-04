@@ -104,9 +104,15 @@ func InstallGlobal() (binDir string, warning string, err error) {
 		return "", "", err
 	}
 
-	src, err := os.Executable()
-	if err != nil {
-		return "", "", fmt.Errorf("cannot determine executable path: %w", err)
+	// Prefer a local ./ff in the current directory over the running binary.
+	// This ensures `ff --install` (from PATH) finds and installs the latest
+	// local build rather than being a no-op (copying the global binary to itself).
+	src := preferLocalBinary()
+	if src == "" {
+		src, err = os.Executable()
+		if err != nil {
+			return "", "", fmt.Errorf("cannot determine executable path: %w", err)
+		}
 	}
 
 	if err := copyBinary(src, binDir); err != nil {
@@ -124,6 +130,29 @@ func InstallGlobal() (binDir string, warning string, err error) {
 	}
 
 	return binDir, warning, nil
+}
+
+// preferLocalBinary checks for ./ff in the current working directory.
+// Returns the path if it exists and looks like a binary, empty string otherwise.
+func preferLocalBinary() string {
+	wd, err := os.Getwd()
+	if err != nil {
+		return ""
+	}
+	localPath := filepath.Join(wd, "ff")
+	if fi, err := os.Stat(localPath); err == nil && !fi.IsDir() && fi.Mode().IsRegular() {
+		// Make sure it's not the same as the running binary
+		running, err := os.Executable()
+		if err == nil {
+			runningAbs, _ := filepath.Abs(running)
+			localAbs, _ := filepath.Abs(localPath)
+			if runningAbs == localAbs {
+				return "" // same file, no benefit
+			}
+		}
+		return localPath
+	}
+	return ""
 }
 
 func DetectShellProfile() string {

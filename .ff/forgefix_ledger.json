@@ -7,7 +7,7 @@
       "total_passed": 336,
       "total_failed": 0,
       "historical_floor": 336,
-      "last_update": "2026-07-03T18:11:11-07:00"
+      "last_update": "2026-07-03T18:35:59-07:00"
     }
   },
   "spec_mappings": {
@@ -15,7 +15,10 @@
       "spec_id": "SPEC-1781317045",
       "repo_issue_id": 0,
       "status": "ship",
-      "linked_commits": ["d5305530", "22162cf"]
+      "linked_commits": [
+        "d5305530",
+        "22162cf"
+      ]
     },
     "SPEC-1783004952": {
       "spec_id": "SPEC-1783004952",
@@ -39,7 +42,9 @@
       "spec_id": "SPEC-1783113194",
       "repo_issue_id": 439,
       "status": "closed",
-      "linked_commits": ["0efd524"]
+      "linked_commits": [
+        "0efd524"
+      ]
     },
     "SPEC-1783113220": {
       "spec_id": "SPEC-1783113220",
@@ -69,9 +74,9 @@
     },
     "SPEC-1783126960": {
       "spec_id": "SPEC-1783126960",
-      "repo_issue_id": 0,
+      "repo_issue_id": 444,
       "status": "review",
-      "linked_commits": ["8f5c90a"]
+      "linked_commits": []
     }
   }
 }

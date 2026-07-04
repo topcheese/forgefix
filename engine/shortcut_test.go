@@ -170,3 +170,83 @@ func TestDetectShellProfileDefaultToBash(t *testing.T) {
 		t.Errorf("expected .bashrc fallback for unknown shell, got %s", profile)
 	}
 }
+
+func TestPreferLocalBinaryFindsLocalFF(t *testing.T) {
+	tmpDir := t.TempDir()
+	oldWd, _ := os.Getwd()
+	defer os.Chdir(oldWd)
+	os.Chdir(tmpDir)
+
+	// Create a local ./ff
+	localPath := filepath.Join(tmpDir, "ff")
+	if err := os.WriteFile(localPath, []byte("local binary content"), 0755); err != nil {
+		t.Fatal(err)
+	}
+
+	src := preferLocalBinary()
+	if src != localPath {
+		t.Errorf("expected %q, got %q", localPath, src)
+	}
+}
+
+func TestPreferLocalBinaryReturnsEmptyWhenNoLocalFF(t *testing.T) {
+	tmpDir := t.TempDir()
+	oldWd, _ := os.Getwd()
+	defer os.Chdir(oldWd)
+	os.Chdir(tmpDir)
+
+	src := preferLocalBinary()
+	if src != "" {
+		t.Errorf("expected empty string when no local ff, got %q", src)
+	}
+}
+
+func TestPreferLocalBinaryReturnsEmptyWhenSameAsRunning(t *testing.T) {
+	running, err := os.Executable()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	runningDir := filepath.Dir(running)
+	oldWd, _ := os.Getwd()
+	defer os.Chdir(oldWd)
+	os.Chdir(runningDir)
+
+	// preferLocalBinary should return empty because the running binary IS the local ff
+	src := preferLocalBinary()
+	if src != "" {
+		t.Errorf("expected empty string when local ff IS the running binary, got %q", src)
+	}
+}
+
+func TestInstallGlobalPrefersLocalBinary(t *testing.T) {
+	tmpDir := t.TempDir()
+	oldWd, _ := os.Getwd()
+	defer os.Chdir(oldWd)
+	os.Chdir(tmpDir)
+
+	t.Setenv("HOME", tmpDir)
+
+	// Create a fresh local ./ff with distinct content
+	localPath := filepath.Join(tmpDir, "ff")
+	localContent := []byte("latest local build")
+	if err := os.WriteFile(localPath, localContent, 0755); err != nil {
+		t.Fatal(err)
+	}
+
+	binDir, warning, err := InstallGlobal()
+	if err != nil {
+		t.Fatalf("InstallGlobal failed: %v", err)
+	}
+
+	installed := filepath.Join(binDir, "ff")
+	data, err := os.ReadFile(installed)
+	if err != nil {
+		t.Fatalf("cannot read installed binary: %v", err)
+	}
+	if string(data) != string(localContent) {
+		t.Errorf("installed binary content doesn't match local ff\ngot:  %q\nwant: %q", string(data), string(localContent))
+	}
+
+	_ = warning // warning is expected (PATH update may fail in test env)
+}
