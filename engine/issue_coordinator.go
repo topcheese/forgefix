@@ -1586,9 +1586,6 @@ func (c *IssueCoordinator) SyncSpecs(configDir string) error {
 		c.ensureCategoryLabelsExist(ledger.WorkflowConfig)
 	}
 
-	// Reconciliation: Cross-reference remote issues with local specs
-	c.performReconciliation(configDir, ledger, entries)
-
 	for _, entry := range entries {
 		if entry.IsDir() || !strings.HasSuffix(entry.Name(), ".md") {
 			continue
@@ -1786,6 +1783,13 @@ func (c *IssueCoordinator) SyncSpecs(configDir string) error {
 		c.syncSpecLabels(spec, ledger.WorkflowConfig)
 	}
 
+	// Reconciliation: after all specs are synced and repo_issue fields updated,
+	// close any remote issues that still have no matching local spec.
+	entries, err = os.ReadDir(specDir)
+	if err == nil {
+		c.performReconciliation(configDir, ledger, entries)
+	}
+
 	return nil
 }
 
@@ -1867,13 +1871,33 @@ func (c *IssueCoordinator) performReconciliation(configDir string, ledger *Ledge
 		}
 	}
 
+	// Close orphaned remote issues that have no local spec
+	closedCount := 0
+	for _, o := range orphans {
+		comment := "## Resolution — [ForgeFix Reconciliation]\n\n" +
+			"**Status:** ✅ AUTO-CLOSED\n\n" +
+			"This issue was automatically closed because its associated local spec has been archived or removed.\n\n" +
+			"---\n**Closed by:** ForgeFix Reconciliation"
+		if err := c.PostComment(o.Number, comment); err != nil {
+			fmt.Fprintf(os.Stderr, "warning: failed to post closure comment on issue #%d: %v\n", o.Number, err)
+		}
+		if err := c.CloseIssueByNumber(o.Number); err != nil {
+			fmt.Fprintf(os.Stderr, "warning: failed to close orphaned issue #%d: %v\n", o.Number, err)
+		} else {
+			closedCount++
+		}
+	}
+
 	// Report reconciliation results
-	if len(orphans) > 0 || len(ghosts) > 0 {
+	if len(orphans) > 0 || len(ghosts) > 0 || closedCount > 0 {
 		fmt.Printf("=== Reconciliation Report ===\n")
 		if len(orphans) > 0 {
 			fmt.Printf("Orphaned remote issues (no local spec): %d\n", len(orphans))
 			for _, o := range orphans {
 				fmt.Printf("  #%d: %s\n", o.Number, o.Title)
+			}
+			if closedCount > 0 {
+				fmt.Printf("  => Closed %d orphaned issue(s)\n", closedCount)
 			}
 		}
 		if len(ghosts) > 0 {

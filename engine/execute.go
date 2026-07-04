@@ -823,6 +823,7 @@ func ShipReconciliation(config *Config, configDir string, aiMode bool) {
 				})
 			}
 			fmt.Printf("Enqueued %d housekeeping task(s) for shipped specs.\n", len(shipSpecs))
+			fmt.Println("Run `ff sync` to close remote issues and post resolution comments.")
 		}
 	}
 }
