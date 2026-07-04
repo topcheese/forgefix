@@ -35,18 +35,19 @@ type GitHubConfig struct {
 }
 
 type SyncScheduleConfig struct {
-	MaxAgeDays       int `yaml:"max_age_days"`
+	MaxAgeDays         int `yaml:"max_age_days"`
 	RetryIntervalHours int `yaml:"retry_interval_hours"`
 }
 
 type Config struct {
-	Pipelines            []PipelineConfig   `yaml:"pipelines"`
-	Languages            LanguageMap        `yaml:"languages"`
-	ExcludeDirs          []string           `yaml:"exclude_dirs"`
-	GlobalTimeoutSeconds  int               `yaml:"global_timeout_seconds"`
-	FailureDecaySeconds   int               `yaml:"failure_decay_seconds"`
-	AutoIssueManagement   bool              `yaml:"auto_issue_management,omitempty"`
-	GitHub               *GitHubConfig      `yaml:"github,omitempty"`
+	Pipelines            []PipelineConfig    `yaml:"pipelines"`
+	Languages            LanguageMap         `yaml:"languages"`
+	ExcludeDirs          []string            `yaml:"exclude_dirs"`
+	GlobalTimeoutSeconds int                 `yaml:"global_timeout_seconds"`
+	FailureDecaySeconds  int                 `yaml:"failure_decay_seconds"`
+	AutoIssueManagement  bool                `yaml:"auto_issue_management,omitempty"`
+	GitPassthrough       *bool               `yaml:"git_passthrough,omitempty"`
+	GitHub               *GitHubConfig       `yaml:"github,omitempty"`
 	SyncSchedule         *SyncScheduleConfig `yaml:"sync_schedule,omitempty"`
 }
 
@@ -70,5 +71,3 @@ type LoadedConfig struct {
 	Config    *Config
 	ConfigDir string
 }
-
-

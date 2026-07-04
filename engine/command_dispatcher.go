@@ -56,8 +56,18 @@ func (d *CommandDispatcher) Execute(cmd string, args []string) (CommandResult, e
 		return d.handleCommit(args)
 	case "--install-shortcut":
 		return d.handleInstallShortcut(args)
+	case "git":
+		// ff git <cmd> <args> — explicit git passthrough
+		if len(args) == 0 {
+			return d.handleRun(cmd, args)
+		}
+		return d.handleGitPassthrough(args[0], args[1:])
 	default:
-		// Empty cmd or unknown cmd — run test suite (existing behavior)
+		// Check if this is a known git command for transparent passthrough
+		if GitPassthroughCommands[cmd] {
+			return d.handleGitPassthrough(cmd, args)
+		}
+		// Empty cmd or unknown — run test suite (existing behavior)
 		return d.handleRun(cmd, args)
 	}
 }

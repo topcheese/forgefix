@@ -49,7 +49,7 @@ func main() {
 		cmd = strings.ToLower(os.Args[1])
 	}
 
-	skipConfigCheck := cmd == "help" || cmd == "--help" || cmd == "version" || cmd == "-v" || cmd == "sync" || cmd == "ship" || cmd == "archive" || cmd == "specs"
+	skipConfigCheck := cmd == "help" || cmd == "--help" || cmd == "version" || cmd == "-v" || cmd == "sync" || cmd == "ship" || cmd == "archive" || cmd == "specs" || engine.GitPassthroughCommands[cmd]
 
 	if !skipConfigCheck {
 		if _, found := findConfigFile(wd); !found {
@@ -73,8 +73,8 @@ func main() {
 		}
 		os.Exit(result.ExitCode)
 	default:
-		// No subcommand or unknown — run test suite via dispatcher
-		result, err := disp.Execute("", os.Args[1:])
+		// Unknown command — try git passthrough or run test suite
+		result, err := disp.Execute(cmd, os.Args[2:])
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "internal error: %v\n", err)
 			os.Exit(1)
