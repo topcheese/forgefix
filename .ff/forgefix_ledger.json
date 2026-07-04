@@ -19,11 +19,9 @@
     },
     "SPEC-1783151970": {
       "spec_id": "SPEC-1783151970",
-      "repo_issue_id": 0,
-      "status": "in-progress",
-      "linked_commits": [
-        "3c09245"
-      ]
+      "repo_issue_id": 453,
+      "status": "backlog",
+      "linked_commits": []
     }
   }
 }

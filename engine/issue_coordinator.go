@@ -1593,6 +1593,10 @@ func (c *IssueCoordinator) SyncSpecs(configDir string) error {
 		if entry.IsDir() || !strings.HasSuffix(entry.Name(), ".md") {
 			continue
 		}
+		// Skip archive files — aggregated spec dumps, not individual specs
+		if strings.HasPrefix(entry.Name(), "archive_") {
+			continue
+		}
 
 		filePath := filepath.Join(specDir, entry.Name())
 		spec, err := parseSpecFile(filePath)
@@ -1613,6 +1617,16 @@ func (c *IssueCoordinator) SyncSpecs(configDir string) error {
 				title := spec.Title
 				if !IsValidIssueTitle(title) {
 					title = fmt.Sprintf("feat/spec: %s", title)
+				}
+				if len(title) > maxTitleLength {
+					cutAt := maxTitleLength
+					for cutAt > 10 && title[cutAt-1] != ' ' {
+						cutAt--
+					}
+					if cutAt <= 10 {
+						cutAt = maxTitleLength
+					}
+					title = strings.TrimSpace(title[:cutAt])
 				}
 				issue, err := c.CreateIssueWithBody(title, spec.Body)
 				if err != nil {
@@ -1654,6 +1668,16 @@ func (c *IssueCoordinator) SyncSpecs(configDir string) error {
 						title := spec.Title
 						if !IsValidIssueTitle(title) {
 							title = fmt.Sprintf("feat/spec: %s", title)
+						}
+						if len(title) > maxTitleLength {
+							cutAt := maxTitleLength
+							for cutAt > 10 && title[cutAt-1] != ' ' {
+								cutAt--
+							}
+							if cutAt <= 10 {
+								cutAt = maxTitleLength
+							}
+							title = strings.TrimSpace(title[:cutAt])
 						}
 						issue, err := c.CreateIssueWithBody(title, spec.Body)
 						if err != nil {

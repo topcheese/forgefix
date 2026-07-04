@@ -544,12 +544,15 @@ func syncSingleSpec(coord *IssueCoordinator, configDir, specID string, cfg *Conf
 				title = fmt.Sprintf("feat/spec: %s", title)
 			}
 			if len(title) > maxTitleLength {
-				// Truncate and append ellipsis, preserving the prefix
-				cutAt := maxTitleLength - 3
-				if cutAt < 10 {
-					cutAt = 10
+				// Truncate at last word boundary to fit within maxTitleLength
+				cutAt := maxTitleLength
+				for cutAt > 10 && title[cutAt-1] != ' ' {
+					cutAt--
 				}
-				title = title[:cutAt] + "..."
+				if cutAt <= 10 {
+					cutAt = maxTitleLength
+				}
+				title = strings.TrimSpace(title[:cutAt])
 			}
 			issue, err := coord.CreateIssueWithBody(title, spec.Body)
 			if err != nil {

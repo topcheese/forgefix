@@ -2,6 +2,7 @@ package engine
 
 import (
 	"errors"
+	"fmt"
 	"regexp"
 	"strings"
 )
@@ -34,29 +35,29 @@ func NewIssueTitleValidator() *IssueTitleValidator {
 
 func (v *IssueTitleValidator) Validate(title string) error {
 	if title == "" {
-		return ErrInvalidIssueTitle
+		return fmt.Errorf("empty title: %w", ErrInvalidIssueTitle)
 	}
 
 	if len(title) > maxTitleLength {
-		return ErrInvalidIssueTitle
+		return fmt.Errorf("title too long (%d > %d): %w", len(title), maxTitleLength, ErrInvalidIssueTitle)
 	}
 
 	if strings.HasSuffix(title, ".") || strings.HasSuffix(title, "!") || strings.HasSuffix(title, "?") {
-		return ErrInvalidIssueTitle
+		return fmt.Errorf("trailing punctuation: %w", ErrInvalidIssueTitle)
 	}
 
 	if !v.regex.MatchString(title) {
-		return ErrInvalidIssueTitle
+		return fmt.Errorf("regex mismatch for %q: %w", title, ErrInvalidIssueTitle)
 	}
 
 	parts := strings.SplitN(title, "/", 2)
 	if len(parts) != 2 {
-		return ErrInvalidIssueTitle
+		return fmt.Errorf("no slash separator: %w", ErrInvalidIssueTitle)
 	}
 
 	issueType := parts[0]
 	if !allowedTypes[issueType] {
-		return ErrInvalidIssueTitle
+		return fmt.Errorf("invalid type %q: %w", issueType, ErrInvalidIssueTitle)
 	}
 
 	return nil
