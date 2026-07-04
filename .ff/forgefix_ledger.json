@@ -7,7 +7,7 @@
       "total_passed": 341,
       "total_failed": 0,
       "historical_floor": 341,
-      "last_update": "2026-07-04T00:45:11-07:00"
+      "last_update": "2026-07-04T00:53:30-07:00"
     }
   },
   "spec_mappings": {
@@ -16,7 +16,8 @@
       "repo_issue_id": 0,
       "status": "in-progress",
       "linked_commits": [
-        "fb57910"
+        "fb57910",
+        "0c448d7"
       ]
     }
   }

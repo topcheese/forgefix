@@ -26,6 +26,7 @@ type DashboardFacade struct {
 	IssueRefs             map[string]*IssueInfo
 	FailureDecaySecs      int
 	TestCommandCompleted  bool
+	TimeoutFired          bool
 	ConfigDir             string
 }
 
@@ -344,13 +345,13 @@ func (f *DashboardFacade) IncrementBombFrame() {
 func (f *DashboardFacade) GetTimeoutFired() bool {
 	f.mu.RLock()
 	defer f.mu.RUnlock()
-	return f.TestCommandCompleted // repurposed
+	return f.TimeoutFired
 }
 
 func (f *DashboardFacade) SetTimeoutFired(fired bool) {
 	f.mu.Lock()
 	defer f.mu.Unlock()
-	f.TestCommandCompleted = fired
+	f.TimeoutFired = fired
 }
 
 func (f *DashboardFacade) GetConfigDir() string {
