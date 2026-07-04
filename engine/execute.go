@@ -566,22 +566,40 @@ func LoadSpecByID(configDir, specID string) (*SpecFile, error) {
 // PROJECT VERSION MANAGEMENT
 // ============================================================================
 
-func projectVersionPath(configDir string) string {
-	return filepath.Join(FFDir(configDir), "version")
-}
-
 func readProjectVersion(configDir string) string {
-	path := projectVersionPath(configDir)
+	path := ledgerPath(configDir)
 	data, err := os.ReadFile(path)
 	if err != nil {
 		return "0.0.0"
 	}
-	return strings.TrimSpace(string(data))
+	var wrapper struct {
+		Version string `json:"version"`
+	}
+	if err := json.Unmarshal(data, &wrapper); err != nil {
+		return "0.0.0"
+	}
+	if wrapper.Version == "" {
+		return "0.0.0"
+	}
+	return wrapper.Version
 }
 
 func writeProjectVersion(configDir, version string) error {
-	path := projectVersionPath(configDir)
-	return os.WriteFile(path, []byte(version+"\n"), 0644)
+	path := ledgerPath(configDir)
+	data, err := os.ReadFile(path)
+	if err != nil {
+		return err
+	}
+	var raw map[string]any
+	if err := json.Unmarshal(data, &raw); err != nil {
+		return err
+	}
+	raw["version"] = version
+	out, err := json.MarshalIndent(raw, "", "  ")
+	if err != nil {
+		return err
+	}
+	return os.WriteFile(path, out, 0644)
 }
 
 func incrementPatchVersion(version string) string {

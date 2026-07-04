@@ -1,8 +1,8 @@
 ---
 spec_id: "SPEC-1783153739"
 status: in-progress
-repo_issue: ""
-type: feature
+repo_issue: 456
+type: bug
 version: "v0.8.0"
 root_cause: "`ff ship` had no concept of release versioning. It pushed code to remote but didn't record what version was shipped, and spec files retained their original version values. This made it impossible to track which specs shipped in which release, and the version labels on remote issues became stale."
 resolution: ""

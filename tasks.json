@@ -7,7 +7,9 @@
     "priority": 1,
     "payload": "",
     "context": null,
-    "attempts": 0,
+    "attempts": 3,
+    "last_error": "spec SPEC-1781317040 not found",
+    "status": "FAILED",
     "created_at": "2026-07-03T21:16:27.30594-07:00"
   }
 ]
