@@ -85,9 +85,9 @@ func (m *mockHTTPClient) Do(req *http.Request) (*http.Response, error) {
 
 func newMockCoordinator() (*IssueCoordinator, *mockTransport) {
 	transport := newMockTransport()
-	client := &mockHTTPClient{transport: transport}
+	mockClient := &mockHTTPClient{transport: transport}
 	coord := NewIssueCoordinator("test-owner", "test-repo", "test-token", "https://api.github.com")
-	coord.client = client
+	coord.gh = NewGitHubClient("test-owner", "test-repo", "test-token", "https://api.github.com", WithHTTPDoer(mockClient))
 	return coord, transport
 }
 
@@ -1127,33 +1127,6 @@ func TestHandleTimeoutIssues(t *testing.T) {
 	}
 }
 
-func TestDoRequestAsync(t *testing.T) {
-	coord, transport := newMockCoordinator()
-
-	issueURL := "https://api.github.com/repos/test-owner/test-repo/issues/42"
-	transport.setResponse("PATCH", issueURL, http.StatusOK, GitHubIssue{
-		Number: 42,
-		State:  "closed",
-	})
-
-	req, _ := http.NewRequest("PATCH", issueURL, strings.NewReader(`{"state":"closed"}`))
-	req.Header.Set("Authorization", "Bearer test-token")
-	req.Header.Set("Content-Type", "application/json")
-
-	resultCh := coord.doRequestAsync(req)
-	result := <-resultCh
-
-	if result.Err != nil {
-		t.Fatalf("doRequestAsync() error = %v", result.Err)
-	}
-	if result.Resp == nil {
-		t.Fatal("doRequestAsync() returned nil response")
-	}
-	if result.Resp.StatusCode != http.StatusOK {
-		t.Errorf("doRequestAsync() status = %d, want %d", result.Resp.StatusCode, http.StatusOK)
-	}
-}
-
 func TestBatchCloseIssues(t *testing.T) {
 	coord, transport := newMockCoordinator()
 
@@ -1222,26 +1195,4 @@ func TestBatchCloseIssues_Inactive(t *testing.T) {
 	}
 }
 
-func TestDoRequestAsync_ChannelCloses(t *testing.T) {
-	coord, transport := newMockCoordinator()
 
-	issueURL := "https://api.github.com/repos/test-owner/test-repo/issues/1"
-	transport.setResponse("GET", issueURL, http.StatusOK, GitHubIssue{Number: 1})
-
-	req, _ := http.NewRequest("GET", issueURL, nil)
-	req.Header.Set("Authorization", "Bearer test-token")
-
-	resultCh := coord.doRequestAsync(req)
-	result, ok := <-resultCh
-	if !ok {
-		t.Fatal("doRequestAsync() channel closed without sending a value")
-	}
-	if result.Err != nil {
-		t.Fatalf("doRequestAsync() error = %v", result.Err)
-	}
-
-	_, ok = <-resultCh
-	if ok {
-		t.Error("doRequestAsync() channel should be closed after first read")
-	}
-}

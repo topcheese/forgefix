@@ -1,6 +1,6 @@
 ---
 spec_id: "SPEC-1783153514"
-status: ship
+status: closed
 repo_issue: 455
 type: feature
 root_cause: "The spec template did not include a version field, so newly created specs had no version label applied during sync. Only the status label was being set. Users had to manually add the version field, and many specs were created without it, resulting in incomplete labeling on remote issues."

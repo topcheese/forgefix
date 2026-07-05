@@ -1,6 +1,6 @@
 ---
 spec_id: "SPEC-1783197911"
-status: backlog
+status: ship
 repo_issue: ""
 type: feature
 version: "v0.8.0"

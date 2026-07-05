@@ -623,3 +623,88 @@ func TestFindRemoteIssueByTitle_EmptyOpenIssues(t *testing.T) {
 		t.Fatal("findRemoteIssueByTitle() expected error when no open issues exist, got nil")
 	}
 }
+
+func TestSyncSingleSpec_DeletedIssueClearsRepoIssue(t *testing.T) {
+	tmpDir := t.TempDir()
+	os.MkdirAll(filepath.Join(tmpDir, "specs"), 0755)
+
+	// Spec that had a remote issue that was deleted
+	writeSpecFile(t, tmpDir, "SPEC-DELETED", "in-progress", 99, "Body content")
+
+	coord, transport := newMockCoordinator()
+
+	base := testBaseURL + "/repos/test-owner/test-repo"
+	transport.setResponse("GET", base+"/labels", 200, []RepoLabel{})
+
+	// GetIssueByNumber returns 404 — issue was deleted
+	getURL := fmt.Sprintf(base+"/issues/%d", 99)
+	transport.setResponse("GET", getURL, 404, []byte(`{"message":"Not Found"}`))
+
+	cfg := &Config{}
+	err := syncSingleSpec(coord, tmpDir, "SPEC-DELETED", cfg)
+	if err != nil {
+		t.Fatalf("syncSingleSpec should not error on deleted issue, got: %v", err)
+	}
+
+	// Verify spec file now has repo_issue: 0 (cleared)
+	data, err := os.ReadFile(filepath.Join(tmpDir, "specs", "SPEC-DELETED.md"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(string(data), "repo_issue: 0") {
+		t.Errorf("spec file should have repo_issue: 0 after deleted issue sync, got:\n%s", string(data))
+	}
+
+	// Verify no POST was made — we only cleared, didn't recreate
+	transport.mu.Lock()
+	postCount := transport.callCount["POST "+base+"/issues"]
+	transport.mu.Unlock()
+	if postCount > 0 {
+		t.Errorf("expected 0 POST calls (no new issue created), got %d", postCount)
+	}
+}
+
+func TestSyncSpecs_DeletedIssueCreatesReplacement(t *testing.T) {
+	tmpDir := t.TempDir()
+	os.MkdirAll(filepath.Join(tmpDir, "specs"), 0755)
+
+	// Spec that had a remote issue that was deleted
+	writeSpecFile(t, tmpDir, "SPEC-REPLACE", "in-progress", 99, "Body content")
+
+	coord, transport := newMockCoordinator()
+
+	base := testBaseURL + "/repos/test-owner/test-repo"
+	transport.setResponse("GET", base+"/labels", 200, []RepoLabel{})
+
+	// GetIssueByNumber returns 404 — issue was deleted
+	getURL := fmt.Sprintf(base+"/issues/%d", 99)
+	transport.setResponse("GET", getURL, 404, []byte(`{"message":"Not Found"}`))
+
+	// No existing issue found by title
+	transport.setResponse("GET", base+"/issues?per_page=100&state=open", 200, []GitHubIssue{})
+
+	// Create replacement issue
+	newIssue := GitHubIssue{Number: 200, State: "open", Title: "feat/test: SPEC-REPLACE"}
+	transport.setResponse("POST", base+"/issues", 201, newIssue)
+
+	// Fetch the newly created issue for body sync
+	newIssueData, _ := json.Marshal(newIssue)
+	transport.setResponse("GET", base+"/issues/200", 200, newIssueData)
+	transport.setResponse("GET", base+"/issues/200/labels", 200, []RepoLabel{})
+	transport.setResponse("PUT", base+"/issues/200/labels", 200, []RepoLabel{})
+	transport.setResponse("PATCH", base+"/issues/200", 200, newIssue)
+
+	err := coord.SyncSpecs(tmpDir)
+	if err != nil {
+		t.Fatalf("SyncSpecs should not error on deleted issue, got: %v", err)
+	}
+
+	// Verify spec file now has repo_issue: 200 (replacement created)
+	data, err := os.ReadFile(filepath.Join(tmpDir, "specs", "SPEC-REPLACE.md"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(string(data), "repo_issue: 200") {
+		t.Errorf("spec file should have repo_issue: 200 after replacement, got:\n%s", string(data))
+	}
+}

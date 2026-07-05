@@ -1,14 +1,9 @@
 package engine
 
 import (
-	"bytes"
-	"crypto/tls"
 	"encoding/json"
 	"errors"
 	"fmt"
-	"io"
-	"net"
-	"net/http"
 	"net/url"
 	"os"
 	"os/exec"
@@ -22,25 +17,6 @@ import (
 )
 
 var ErrResourceNotFound = errors.New("resource not found")
-
-type HTTPDoer interface {
-	Do(req *http.Request) (*http.Response, error)
-}
-
-type asyncResult struct {
-	Resp *http.Response
-	Err  error
-}
-
-func (c *IssueCoordinator) doRequestAsync(req *http.Request) <-chan asyncResult {
-	ch := make(chan asyncResult, 1)
-	go func() {
-		resp, err := c.client.Do(req)
-		ch <- asyncResult{Resp: resp, Err: err}
-		close(ch)
-	}()
-	return ch
-}
 
 type GitHubIssue struct {
 	ID        int64  `json:"id"`
@@ -87,7 +63,7 @@ type IssueCoordinator struct {
 	apiToken             string
 	issueCache           map[string]*GitHubIssue
 	cacheExpiry          map[string]int
-	client               HTTPDoer
+	gh                   GitHubClient
 	tracked              map[string]int
 	inactive             bool
 	configDir            string
@@ -98,45 +74,20 @@ type IssueCoordinator struct {
 }
 
 func NewIssueCoordinator(owner, repo, token, baseURL string) *IssueCoordinator {
-	transport := &http.Transport{
-		Proxy: http.ProxyFromEnvironment,
-		DialContext: (&net.Dialer{
-			Timeout:   10 * time.Second,
-			KeepAlive: 30 * time.Second,
-		}).DialContext,
-		TLSClientConfig: &tls.Config{
-			InsecureSkipVerify: os.Getenv("FORGEFIX_INSECURE_TLS") == "1",
-		},
-		ForceAttemptHTTP2:     true,
-		MaxIdleConns:          10,
-		IdleConnTimeout:       30 * time.Second,
-		TLSHandshakeTimeout:   10 * time.Second,
-		ExpectContinueTimeout: 1 * time.Second,
-	}
-	client := &http.Client{
-		Transport: transport,
-		Timeout:   30 * time.Second,
-	}
+	gh := NewGitHubClient(owner, repo, token, baseURL)
 
 	coordinator := &IssueCoordinator{
-		owner:         owner,
-		repo:          repo,
-		baseURL:       baseURL,
-		apiToken:      token,
-		issueCache:    make(map[string]*GitHubIssue),
-		cacheExpiry:   make(map[string]int),
-		client:        client,
-		tracked:       make(map[string]int),
+		owner:          owner,
+		repo:           repo,
+		baseURL:        baseURL,
+		apiToken:       token,
+		issueCache:     make(map[string]*GitHubIssue),
+		cacheExpiry:    make(map[string]int),
+		gh:             gh,
+		tracked:        make(map[string]int),
 		titleValidator: NewIssueTitleValidator(),
 	}
 	coordinator.inactive = coordinator.isPlaceholderConfig()
-
-	if os.Getenv("FORGEFIX_INSECURE_TLS") == "1" {
-		fmt.Fprintf(os.Stderr, "[DEBUG] TLS verification DISABLED via FORGEFIX_INSECURE_TLS=1\n")
-	}
-	fmt.Fprintf(os.Stderr, "[DEBUG] HTTP client configured: Proxy=%v, TLSInsecure=%v\n",
-		transport.Proxy != nil, os.Getenv("FORGEFIX_INSECURE_TLS") == "1")
-
 	return coordinator
 }
 
@@ -216,137 +167,18 @@ func (c *IssueCoordinator) IsActive() bool {
 	return !c.inactive
 }
 
-// url constructs api endpoints cleanly, eliminating three duplicate helper methods
-func (c *IssueCoordinator) url(path string) string {
-	return fmt.Sprintf("%s/repos/%s/%s/issues%s", c.baseURL, c.owner, c.repo, path)
-}
-
-// repoURL constructs repo-level API endpoints (for labels, etc.)
-func (c *IssueCoordinator) repoURL(path string) string {
-	return fmt.Sprintf("%s/repos/%s/%s%s", c.baseURL, c.owner, c.repo, path)
-}
-
 type RepoLabel struct {
 	ID    int    `json:"id"`
 	Name  string `json:"name"`
 	Color string `json:"color"`
 }
 
-func (c *IssueCoordinator) GetRepoLabels() ([]RepoLabel, error) {
-	queryURL := c.repoURL("/labels")
-	fmt.Fprintf(os.Stderr, "[DEBUG] Repo/GitHub GET %s\n", queryURL)
-
-	req, err := http.NewRequest("GET", queryURL, nil)
-	if err != nil {
-		return nil, err
-	}
-	req.Header.Set("Authorization", "Bearer "+c.apiToken)
-	req.Header.Set("Accept", "application/vnd.github.v3+json")
-
-	resp, err := c.client.Do(req)
-	if err != nil {
-		return nil, fmt.Errorf("fetching repo labels: %w", err)
-	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("fetching repo labels: HTTP %d", resp.StatusCode)
-	}
-
-	var labels []RepoLabel
-	if err := json.NewDecoder(resp.Body).Decode(&labels); err != nil {
-		return nil, fmt.Errorf("decoding repo labels: %w", err)
-	}
-	return labels, nil
-}
-
-func (c *IssueCoordinator) CreateRepoLabel(name, color string) error {
-	postURL := c.repoURL("/labels")
-	body := map[string]string{"name": name, "color": color}
-	jsonBody, err := json.Marshal(body)
-	if err != nil {
-		return err
-	}
-
-	fmt.Fprintf(os.Stderr, "[DEBUG] Repo/GitHub POST %s\n", postURL)
-
-	req, err := http.NewRequest("POST", postURL, bytes.NewReader(jsonBody))
-	if err != nil {
-		return err
-	}
-	req.Header.Set("Authorization", "Bearer "+c.apiToken)
-	req.Header.Set("Content-Type", "application/json")
-
-	resp, err := c.client.Do(req)
-	if err != nil {
-		return fmt.Errorf("creating repo label: %w", err)
-	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode == http.StatusConflict {
-		return nil
-	}
-	if resp.StatusCode != http.StatusCreated {
-		return fmt.Errorf("creating repo label: HTTP %d", resp.StatusCode)
-	}
-	return nil
-}
-
 func (c *IssueCoordinator) GetIssueLabels(issueNumber int) ([]RepoLabel, error) {
-	queryURL := c.url(fmt.Sprintf("/%d/labels", issueNumber))
-	fmt.Fprintf(os.Stderr, "[DEBUG] Repo/GitHub GET %s\n", queryURL)
-
-	req, err := http.NewRequest("GET", queryURL, nil)
-	if err != nil {
-		return nil, err
-	}
-	req.Header.Set("Authorization", "Bearer "+c.apiToken)
-	req.Header.Set("Accept", "application/vnd.github.v3+json")
-
-	resp, err := c.client.Do(req)
-	if err != nil {
-		return nil, fmt.Errorf("fetching issue labels: %w", err)
-	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("fetching issue labels: HTTP %d", resp.StatusCode)
-	}
-
-	var labels []RepoLabel
-	if err := json.NewDecoder(resp.Body).Decode(&labels); err != nil {
-		return nil, fmt.Errorf("decoding issue labels: %w", err)
-	}
-	return labels, nil
+	return c.gh.GetIssueLabels(issueNumber)
 }
 
 func (c *IssueCoordinator) SetIssueLabels(issueNumber int, labelNames []string) error {
-	putURL := c.url(fmt.Sprintf("/%d/labels", issueNumber))
-	body := map[string]interface{}{"labels": labelNames}
-	jsonBody, err := json.Marshal(body)
-	if err != nil {
-		return err
-	}
-
-	fmt.Fprintf(os.Stderr, "[DEBUG] Repo/GitHub PUT %s\n", putURL)
-
-	req, err := http.NewRequest("PUT", putURL, bytes.NewReader(jsonBody))
-	if err != nil {
-		return err
-	}
-	req.Header.Set("Authorization", "Bearer "+c.apiToken)
-	req.Header.Set("Content-Type", "application/json")
-
-	resp, err := c.client.Do(req)
-	if err != nil {
-		return fmt.Errorf("setting issue labels: %w", err)
-	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode != http.StatusOK {
-		return fmt.Errorf("setting issue labels: HTTP %d", resp.StatusCode)
-	}
-	return nil
+	return c.gh.SetIssueLabels(issueNumber, labelNames)
 }
 
 var colorNameToHex = map[string]string{
@@ -419,7 +251,7 @@ func (c *IssueCoordinator) ensureCategoryLabelsExist(wc *WorkflowConfig) {
 		return
 	}
 
-	repoLabels, err := c.GetRepoLabels()
+	repoLabels, err := c.gh.GetRepoLabels()
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "warning: failed to fetch repo labels: %v\n", err)
 		return
@@ -436,7 +268,7 @@ func (c *IssueCoordinator) ensureCategoryLabelsExist(wc *WorkflowConfig) {
 				continue
 			}
 			color := categoryColor(catName)
-			if err := c.CreateRepoLabel(defaultLabel, color); err != nil {
+			if err := c.gh.CreateRepoLabel(defaultLabel, color); err != nil {
 				fmt.Fprintf(os.Stderr, "warning: failed to create label %s: %v\n", defaultLabel, err)
 			} else {
 				fmt.Fprintf(os.Stderr, "Created label %s\n", defaultLabel)
@@ -491,7 +323,7 @@ func (c *IssueCoordinator) syncSpecLabels(spec *SpecFile, wc *WorkflowConfig) {
 	}
 
 	// Fetch current labels on the issue
-	issueLabels, err := c.GetIssueLabels(spec.RepoIssue)
+	issueLabels, err := c.gh.GetIssueLabels(spec.RepoIssue)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "warning: failed to fetch issue labels for #%d: %v\n", spec.RepoIssue, err)
 		return
@@ -543,49 +375,11 @@ func (c *IssueCoordinator) syncSpecLabels(spec *SpecFile, wc *WorkflowConfig) {
 	}
 	newLabels = append(newLabels, desiredLabels...)
 
-	if err := c.SetIssueLabels(spec.RepoIssue, newLabels); err != nil {
+	if err := c.gh.SetIssueLabels(spec.RepoIssue, newLabels); err != nil {
 		fmt.Fprintf(os.Stderr, "warning: failed to set issue labels for #%d: %v\n", spec.RepoIssue, err)
 		return
 	}
 	fmt.Fprintf(os.Stderr, "Updated issue #%d labels to %v for spec %s\n", spec.RepoIssue, desiredLabels, spec.SpecID)
-}
-
-func (c *IssueCoordinator) ListOpenIssues() ([]GitHubIssue, error) {
-	if c.isInactive() {
-		return nil, fmt.Errorf("coordinator inactive: placeholder or empty credentials")
-	}
-
-	params := url.Values{}
-	params.Set("state", "open")
-	params.Set("per_page", "100")
-	queryURL := c.url("") + "?" + params.Encode()
-
-	req, err := http.NewRequest("GET", queryURL, nil)
-	if err != nil {
-		return nil, fmt.Errorf("creating GET request: %w", err)
-	}
-	req.Header.Set("Authorization", "Bearer "+c.apiToken)
-	req.Header.Set("Accept", "application/vnd.github.v3+json")
-
-	resp, err := c.client.Do(req)
-	if err != nil {
-		return nil, fmt.Errorf("fetching issues: %w", err)
-	}
-	defer resp.Body.Close()
-
-	respBody, err := io.ReadAll(resp.Body)
-	if err != nil {
-		return nil, fmt.Errorf("reading issues response: %w", err)
-	}
-	if resp.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("fetch issues failed with status: %d, body: %s", resp.StatusCode, string(respBody))
-	}
-
-	var issues []GitHubIssue
-	if err := json.NewDecoder(bytes.NewReader(respBody)).Decode(&issues); err != nil {
-		return nil, fmt.Errorf("decoding issues: %w", err)
-	}
-	return issues, nil
 }
 
 func (c *IssueCoordinator) CheckExistingIssue(testName string) (*GitHubIssue, error) {
@@ -599,7 +393,7 @@ func (c *IssueCoordinator) CheckExistingIssue(testName string) (*GitHubIssue, er
 	}
 	c.mu.RUnlock()
 
-	issues, err := c.ListOpenIssues()
+	issues, err := c.gh.ListOpenIssues()
 	if err != nil {
 		return nil, err
 	}
@@ -620,7 +414,7 @@ func (c *IssueCoordinator) CheckExistingIssue(testName string) (*GitHubIssue, er
 }
 
 func (c *IssueCoordinator) FindExistingIssueBySimilarTitle(title string) (*GitHubIssue, error) {
-	issues, err := c.ListOpenIssues()
+	issues, err := c.gh.ListOpenIssues()
 	if err != nil {
 		return nil, err
 	}
@@ -662,83 +456,25 @@ func (c *IssueCoordinator) markSpecAsDuplicateIfNeeded(spec *SpecFile) {
 }
 
 func (c *IssueCoordinator) UpdateIssueTitle(issueNumber int, title string) error {
-	if c.isInactive() {
-		return fmt.Errorf("coordinator inactive: placeholder or empty credentials")
-	}
-	bodyMap := map[string]string{"title": title}
-	jsonBody, _ := json.Marshal(bodyMap)
-	patchURL := c.url(fmt.Sprintf("/%d", issueNumber))
-	req, _ := http.NewRequest("PATCH", patchURL, strings.NewReader(string(jsonBody)))
-	req.Header.Set("Authorization", "Bearer "+c.apiToken)
-	req.Header.Set("Content-Type", "application/json")
-
-	fmt.Fprintf(os.Stderr, "[DEBUG] Repo/GitHub PATCH %s (title update)\n", patchURL)
-
-	resp, err := c.client.Do(req)
-	if err != nil {
-		return err
-	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode != http.StatusOK && resp.StatusCode != http.StatusCreated {
-		respBody, _ := io.ReadAll(resp.Body)
-		return fmt.Errorf("title update failed (%d): %s", resp.StatusCode, string(respBody))
-	}
-	return nil
+	return c.gh.UpdateIssueTitle(issueNumber, title)
 }
 
 func (c *IssueCoordinator) CreateIssueWithBody(title, body string) (*GitHubIssue, error) {
 	if c.isInactive() {
 		return nil, fmt.Errorf("coordinator inactive: placeholder or empty credentials")
 	}
-
 	if err := c.titleValidator.Validate(title); err != nil {
 		return nil, fmt.Errorf("issue title validation failed: %w", err)
 	}
-
-	bodyMap := map[string]string{
-		"title": title,
-		"body":  body,
-	}
-	jsonBody, err := json.Marshal(bodyMap)
+	createdIssue, err := c.gh.CreateIssue(title, body)
 	if err != nil {
-		return nil, fmt.Errorf("marshaling issue body: %w", err)
+		return nil, err
 	}
-
-	postURL := c.url("")
-	req, err := http.NewRequest("POST", postURL, strings.NewReader(string(jsonBody)))
-	if err != nil {
-		return nil, fmt.Errorf("creating POST request: %w", err)
-	}
-
-	req.Header.Set("Authorization", "Bearer "+c.apiToken)
-	req.Header.Set("Content-Type", "application/json")
-
-	resp, err := c.client.Do(req)
-	if err != nil {
-		return nil, fmt.Errorf("sending create issue request: %w", err)
-	}
-	defer resp.Body.Close()
-
-	respBody, err := io.ReadAll(resp.Body)
-	if err != nil {
-		return nil, fmt.Errorf("reading create issue response: %w", err)
-	}
-	if resp.StatusCode != http.StatusCreated {
-		return nil, fmt.Errorf("issue creation failed (%d): %s", resp.StatusCode, string(respBody))
-	}
-
-	var createdIssue GitHubIssue
-	if err := json.NewDecoder(bytes.NewReader(respBody)).Decode(&createdIssue); err != nil {
-		return nil, fmt.Errorf("decoding created issue: %w", err)
-	}
-
 	c.mu.Lock()
-	c.issueCache[title] = &createdIssue
+	c.issueCache[title] = createdIssue
 	c.tracked[title] = createdIssue.Number
 	c.mu.Unlock()
-
-	return &createdIssue, nil
+	return createdIssue, nil
 }
 
 func (c *IssueCoordinator) CreateIssue(testName string, details *ErrorDetails) (*GitHubIssue, error) {
@@ -766,40 +502,17 @@ func (c *IssueCoordinator) CreateIssue(testName string, details *ErrorDetails) (
 		return nil, fmt.Errorf("marshaling issue body: %w", err)
 	}
 
-	postURL := c.url("")
-	req, err := http.NewRequest("POST", postURL, strings.NewReader(string(jsonBody)))
+	createdIssue, err := c.gh.CreateIssue(testName, string(jsonBody))
 	if err != nil {
-		return nil, fmt.Errorf("creating POST request: %w", err)
-	}
-
-	req.Header.Set("Authorization", "Bearer "+c.apiToken)
-	req.Header.Set("Content-Type", "application/json")
-
-	resp, err := c.client.Do(req)
-	if err != nil {
-		return nil, fmt.Errorf("sending create issue request: %w", err)
-	}
-	defer resp.Body.Close()
-
-	respBody, err := io.ReadAll(resp.Body)
-	if err != nil {
-		return nil, fmt.Errorf("reading create issue response: %w", err)
-	}
-	if resp.StatusCode != http.StatusCreated {
-		return nil, fmt.Errorf("issue creation failed (%d): %s", resp.StatusCode, string(respBody))
-	}
-
-	var createdIssue GitHubIssue
-	if err := json.NewDecoder(bytes.NewReader(respBody)).Decode(&createdIssue); err != nil {
-		return nil, fmt.Errorf("decoding created issue: %w", err)
+		return nil, err
 	}
 
 	c.mu.Lock()
-	c.issueCache[testName] = &createdIssue
+	c.issueCache[testName] = createdIssue
 	c.tracked[testName] = createdIssue.Number
 	c.mu.Unlock()
 
-	return &createdIssue, nil
+	return createdIssue, nil
 }
 
 func (c *IssueCoordinator) PostResolutionComment(issueNumber int, spec *SpecFile) error {
@@ -824,7 +537,7 @@ func (c *IssueCoordinator) PostResolutionComment(issueNumber int, spec *SpecFile
 		body += spec.Body + "\n\n"
 	}
 	body += "---\n**Closed by:** ForgeFix Auto-Resolution"
-	return c.PostComment(issueNumber, body)
+	return c.gh.PostComment(issueNumber, body)
 }
 
 // specFileWebURL converts an API base URL and local spec file path into a
@@ -865,58 +578,11 @@ func specFileWebURL(apiBase, owner, repo, filePath string) string {
 }
 
 func (c *IssueCoordinator) PostComment(issueNumber int, body string) error {
-	if c.isInactive() {
-		return fmt.Errorf("coordinator inactive: placeholder or empty credentials")
-	}
-	bodyMap := map[string]string{"body": body}
-	jsonBody, _ := json.Marshal(bodyMap)
-	postURL := c.url(fmt.Sprintf("/%d/comments", issueNumber))
-	req, _ := http.NewRequest("POST", postURL, strings.NewReader(string(jsonBody)))
-	req.Header.Set("Authorization", "Bearer "+c.apiToken)
-	req.Header.Set("Content-Type", "application/json")
-
-	fmt.Fprintf(os.Stderr, "[DEBUG] Repo/GitHub POST comment on issue #%d\n", issueNumber)
-	resp, err := c.client.Do(req)
-	if err != nil {
-		return err
-	}
-	defer resp.Body.Close()
-	respBody, _ := io.ReadAll(resp.Body)
-	if resp.StatusCode == http.StatusNotFound {
-		return fmt.Errorf("comment posting failed on #%d: %w", issueNumber, ErrResourceNotFound)
-	}
-	if resp.StatusCode != http.StatusCreated {
-		return fmt.Errorf("comment posting failed (%d): %s", resp.StatusCode, string(respBody))
-	}
-	return nil
+	return c.gh.PostComment(issueNumber, body)
 }
 
 func (c *IssueCoordinator) CloseIssueByNumber(issueNumber int) error {
-	if c.isInactive() {
-		return fmt.Errorf("coordinator inactive: placeholder or empty credentials")
-	}
-	patchURL := c.url(fmt.Sprintf("/%d", issueNumber))
-	req, _ := http.NewRequest("PATCH", patchURL, strings.NewReader(`{"state":"closed"}`))
-	req.Header.Set("Authorization", "Bearer "+c.apiToken)
-	req.Header.Set("Content-Type", "application/json")
-
-	resp, err := c.client.Do(req)
-	if err != nil {
-		return fmt.Errorf("closing issue #%d: %w", issueNumber, err)
-	}
-	defer resp.Body.Close()
-
-	respBody, err := io.ReadAll(resp.Body)
-	if err != nil {
-		return fmt.Errorf("reading close issue response: %w", err)
-	}
-	if resp.StatusCode == http.StatusNotFound {
-		return fmt.Errorf("issue close failed on #%d: %w", issueNumber, ErrResourceNotFound)
-	}
-	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
-		return fmt.Errorf("issue close failed (%d): %s", resp.StatusCode, string(respBody))
-	}
-	return nil
+	return c.gh.CloseIssueByNumber(issueNumber)
 }
 
 func (c *IssueCoordinator) BatchCloseIssues(issueNumbers []int) []error {
@@ -937,8 +603,8 @@ func (c *IssueCoordinator) BatchCloseIssues(issueNumbers []int) []error {
 	results := make(chan jobResult, len(issueNumbers))
 
 	for i, num := range issueNumbers {
-		go func(idx, issueNum int) {
-			err := c.CloseIssueByNumber(issueNum)
+		go 		func(idx, issueNum int) {
+			err := c.gh.CloseIssueByNumber(issueNum)
 			results <- jobResult{idx, err}
 		}(i, num)
 	}
@@ -952,29 +618,7 @@ func (c *IssueCoordinator) BatchCloseIssues(issueNumbers []int) []error {
 }
 
 func (c *IssueCoordinator) GetIssueComments(issueNumber int) ([]GitHubComment, error) {
-	if c.isInactive() {
-		return nil, fmt.Errorf("coordinator inactive: placeholder or empty credentials")
-	}
-	req, _ := http.NewRequest("GET", c.url(fmt.Sprintf("/%d/comments", issueNumber)), nil)
-	req.Header.Set("Authorization", "Bearer "+c.apiToken)
-	req.Header.Set("Accept", "application/vnd.github.v3+json")
-
-	resp, err := c.client.Do(req)
-	if err != nil {
-		return nil, err
-	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode == http.StatusNotFound {
-		return nil, fmt.Errorf("comments fetch failed on #%d: %w", issueNumber, ErrResourceNotFound)
-	}
-	if resp.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("comments fetch failed: %d", resp.StatusCode)
-	}
-
-	var comments []GitHubComment
-	_ = json.NewDecoder(resp.Body).Decode(&comments)
-	return comments, nil
+	return c.gh.GetIssueComments(issueNumber)
 }
 
 func (c *IssueCoordinator) CloseIssue(testName string) error {
@@ -984,7 +628,7 @@ func (c *IssueCoordinator) CloseIssue(testName string) error {
 	if !ok {
 		return fmt.Errorf("no tracked issue for test: %s", testName)
 	}
-	return c.CloseIssueByNumber(number)
+	return c.gh.CloseIssueByNumber(number)
 }
 
 func (c *IssueCoordinator) ClearCache(testName string) {
@@ -1033,67 +677,8 @@ func CheckForExistingIssue(coordinator *IssueCoordinator, testName string) (*Git
 	return coordinator.CheckExistingIssue(testName)
 }
 
-func (c *IssueCoordinator) FetchOpenIssues() ([]GitHubIssue, error) {
-	if c.isInactive() {
-		return nil, fmt.Errorf("coordinator inactive: placeholder or empty credentials")
-	}
-
-	params := url.Values{}
-	params.Set("state", "open")
-	params.Set("per_page", "100")
-	queryURL := c.url("") + "?" + params.Encode()
-
-	req, _ := http.NewRequest("GET", queryURL, nil)
-	req.Header.Set("Authorization", "Bearer "+c.apiToken)
-	req.Header.Set("Accept", "application/vnd.github.v3+json")
-
-	resp, err := c.client.Do(req)
-	if err != nil {
-		return nil, err
-	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("fetch issues failed with status: %d", resp.StatusCode)
-	}
-
-	var issues []GitHubIssue
-	if err := json.NewDecoder(resp.Body).Decode(&issues); err != nil {
-		return nil, err
-	}
-	return issues, nil
-}
-
 func (c *IssueCoordinator) GetIssueByNumber(number int) (*GitHubIssue, error) {
-	if c.isInactive() {
-		return nil, fmt.Errorf("coordinator inactive: placeholder or empty credentials")
-	}
-	getURL := c.url(fmt.Sprintf("/%d", number))
-	req, _ := http.NewRequest("GET", getURL, nil)
-	req.Header.Set("Authorization", "Bearer "+c.apiToken)
-	req.Header.Set("Accept", "application/vnd.github.v3+json")
-
-	fmt.Fprintf(os.Stderr, "[DEBUG] Repo/GitHub GET %s\n", getURL)
-
-	resp, err := c.client.Do(req)
-	if err != nil {
-		return nil, err
-	}
-	defer resp.Body.Close()
-
-	respBody, _ := io.ReadAll(resp.Body)
-	if resp.StatusCode == http.StatusNotFound {
-		return nil, fmt.Errorf("fetch issue #%d: %w", number, ErrResourceNotFound)
-	}
-	if resp.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("fetch issue #%d failed (%d): %s", number, resp.StatusCode, string(respBody))
-	}
-
-	var issue GitHubIssue
-	if err := json.Unmarshal(respBody, &issue); err != nil {
-		return nil, err
-	}
-	return &issue, nil
+	return c.gh.GetIssueByNumber(number)
 }
 
 func (c *IssueCoordinator) GetAllTracked() map[string]int {
@@ -1108,29 +693,8 @@ func (c *IssueCoordinator) GetAllTracked() map[string]int {
 	}
 	return cp
 }
-
 func (c *IssueCoordinator) UpdateIssueBody(issueNumber int, body string) error {
-	if c.isInactive() {
-		return fmt.Errorf("coordinator inactive: placeholder or empty credentials")
-	}
-	bodyMap := map[string]string{"body": body}
-	jsonBody, _ := json.Marshal(bodyMap)
-	patchURL := c.url(fmt.Sprintf("/%d", issueNumber))
-	req, _ := http.NewRequest("PATCH", patchURL, strings.NewReader(string(jsonBody)))
-	req.Header.Set("Authorization", "Bearer "+c.apiToken)
-	req.Header.Set("Content-Type", "application/json")
-
-	fmt.Fprintf(os.Stderr, "[DEBUG] Repo/GitHub PATCH %s\n", patchURL)
-	resp, err := c.client.Do(req)
-	if err != nil {
-		return err
-	}
-	defer resp.Body.Close()
-	if resp.StatusCode != http.StatusOK && resp.StatusCode != http.StatusCreated {
-		respBody, _ := io.ReadAll(resp.Body)
-		return fmt.Errorf("update failed (%d): %s", resp.StatusCode, string(respBody))
-	}
-	return nil
+	return c.gh.UpdateIssueBody(issueNumber, body)
 }
 
 // resolveAuditDir walks up from configDir to find the forgefix project root
@@ -1393,7 +957,7 @@ func (c *IssueCoordinator) syncIssuesPhase2(configDir string) error {
 
 	// Phase 2: Fetch all open remote issues and add local audit entries for any that are missing
 	afterTracked := ReadAuditLog(configDir)
-	remoteIssues, err := c.FetchOpenIssues()
+	remoteIssues, err := c.gh.ListOpenIssues()
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "error fetching remote issues: %v\n", err)
 		return nil
@@ -1512,7 +1076,7 @@ func (c *IssueCoordinator) findRemoteIssueByTitle(title string) (*GitHubIssue, e
 		return nil, fmt.Errorf("coordinator inactive: placeholder or empty credentials")
 	}
 
-	issues, err := c.ListOpenIssues()
+	issues, err := c.gh.ListOpenIssues()
 	if err != nil {
 		return nil, err
 	}
@@ -1770,31 +1334,9 @@ func (c *IssueCoordinator) performReconciliation(configDir string, ledger *Ledge
 	}
 
 	// Fetch all open remote issues
-	base := c.baseURL + "/repos/" + c.owner + "/" + c.repo
-	params := url.Values{}
-	params.Set("state", "open")
-	params.Set("per_page", "100")
-	queryURL := base + "/issues?" + params.Encode()
-
-	req, _ := http.NewRequest("GET", queryURL, nil)
-	req.Header.Set("Authorization", "Bearer "+c.apiToken)
-	req.Header.Set("Accept", "application/vnd.github.v3+json")
-
-	resp, err := c.client.Do(req)
+	remoteIssues, err := c.gh.ListOpenIssues()
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "warning: reconciliation fetch failed: %v\n", err)
-		return
-	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode != http.StatusOK {
-		fmt.Fprintf(os.Stderr, "warning: reconciliation fetch failed with status %d\n", resp.StatusCode)
-		return
-	}
-
-	var remoteIssues []GitHubIssue
-	if err := json.NewDecoder(resp.Body).Decode(&remoteIssues); err != nil {
-		fmt.Fprintf(os.Stderr, "warning: failed to decode remote issues: %v\n", err)
 		return
 	}
 
@@ -1849,10 +1391,10 @@ func (c *IssueCoordinator) performReconciliation(configDir string, ledger *Ledge
 			"**Status:** ✅ AUTO-CLOSED\n\n" +
 			"This issue was automatically closed because its associated local spec has been archived or removed.\n\n" +
 			"---\n**Closed by:** ForgeFix Reconciliation"
-		if err := c.PostComment(o.Number, comment); err != nil {
+		if err := c.gh.PostComment(o.Number, comment); err != nil {
 			fmt.Fprintf(os.Stderr, "warning: failed to post closure comment on issue #%d: %v\n", o.Number, err)
 		}
-		if err := c.CloseIssueByNumber(o.Number); err != nil {
+		if err := c.gh.CloseIssueByNumber(o.Number); err != nil {
 			fmt.Fprintf(os.Stderr, "warning: failed to close orphaned issue #%d: %v\n", o.Number, err)
 		} else {
 			closedCount++

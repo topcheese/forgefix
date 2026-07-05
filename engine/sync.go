@@ -24,7 +24,7 @@ type SyncFailure struct {
 }
 
 type SyncScheduleState struct {
-	LastFullSync    time.Time `json:"last_full_sync,omitempty"`
+	LastFullSync     time.Time `json:"last_full_sync,omitempty"`
 	LastRetryAttempt time.Time `json:"last_retry_attempt,omitempty"`
 }
 
@@ -43,16 +43,16 @@ const (
 )
 
 type SyncOperation struct {
-	ID        string     `json:"id"`
-	Type      SyncOpType `json:"type"`
-	Timestamp time.Time  `json:"timestamp"`
-	SpecID    string     `json:"spec_id,omitempty"`
-	TestName  string     `json:"test_name,omitempty"`
-	IssueNum  int        `json:"issue_number,omitempty"`
-	Title     string     `json:"title,omitempty"`
-	Body      string     `json:"body,omitempty"`
-	Details   *ErrorDetails `json:"details,omitempty"`
-	RetryCount int       `json:"retry_count"`
+	ID         string        `json:"id"`
+	Type       SyncOpType    `json:"type"`
+	Timestamp  time.Time     `json:"timestamp"`
+	SpecID     string        `json:"spec_id,omitempty"`
+	TestName   string        `json:"test_name,omitempty"`
+	IssueNum   int           `json:"issue_number,omitempty"`
+	Title      string        `json:"title,omitempty"`
+	Body       string        `json:"body,omitempty"`
+	Details    *ErrorDetails `json:"details,omitempty"`
+	RetryCount int           `json:"retry_count"`
 }
 
 const syncQueueName = ".sync_queue.json"
@@ -146,34 +146,34 @@ func QueueCreateIssue(configDir, specID, testName string, details *ErrorDetails)
 
 func QueueCloseIssue(configDir, testName string, issueNumber int) error {
 	return EnqueueSyncOp(configDir, SyncOperation{
-		Type:      SyncOpCloseIssue,
-		TestName:  testName,
-		IssueNum:  issueNumber,
+		Type:     SyncOpCloseIssue,
+		TestName: testName,
+		IssueNum: issueNumber,
 	})
 }
 
 func QueuePostComment(configDir, testName string, issueNumber int, title, body string) error {
 	return EnqueueSyncOp(configDir, SyncOperation{
-		Type:      SyncOpPostComment,
-		TestName:  testName,
-		IssueNum:  issueNumber,
-		Title:     title,
-		Body:      body,
+		Type:     SyncOpPostComment,
+		TestName: testName,
+		IssueNum: issueNumber,
+		Title:    title,
+		Body:     body,
 	})
 }
 
 func QueueUpdateIssueBody(configDir string, issueNumber int, body string) error {
 	return EnqueueSyncOp(configDir, SyncOperation{
-		Type:      SyncOpUpdateIssueBody,
-		IssueNum:  issueNumber,
-		Body:      body,
+		Type:     SyncOpUpdateIssueBody,
+		IssueNum: issueNumber,
+		Body:     body,
 	})
 }
 
 func QueueSyncSpec(configDir, specID string) error {
 	return EnqueueSyncOp(configDir, SyncOperation{
-		Type:    SyncOpSyncSpec,
-		SpecID:  specID,
+		Type:   SyncOpSyncSpec,
+		SpecID: specID,
 	})
 }
 
@@ -574,7 +574,14 @@ func syncSingleSpec(coord *IssueCoordinator, configDir, specID string, cfg *Conf
 		} else {
 			remoteIssue, err := coord.GetIssueByNumber(spec.RepoIssue)
 			if err != nil {
-				return fmt.Errorf("fetching issue #%d: %w", spec.RepoIssue, err)
+				if errors.Is(err, ErrResourceNotFound) {
+					// Issue was deleted from remote — clear the reference so next sync recreates it
+					fmt.Fprintf(os.Stderr, "warning: issue #%d for spec %q not found (deleted), clearing reference\n", spec.RepoIssue, spec.Title)
+					updateSpecFileRepoIssue(filePath, 0)
+					spec.RepoIssue = 0
+				} else {
+					return fmt.Errorf("fetching issue #%d: %w", spec.RepoIssue, err)
+				}
 			}
 			if remoteIssue != nil {
 				if remoteIssue.Body != spec.Body {
@@ -599,9 +606,9 @@ func syncSingleSpec(coord *IssueCoordinator, configDir, specID string, cfg *Conf
 
 		if ledger != nil && spec.SpecID != "" {
 			ledger.SetSpecEntry(spec.SpecID, &SpecEntry{
-				SpecID:       spec.SpecID,
-				RepoIssueID:  spec.RepoIssue,
-				Status:       spec.Status,
+				SpecID:        spec.SpecID,
+				RepoIssueID:   spec.RepoIssue,
+				Status:        spec.Status,
 				LinkedCommits: []string{},
 			})
 			if err := SaveLedger(ledger, configDir); err != nil {

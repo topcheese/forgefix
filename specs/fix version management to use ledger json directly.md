@@ -1,7 +1,7 @@
 ---
 spec_id: SPEC-1783159999
 type: fix
-status: ship
+status: closed
 version: "0.8.1"
 ---
 
