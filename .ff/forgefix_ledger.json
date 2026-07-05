@@ -49,8 +49,10 @@
     "SPEC-1783157281": {
       "spec_id": "SPEC-1783157281",
       "repo_issue_id": 460,
-      "status": "backlog",
-      "linked_commits": []
+      "status": "in-progress",
+      "linked_commits": [
+        "63b0365"
+      ]
     },
     "SPEC-1783157282": {
       "spec_id": "SPEC-1783157282",

@@ -1,6 +1,6 @@
 ---
 spec_id: "SPEC-1783222605"
-status: ship
+status: closed
 repo_issue: 466
 type: refactor
 version: "0.8.2"

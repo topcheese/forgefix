@@ -1,11 +1,11 @@
 ---
 spec_id: "SPEC-1783157281"
-status: backlog
+status: in-progress
 repo_issue: 460
 type: feature
-version: "v0.9.0"
-root_cause: ""
-resolution: ""
+version: "0.8.2"
+root_cause: "No central dashboard to quickly assess project health, spec status distribution, sync state, and ship-gate readiness."
+resolution: "Created engine/cmd_status.go with handleStatus method on CommandDispatcher. Added 'status' case to command_dispatcher.go switch. Dashboard shows: spec counts by status (color-coded via buildColorMap), pipeline test stats, last sync time, pending sync failures, and ship-gate blocking specs. Also created engine/cmd_status_test.go with 5 test cases validating routing, blocking spec detection, sync failure display, healthy state, and spec count output."
 ---
 # Project Status Dashboard Command
 
@@ -23,17 +23,29 @@ Add `ff status` command to show an overview of project health including spec cou
 
 ## Implementation
 
-1. Create `cmd_status.go` command handler
-2. Aggregate data from ledger
-3. Format output similar to existing TUI dashboard
-4. Exit code 0 for healthy, non-zero for issues
+1. Created `engine/cmd_status.go` — `handleStatus()` method on `CommandDispatcher`
+2. Added `case "status"` to switch in `command_dispatcher.go`
+3. Data sources:
+   - `LoadLedger(configDir)` → `GetAllSpecEntries()` for spec counts by status
+   - `LoadSyncScheduleState(configDir)` → last sync timestamp
+   - `HasPendingSyncFailures()` → pending sync error warnings
+   - `checkBlockingSpecs()` → specs not in ship/closed status that block gate
+4. Uses `buildColorMap()` from `cmd_list.go` for status colorization
+5. Uses Unicode box-drawing for header, ANSI color for health indicators
+6. Created `engine/cmd_status_test.go` with 5 tests:
+   - `TestCommandDispatcher_StatusRoutesCorrectly` — basic routing
+   - `TestCommandDispatcher_StatusWithBlockingSpecs` — ship gate blockers
+   - `TestCommandDispatcher_StatusWithSyncFailures` — sync error display
+   - `TestCommandDispatcher_StatusHealthy` — clear gate output
+   - `TestCommandDispatcher_StatusDisplaysSpecCounts` — spec count totals
 
 ## Acceptance Criteria
 
-- [ ] `ff status` shows spec count breakdown by status
-- [ ] `ff status` shows last sync timestamp
-- [ ] `ff status` indicates if ship would be blocked
-- [ ] Output is color-coded and human-readable
+- [x] `ff status` shows spec count breakdown by status
+- [x] `ff status` shows last sync timestamp
+- [x] `ff status` indicates if ship would be blocked
+- [x] Output is color-coded and human-readable
+- [x] 5 unit tests covering all states
 
 ## Verification
 

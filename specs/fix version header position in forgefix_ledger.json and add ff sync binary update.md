@@ -1,6 +1,6 @@
 ---
 spec_id: "SPEC-1783197911"
-status: ship
+status: closed
 repo_issue: 465
 type: feature
 version: "0.8.2"
