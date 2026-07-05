@@ -42,6 +42,8 @@ func (d *CommandDispatcher) Execute(cmd string, args []string) (CommandResult, e
 		return d.handleHelp(), nil
 	case "version", "-v", "--version":
 		return d.handleVersion(), nil
+	case "status":
+		return d.handleStatus(args)
 	case "archive":
 		return d.handleArchive(args)
 	case "specs":

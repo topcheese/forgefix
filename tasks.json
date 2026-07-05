@@ -1,5 +1,16 @@
 [
   {
+    "id": "task-1783232221325407000",
+    "type": "CLOSE_ISSUE",
+    "spec_id": "SPEC-1783151970",
+    "repo_issue_id": 453,
+    "priority": 2,
+    "payload": "",
+    "context": null,
+    "attempts": 0,
+    "created_at": "2026-07-04T23:17:01.325409-07:00"
+  },
+  {
     "id": "task-1783138587305939000",
     "type": "SYNC_METADATA",
     "spec_id": "SPEC-1781317040",
@@ -22,28 +33,6 @@
     "context": null,
     "attempts": 0,
     "created_at": "2026-07-04T23:17:01.320806-07:00"
-  },
-  {
-    "id": "task-1783232221325053000",
-    "type": "POST_RESOLUTION",
-    "spec_id": "SPEC-1783151970",
-    "repo_issue_id": 453,
-    "priority": 2,
-    "payload": "{\"spec_id\":\"SPEC-1783151970\",\"title\":\"Fix Sync Queue Retrying Deleted Issues Causing 404 Spam\",\"version\":\"0.8.2\",\"repo_issue\":453,\"spec_url\":\"http://192.168.1.18:3000/Jimmy/forgefix/src/branch/main/specs/fix%20sync%20queue%20retrying%20deleted%20issues%20causing%20404%20spam.md\"}",
-    "context": null,
-    "attempts": 0,
-    "created_at": "2026-07-04T23:17:01.325056-07:00"
-  },
-  {
-    "id": "task-1783232221325407000",
-    "type": "CLOSE_ISSUE",
-    "spec_id": "SPEC-1783151970",
-    "repo_issue_id": 453,
-    "priority": 2,
-    "payload": "",
-    "context": null,
-    "attempts": 0,
-    "created_at": "2026-07-04T23:17:01.325409-07:00"
   },
   {
     "id": "task-1783232221325657000",
