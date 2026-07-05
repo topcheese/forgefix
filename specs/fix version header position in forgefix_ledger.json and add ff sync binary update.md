@@ -1,9 +1,9 @@
 ---
 spec_id: "SPEC-1783197911"
 status: ship
-repo_issue: ""
+repo_issue: 465
 type: feature
-version: "v0.8.0"
+version: "0.8.2"
 root_cause: ""
 resolution: ""
 ---

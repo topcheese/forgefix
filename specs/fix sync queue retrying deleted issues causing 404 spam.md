@@ -3,7 +3,7 @@ spec_id: "SPEC-1783151970"
 status: ship
 repo_issue: 453
 type: bug
-version: 0.8.1
+version: "0.8.2"
 root_cause: "syncSingleSpec in engine/sync.go treats a 404 from GetIssueByNumber as a hard error, returning it from the function. This causes every sync cycle to repeatedly try fetching the deleted issue, log the 404, and record a sync failure — creating infinite 404 spam."
 resolution: "syncSingleSpec in engine/sync.go now detects ErrResourceNotFound from GetIssueByNumber, clears the spec repo_issue field, logs a warning, and continues without error. Tests added for both syncSingleSpec and SyncSpecs paths."
 ---

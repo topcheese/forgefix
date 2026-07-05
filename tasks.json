@@ -11,5 +11,71 @@
     "last_error": "spec SPEC-1781317040 not found",
     "status": "FAILED",
     "created_at": "2026-07-03T21:16:27.30594-07:00"
+  },
+  {
+    "id": "task-1783232221320801000",
+    "type": "SYNC_METADATA",
+    "spec_id": "SPEC-1783222605",
+    "repo_issue_id": 0,
+    "priority": 1,
+    "payload": "",
+    "context": null,
+    "attempts": 0,
+    "created_at": "2026-07-04T23:17:01.320806-07:00"
+  },
+  {
+    "id": "task-1783232221325053000",
+    "type": "POST_RESOLUTION",
+    "spec_id": "SPEC-1783151970",
+    "repo_issue_id": 453,
+    "priority": 2,
+    "payload": "{\"spec_id\":\"SPEC-1783151970\",\"title\":\"Fix Sync Queue Retrying Deleted Issues Causing 404 Spam\",\"version\":\"0.8.2\",\"repo_issue\":453,\"spec_url\":\"http://192.168.1.18:3000/Jimmy/forgefix/src/branch/main/specs/fix%20sync%20queue%20retrying%20deleted%20issues%20causing%20404%20spam.md\"}",
+    "context": null,
+    "attempts": 0,
+    "created_at": "2026-07-04T23:17:01.325056-07:00"
+  },
+  {
+    "id": "task-1783232221325407000",
+    "type": "CLOSE_ISSUE",
+    "spec_id": "SPEC-1783151970",
+    "repo_issue_id": 453,
+    "priority": 2,
+    "payload": "",
+    "context": null,
+    "attempts": 0,
+    "created_at": "2026-07-04T23:17:01.325409-07:00"
+  },
+  {
+    "id": "task-1783232221325657000",
+    "type": "SYNC_METADATA",
+    "spec_id": "SPEC-1783151970",
+    "repo_issue_id": 0,
+    "priority": 1,
+    "payload": "",
+    "context": null,
+    "attempts": 0,
+    "created_at": "2026-07-04T23:17:01.325658-07:00"
+  },
+  {
+    "id": "task-1783232221327396000",
+    "type": "SYNC_METADATA",
+    "spec_id": "SPEC-1783224084",
+    "repo_issue_id": 0,
+    "priority": 1,
+    "payload": "",
+    "context": null,
+    "attempts": 0,
+    "created_at": "2026-07-04T23:17:01.327397-07:00"
+  },
+  {
+    "id": "task-1783232221328940000",
+    "type": "SYNC_METADATA",
+    "spec_id": "SPEC-1783197911",
+    "repo_issue_id": 0,
+    "priority": 1,
+    "payload": "",
+    "context": null,
+    "attempts": 0,
+    "created_at": "2026-07-04T23:17:01.328942-07:00"
   }
 ]

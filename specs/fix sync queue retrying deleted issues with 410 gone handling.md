@@ -1,9 +1,9 @@
 ---
 spec_id: "SPEC-1783224084"
 status: ship
-repo_issue: "466"
+repo_issue: 469
 type: bug
-version: "v0.8.1"
+version: "0.8.2"
 root_cause: "GitHub API returns 410 Gone (not 404) for deleted issues, causing the sync queue to retry operations infinitely on deleted issues because the GitHub client only checks for StatusNotFound"
 resolution: "Added HTTP 410 Gone handling to GitHub client methods alongside existing 404 handling. The isNotFoundOrGone helper function is used in all issue-operating methods (GetIssueByNumber, CloseIssueByNumber, PostComment, GetIssueComments, UpdateIssueTitle, UpdateIssueBody) to return ErrResourceNotFound for both status codes. Also fixed TestPreferLocalBinaryFindsLocalFF to use os.SameFile instead of path-based comparison. Moved updateSpecFileVersion from execute.go to VersionManager in version_manager.go, completing the version logic extraction. Removed duplicate version manager functions from execute.go that were extracted but left behind."
 ---

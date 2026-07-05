@@ -1,9 +1,9 @@
 ---
 spec_id: "SPEC-1783222605"
-status: review
-repo_issue: ""
+status: ship
+repo_issue: 466
 type: refactor
-version: 0.8.1
+version: "0.8.2"
 root_cause: "IssueCoordinator (1462 lines) is a god object that mixes HTTP transport concerns (GitHubIssue, GitHubComment, RepoLabel, ErrResourceNotFound) with orchestration logic (sync, labels, audit, reconciliation). The GitHubClient interface already exists in github_client.go but the HTTP DTO types live in issue_coordinator.go, blurring the port/adapter boundary."
 resolution: ""
 ---

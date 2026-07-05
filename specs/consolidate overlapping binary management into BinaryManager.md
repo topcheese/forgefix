@@ -1,7 +1,7 @@
 ---
 spec_id: "SPEC-1783225332"
 status: in-progress
-repo_issue: ""
+repo_issue: 470
 type: refactor
 version: "v0.8.1"
 root_cause: "Bootstrap(), EnsureDevBinary(), and InstallGlobal() each had independent copy implementations for copying the ff binary. copyBinary in shortcut.go was a separate implementation. Three copy paths with the same logic."

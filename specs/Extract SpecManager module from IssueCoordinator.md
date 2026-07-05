@@ -1,7 +1,7 @@
 ---
 spec_id: "SPEC-1783222864"
 status: in-progress
-repo_issue: ""
+repo_issue: 467
 type: refactor
 version: "0.8.1"
 root_cause: "\n  - SpecFile is a plain struct in issue_coordinator.go with no methods\n  - parseSpecFile, updateSpecFileRepoIssue, updateSpecFileStatus, specFileWebURL are standalone functions manipulating YAML frontmatter directly\n  - No abstraction boundary between spec YAML format and orchestration logic\n  - Every caller reaches into raw frontmatter parsing"
