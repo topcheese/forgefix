@@ -1,11 +1,11 @@
 ---
 spec_id: "SPEC-1783151970"
-status: in-progress
+status: review
 repo_issue: 453
 type: bug
 version: 0.8.1
 root_cause: "syncSingleSpec in engine/sync.go treats a 404 from GetIssueByNumber as a hard error, returning it from the function. This causes every sync cycle to repeatedly try fetching the deleted issue, log the 404, and record a sync failure — creating infinite 404 spam."
-resolution: ""
+resolution: "syncSingleSpec in engine/sync.go now detects ErrResourceNotFound from GetIssueByNumber, clears the spec repo_issue field, logs a warning, and continues without error. Tests added for both syncSingleSpec and SyncSpecs paths."
 ---
 # Fix Sync Queue Retrying Deleted Issues Causing 404 Spam
 
@@ -30,11 +30,11 @@ In engine/sync.go, syncSingleSpec:
 
 ## Acceptance Criteria
 
-- [ ] syncSingleSpec handles 404 gracefully instead of returning error
-- [ ] Spec file's repo_issue is reset to 0 when remote issue is deleted
-- [ ] Warning is logged to stderr
-- [ ] Existing tests still pass
-- [ ] New test covers the deleted-issue scenario
+- [x] syncSingleSpec handles 404 gracefully instead of returning error
+- [x] Spec file\'s repo_issue is reset to 0 when remote issue is deleted
+- [x] Warning is logged to stderr
+- [x] Existing tests still pass
+- [x] New test covers the deleted-issue scenario
 
 ## Verification
 

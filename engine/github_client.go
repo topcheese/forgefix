@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"crypto/tls"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"net"
@@ -13,6 +14,38 @@ import (
 	"strings"
 	"time"
 )
+
+// ErrResourceNotFound is returned when a GitHub API resource is not found (HTTP 404).
+var ErrResourceNotFound = errors.New("resource not found")
+
+// GitHubIssue represents a GitHub issue as returned by the API.
+type GitHubIssue struct {
+	ID        int64  `json:"id"`
+	Number    int    `json:"number"`
+	Title     string `json:"title"`
+	Body      string `json:"body"`
+	State     string `json:"state"`
+	CreatedAt string `json:"created_at"`
+	UpdatedAt string `json:"updated_at"`
+	HTMLURL   string `json:"html_url"`
+}
+
+// GitHubComment represents a comment on a GitHub issue.
+type GitHubComment struct {
+	ID        int64  `json:"id"`
+	Body      string `json:"body"`
+	CreatedAt string `json:"created_at"`
+	User      struct {
+		Login string `json:"login"`
+	} `json:"user"`
+}
+
+// RepoLabel represents a label in a GitHub repository.
+type RepoLabel struct {
+	ID    int    `json:"id"`
+	Name  string `json:"name"`
+	Color string `json:"color"`
+}
 
 type HTTPDoer interface {
 	Do(req *http.Request) (*http.Response, error)

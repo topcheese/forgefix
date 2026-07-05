@@ -16,28 +16,6 @@ import (
 	"ForgeFix/engine/housekeeper"
 )
 
-var ErrResourceNotFound = errors.New("resource not found")
-
-type GitHubIssue struct {
-	ID        int64  `json:"id"`
-	Number    int    `json:"number"`
-	Title     string `json:"title"`
-	Body      string `json:"body"`
-	State     string `json:"state"`
-	CreatedAt string `json:"created_at"`
-	UpdatedAt string `json:"updated_at"`
-	HTMLURL   string `json:"html_url"`
-}
-
-type GitHubComment struct {
-	ID        int64  `json:"id"`
-	Body      string `json:"body"`
-	CreatedAt string `json:"created_at"`
-	User      struct {
-		Login string `json:"login"`
-	} `json:"user"`
-}
-
 type ErrorDetails struct {
 	TestName     string `json:"test_name"`
 	Package      string `json:"package"`
@@ -132,6 +110,11 @@ func (c *IssueCoordinator) isPlaceholderConfig() bool {
 	return false
 }
 
+// Client returns the underlying GitHubClient for direct access to the HTTP port.
+func (c *IssueCoordinator) Client() GitHubClient {
+	return c.gh
+}
+
 func (c *IssueCoordinator) SetConfigDir(dir string) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
@@ -167,12 +150,6 @@ func (c *IssueCoordinator) IsActive() bool {
 	return !c.inactive
 }
 
-type RepoLabel struct {
-	ID    int    `json:"id"`
-	Name  string `json:"name"`
-	Color string `json:"color"`
-}
-
 func (c *IssueCoordinator) GetIssueLabels(issueNumber int) ([]RepoLabel, error) {
 	return c.gh.GetIssueLabels(issueNumber)
 }
@@ -182,26 +159,26 @@ func (c *IssueCoordinator) SetIssueLabels(issueNumber int, labelNames []string) 
 }
 
 var colorNameToHex = map[string]string{
-	"black":   "000000",
-	"white":   "ffffff",
-	"red":     "e74c3c",
-	"green":   "2ecc71",
-	"yellow":  "f1c40f",
-	"blue":    "3498db",
-	"magenta": "9b59b6",
-	"cyan":    "1abc9c",
-	"orange":  "e67e22",
-	"purple":  "8e44ad",
-	"grey":    "95a5a6",
-	"gray":    "95a5a6",
-	"hiblack": "555555",
-	"hiwhite": "cccccc",
-	"hired":   "ff6b6b",
-	"higreen": "69db7c",
-	"hiyellow": "ffd93d",
-	"hiblue":  "74b9ff",
+	"black":     "000000",
+	"white":     "ffffff",
+	"red":       "e74c3c",
+	"green":     "2ecc71",
+	"yellow":    "f1c40f",
+	"blue":      "3498db",
+	"magenta":   "9b59b6",
+	"cyan":      "1abc9c",
+	"orange":    "e67e22",
+	"purple":    "8e44ad",
+	"grey":      "95a5a6",
+	"gray":      "95a5a6",
+	"hiblack":   "555555",
+	"hiwhite":   "cccccc",
+	"hired":     "ff6b6b",
+	"higreen":   "69db7c",
+	"hiyellow":  "ffd93d",
+	"hiblue":    "74b9ff",
 	"himagenta": "dda0dd",
-	"hicyan":  "81ecec",
+	"hicyan":    "81ecec",
 }
 
 // labelHexColor converts a color name or hex string to a 6-char hex code
@@ -603,7 +580,7 @@ func (c *IssueCoordinator) BatchCloseIssues(issueNumbers []int) []error {
 	results := make(chan jobResult, len(issueNumbers))
 
 	for i, num := range issueNumbers {
-		go 		func(idx, issueNum int) {
+		go func(idx, issueNum int) {
 			err := c.gh.CloseIssueByNumber(issueNum)
 			results <- jobResult{idx, err}
 		}(i, num)
@@ -995,16 +972,16 @@ func (c *IssueCoordinator) syncIssuesPhase2(configDir string) error {
 }
 
 type SpecFile struct {
-	SpecID      string
-	Title       string
-	Body        string
+	SpecID     string
+	Title      string
+	Body       string
 	RepoIssue  int
-	Status      string
-	FilePath    string
-	Type        string
-	Version     string
-	RootCause   string
-	Resolution  string
+	Status     string
+	FilePath   string
+	Type       string
+	Version    string
+	RootCause  string
+	Resolution string
 }
 
 func parseSpecFile(filePath string) (*SpecFile, error) {
@@ -1256,15 +1233,15 @@ func (c *IssueCoordinator) SyncSpecs(configDir string) error {
 						}
 					}
 
-				payload := housekeeper.ResolutionPayload{
-					SpecID:    spec.SpecID,
-					Title:     spec.Title,
-					Version:   spec.Version,
-					RepoIssue: spec.RepoIssue,
-					SpecURL:   specFileWebURL(c.baseURL, c.owner, c.repo, filePath),
-				}
-				payloadRaw, _ := json.Marshal(payload)
-				hq := housekeeper.NewHousekeepingQueue(configDir)
+					payload := housekeeper.ResolutionPayload{
+						SpecID:    spec.SpecID,
+						Title:     spec.Title,
+						Version:   spec.Version,
+						RepoIssue: spec.RepoIssue,
+						SpecURL:   specFileWebURL(c.baseURL, c.owner, c.repo, filePath),
+					}
+					payloadRaw, _ := json.Marshal(payload)
+					hq := housekeeper.NewHousekeepingQueue(configDir)
 					if err := hq.Load(); err != nil {
 						fmt.Fprintf(os.Stderr, "warning: failed to load housekeeping queue: %v\n", err)
 					} else {
@@ -1305,9 +1282,9 @@ func (c *IssueCoordinator) SyncSpecs(configDir string) error {
 
 		if ledger != nil && spec.SpecID != "" {
 			ledger.SetSpecEntry(spec.SpecID, &SpecEntry{
-				SpecID:       spec.SpecID,
-				RepoIssueID:  spec.RepoIssue,
-				Status:       spec.Status,
+				SpecID:        spec.SpecID,
+				RepoIssueID:   spec.RepoIssue,
+				Status:        spec.Status,
 				LinkedCommits: []string{},
 			})
 			if err := SaveLedger(ledger, configDir); err != nil {
