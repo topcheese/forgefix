@@ -1,11 +1,11 @@
 ---
 spec_id: "SPEC-1783237790"
-status: in-progress
+status: ship
 repo_issue: 471
 type: chore
 version: "0.8.2"
-root_cause: ""
-resolution: ""
+root_cause: "Multiple extraction specs were implemented but their root_cause and resolution fields were never filled in. The ledger version was stale at 0.8.1 and test counts showed 0. Several specs lacked repo_issue_ids from remote sync. CHANGELOG.md needed updating for the upcoming v0.8.2 release."
+resolution: "Updated root_cause and resolution fields for SPEC-1783222605 (GitHubClient extraction), SPEC-1783222864 (AuditLog extraction), SPEC-1783225332 (BinaryManager), SPEC-1783224084 (410 Gone handling). Bumped ledger version 0.8.1→0.8.2, updated test counts to 349/349. Added repo_issue_ids for all synced specs. Wrote CHANGELOG.md v0.8.2 release notes. Promoted completed specs to ship. Committed as c378b40."
 ---
 
 # Update Spec Metadata and Changelog
@@ -36,7 +36,7 @@ Spec and ledger metadata already updated (unstaged changes). This spec documents
 
 ## Acceptance Criteria
 
-- [ ] All implemented specs have root_cause and resolution filled in
-- [ ] Ledger reflects correct version, counts, and spec statuses
-- [ ] CHANGELOG.md has accurate v0.8.2 release notes
-- [ ] `ff specs` shows correct statuses
+- [x] All implemented specs have root_cause and resolution filled in
+- [x] Ledger reflects correct version, counts, and spec statuses
+- [x] CHANGELOG.md has accurate v0.8.2 release notes
+- [x] `ff specs` shows correct statuses

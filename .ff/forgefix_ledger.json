@@ -101,7 +101,9 @@
       "spec_id": "SPEC-1783223922",
       "repo_issue_id": 468,
       "status": "in-progress",
-      "linked_commits": []
+      "linked_commits": [
+        "6405bac"
+      ]
     },
     "SPEC-1783224084": {
       "spec_id": "SPEC-1783224084",
