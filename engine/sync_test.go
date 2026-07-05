@@ -789,6 +789,64 @@ func TestClearRepoIssueForSpec_NoopWhenRepoIssueZero(t *testing.T) {
 	}
 }
 
+func TestProcessSyncQueue_DropsDeletedIssueOpWith410(t *testing.T) {
+	tmpDir := t.TempDir()
+	os.MkdirAll(filepath.Join(tmpDir, "specs"), 0755)
+
+	// Create a spec with a repo_issue referencing a deleted remote issue
+	writeSpecFile(t, tmpDir, "SPEC-GONE", "in-progress", 100, "Body content")
+
+	// Enqueue a close_issue operation for the deleted issue
+	if err := QueueCloseIssue(tmpDir, "", 100); err != nil {
+		t.Fatal(err)
+	}
+
+	coord, transport := newMockCoordinator()
+	coord.SetConfigDir(tmpDir)
+
+	// CloseIssueByNumber returns 410 Gone — GitHub returns this for deleted issues
+	base := testBaseURL + "/repos/test-owner/test-repo"
+	closeURL := fmt.Sprintf(base+"/issues/%d", 100)
+	transport.setResponse("PATCH", closeURL, 410, []byte(`{"message":"Gone"}`))
+
+	// Set up a ledger entry
+	ledger := NewLedgerEngine()
+	ledger.SetSpecEntry("SPEC-GONE", &SpecEntry{
+		SpecID:      "SPEC-GONE",
+		RepoIssueID: 100,
+		Status:      "in-progress",
+	})
+	if err := SaveLedger(ledger, tmpDir); err != nil {
+		t.Fatal(err)
+	}
+
+	coord.SetLedger(ledger)
+
+	// Process the sync queue — should handle 410 same as 404
+	err := processSyncQueue(coord, tmpDir, ledger)
+	if err != nil {
+		t.Fatalf("processSyncQueue should not error on 410 ops, got: %v", err)
+	}
+
+	// Verify the spec's repo_issue was cleared
+	data, err := os.ReadFile(filepath.Join(tmpDir, "specs", "SPEC-GONE.md"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(string(data), "repo_issue: 0") {
+		t.Errorf("spec file should have repo_issue: 0 after sync queue cleaned up, got:\n%s", string(data))
+	}
+
+	// Verify the queue is now empty
+	ops, err := LoadSyncQueue(tmpDir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(ops) != 0 {
+		t.Errorf("sync queue should be empty after processing, got %d ops", len(ops))
+	}
+}
+
 func TestProcessSyncQueue_DropsDeletedIssueOpAndCleansUpSpec(t *testing.T) {
 	tmpDir := t.TempDir()
 	os.MkdirAll(filepath.Join(tmpDir, "specs"), 0755)

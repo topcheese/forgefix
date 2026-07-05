@@ -434,7 +434,7 @@ func processSyncQueue(coord *IssueCoordinator, configDir string, ledger *LedgerE
 		if opErr != nil {
 			if errors.Is(opErr, ErrResourceNotFound) {
 				// Issue no longer exists on remote — drop operation immediately
-				fmt.Fprintf(os.Stderr, "warning: %s for issue #%d returned 404, dropping from sync queue\n", op.Type, op.IssueNum)
+				fmt.Fprintf(os.Stderr, "warning: %s for issue #%d not found (404/410), dropping from sync queue\n", op.Type, op.IssueNum)
 
 				// Proactively clean up the spec's repo_issue field so no further
 				// operations are enqueued for this deleted issue.

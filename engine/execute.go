@@ -1,7 +1,6 @@
 package engine
 
 import (
-	"bufio"
 	"context"
 	"encoding/json"
 	"errors"
@@ -11,7 +10,6 @@ import (
 	"os/signal"
 	"path/filepath"
 	"regexp"
-	"strconv"
 	"strings"
 	"sync"
 	"syscall"
@@ -180,10 +178,10 @@ mainLoop:
 				for _, pr := range runners {
 					pr.Runner.Kill()
 				}
-			if manageIssues {
-				handleDetonationIssues(dashboard, configDir)
-				closeStaleIssues(dashboard, configDir)
-			}
+				if manageIssues {
+					handleDetonationIssues(dashboard, configDir)
+					closeStaleIssues(dashboard, configDir)
+				}
 			} else {
 				dashboard.Bomb = BombDefused
 				if manageIssues {
@@ -228,7 +226,7 @@ mainLoop:
 	}
 
 	time.Sleep(200 * time.Millisecond)
-		if err := SaveLedger(dashboard.GetLedger(), configDir); err != nil && !aiMode {
+	if err := SaveLedger(dashboard.GetLedger(), configDir); err != nil && !aiMode {
 		fmt.Fprintf(os.Stderr, "warning: failed to save ledger metrics: %v\n", err)
 	}
 
@@ -573,68 +571,6 @@ func LoadSpecByID(configDir, specID string) (*SpecFile, error) {
 // PROJECT VERSION MANAGEMENT
 // ============================================================================
 
-func readProjectVersion(configDir string) string {
-	path := ledgerPath(configDir)
-	data, err := os.ReadFile(path)
-	if err != nil {
-		return "0.0.0"
-	}
-	var wrapper struct {
-		Version string `json:"version"`
-	}
-	if err := json.Unmarshal(data, &wrapper); err != nil {
-		return "0.0.0"
-	}
-	if wrapper.Version == "" {
-		return "0.0.0"
-	}
-	return wrapper.Version
-}
-
-func writeProjectVersion(configDir, version string) error {
-	ledger, err := LoadLedger(configDir)
-	if err != nil {
-		return fmt.Errorf("loading ledger: %w", err)
-	}
-	ledger.Version = version
-	return SaveLedger(ledger, configDir)
-}
-
-func incrementPatchVersion(version string) string {
-	parts := strings.Split(version, ".")
-	if len(parts) != 3 {
-		return "0.0.1"
-	}
-	patch, err := strconv.Atoi(parts[2])
-	if err != nil {
-		return "0.0.1"
-	}
-	parts[2] = strconv.Itoa(patch + 1)
-	return strings.Join(parts, ".")
-}
-
-func isValidSemver(version string) bool {
-	re := regexp.MustCompile(`^\d+\.\d+\.\d+`)
-	return re.MatchString(version)
-}
-
-func promptForVersion(current string) string {
-	defaultVersion := incrementPatchVersion(current)
-	reader := bufio.NewReader(os.Stdin)
-	fmt.Printf("Current project version: %s\n", current)
-	fmt.Printf("Release version for this ship [%s]: ", defaultVersion)
-	input, _ := reader.ReadString('\n')
-	input = strings.TrimSpace(input)
-	if input == "" {
-		input = defaultVersion
-	}
-	if !isValidSemver(input) {
-		fmt.Fprintf(os.Stderr, "Invalid semver format. Using default: %s\n", defaultVersion)
-		return defaultVersion
-	}
-	return input
-}
-
 func updateSpecFileVersion(filePath, version string) error {
 	data, err := os.ReadFile(filePath)
 	if err != nil {
@@ -877,13 +813,8 @@ func ShipReconciliation(config *Config, configDir string, aiMode bool) {
 	}
 
 	// Prompt for release version before pushing
-	currentVersion := readProjectVersion(configDir)
-	shipVersion := promptForVersion(currentVersion)
-	if shipVersion != currentVersion {
-		if err := writeProjectVersion(configDir, shipVersion); err != nil {
-			fmt.Fprintf(os.Stderr, "Warning: failed to write project version: %v\n", err)
-		}
-	}
+	vm := NewVersionManager(configDir)
+	shipVersion := vm.HandleShipVersion(aiMode)
 
 	// Update version field on all shipped specs
 	for _, id := range shipSpecs {
@@ -914,7 +845,7 @@ func ShipReconciliation(config *Config, configDir string, aiMode bool) {
 				payloadRaw := ""
 				if specErr == nil && spec != nil {
 					repoIssueID = spec.RepoIssue
-						baseURL := ""
+					baseURL := ""
 					if config.GitHub != nil {
 						baseURL = config.GitHub.BaseURL
 					}

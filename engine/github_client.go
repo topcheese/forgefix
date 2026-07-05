@@ -15,8 +15,14 @@ import (
 	"time"
 )
 
-// ErrResourceNotFound is returned when a GitHub API resource is not found (HTTP 404).
+// ErrResourceNotFound is returned when a GitHub API resource is not found (HTTP 404/410).
 var ErrResourceNotFound = errors.New("resource not found")
+
+// isNotFoundOrGone returns true for HTTP 404 (Not Found) and 410 (Gone) status codes.
+// GitHub returns 410 Gone for deleted issues, while 404 is used for never-existing or inaccessible resources.
+func isNotFoundOrGone(statusCode int) bool {
+	return statusCode == http.StatusNotFound || statusCode == http.StatusGone
+}
 
 // GitHubIssue represents a GitHub issue as returned by the API.
 type GitHubIssue struct {
@@ -319,7 +325,7 @@ func (c *gitHubClient) GetIssueByNumber(number int) (*GitHubIssue, error) {
 	defer resp.Body.Close()
 
 	respBody, _ := io.ReadAll(resp.Body)
-	if resp.StatusCode == http.StatusNotFound {
+	if isNotFoundOrGone(resp.StatusCode) {
 		return nil, fmt.Errorf("fetch issue #%d: %w", number, ErrResourceNotFound)
 	}
 	if resp.StatusCode != http.StatusOK {
@@ -389,6 +395,9 @@ func (c *gitHubClient) UpdateIssueTitle(issueNumber int, title string) error {
 	}
 	defer resp.Body.Close()
 
+	if isNotFoundOrGone(resp.StatusCode) {
+		return fmt.Errorf("title update failed on #%d: %w", issueNumber, ErrResourceNotFound)
+	}
 	if resp.StatusCode != http.StatusOK && resp.StatusCode != http.StatusCreated {
 		respBody, _ := io.ReadAll(resp.Body)
 		return fmt.Errorf("title update failed (%d): %s", resp.StatusCode, string(respBody))
@@ -414,6 +423,9 @@ func (c *gitHubClient) UpdateIssueBody(issueNumber int, body string) error {
 	}
 	defer resp.Body.Close()
 
+	if isNotFoundOrGone(resp.StatusCode) {
+		return fmt.Errorf("body update failed on #%d: %w", issueNumber, ErrResourceNotFound)
+	}
 	if resp.StatusCode != http.StatusOK && resp.StatusCode != http.StatusCreated {
 		respBody, _ := io.ReadAll(resp.Body)
 		return fmt.Errorf("update failed (%d): %s", resp.StatusCode, string(respBody))
@@ -440,7 +452,7 @@ func (c *gitHubClient) PostComment(issueNumber int, body string) error {
 	defer resp.Body.Close()
 
 	respBody, _ := io.ReadAll(resp.Body)
-	if resp.StatusCode == http.StatusNotFound {
+	if isNotFoundOrGone(resp.StatusCode) {
 		return fmt.Errorf("comment posting failed on #%d: %w", issueNumber, ErrResourceNotFound)
 	}
 	if resp.StatusCode != http.StatusCreated {
@@ -467,7 +479,7 @@ func (c *gitHubClient) CloseIssueByNumber(issueNumber int) error {
 	if err != nil {
 		return fmt.Errorf("reading close issue response: %w", err)
 	}
-	if resp.StatusCode == http.StatusNotFound {
+	if isNotFoundOrGone(resp.StatusCode) {
 		return fmt.Errorf("issue close failed on #%d: %w", issueNumber, ErrResourceNotFound)
 	}
 	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
@@ -489,7 +501,7 @@ func (c *gitHubClient) GetIssueComments(issueNumber int) ([]GitHubComment, error
 	}
 	defer resp.Body.Close()
 
-	if resp.StatusCode == http.StatusNotFound {
+	if isNotFoundOrGone(resp.StatusCode) {
 		return nil, fmt.Errorf("comments fetch failed on #%d: %w", issueNumber, ErrResourceNotFound)
 	}
 	if resp.StatusCode != http.StatusOK {

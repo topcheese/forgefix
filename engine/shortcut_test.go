@@ -184,11 +184,23 @@ func TestPreferLocalBinaryFindsLocalFF(t *testing.T) {
 	}
 
 	src := preferLocalBinary()
-	// Resolve symlinks (macOS /var → /private/var) for comparison
-	want, _ := filepath.EvalSymlinks(localPath)
-	got, _ := filepath.EvalSymlinks(src)
-	if got != want {
-		t.Errorf("expected %q (resolved: %q), got %q (resolved: %q)", localPath, want, src, got)
+	if src == "" {
+		t.Fatal("preferLocalBinary() returned empty for existing local ff")
+	}
+
+	// Use os.SameFile to compare file identity — this is robust against
+	// macOS /var → /private/var symlink differences that make path-based
+	// comparison unreliable.
+	srcFi, err := os.Stat(src)
+	if err != nil {
+		t.Fatalf("stat of preferLocalBinary result %s: %v", src, err)
+	}
+	localFi, err := os.Stat(localPath)
+	if err != nil {
+		t.Fatalf("stat of local path %s: %v", localPath, err)
+	}
+	if !os.SameFile(srcFi, localFi) {
+		t.Errorf("preferLocalBinary() = %q should reference same file as %q (different inode)", src, localPath)
 	}
 }
 
