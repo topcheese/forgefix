@@ -583,6 +583,19 @@ func checkShipGateSpecStatuses(configDir string) (shipSpecs []string, err error)
 	}
 
 	var blocking []string
+	// First, check ledger for ship-ready specs
+	ledger, ledgerErr := LoadLedger(configDir)
+	if ledgerErr == nil {
+		for _, spec := range ledger.GetAllSpecEntries() {
+			if spec.Status == "ship" {
+				shipSpecs = append(shipSpecs, spec.SpecID)
+			} else if spec.Status == "backlog" || spec.Status == "in-progress" || spec.Status == "review" {
+				blocking = append(blocking, fmt.Sprintf("  %s (%s)", spec.SpecID, spec.Status))
+			}
+		}
+	}
+
+	// Then, check spec files on disk (for any additional ship-ready specs)
 	for _, entry := range entries {
 		if entry.IsDir() || !strings.HasSuffix(entry.Name(), ".md") {
 			continue
@@ -592,11 +605,30 @@ func checkShipGateSpecStatuses(configDir string) (shipSpecs []string, err error)
 		if parseErr != nil {
 			continue
 		}
-		switch spec.Status {
-		case "review":
-			blocking = append(blocking, fmt.Sprintf("  %s (%s)", spec.SpecID, spec.Status))
-		case "ship":
-			shipSpecs = append(shipSpecs, spec.SpecID)
+		if spec.Status == "ship" {
+			// Check if this spec is already in shipSpecs from ledger
+			found := false
+			for _, existing := range shipSpecs {
+				if existing == spec.SpecID {
+					found = true
+					break
+				}
+			}
+			if !found {
+				shipSpecs = append(shipSpecs, spec.SpecID)
+			}
+		} else if spec.Status == "backlog" || spec.Status == "in-progress" || spec.Status == "review" {
+			// Check if this spec is already in blocking list from ledger
+			found := false
+			for _, existing := range blocking {
+				if strings.Contains(existing, spec.SpecID) {
+					found = true
+					break
+				}
+			}
+			if !found {
+				blocking = append(blocking, fmt.Sprintf("  %s (%s)", spec.SpecID, spec.Status))
+			}
 		}
 	}
 

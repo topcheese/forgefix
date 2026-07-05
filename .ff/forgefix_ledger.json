@@ -1,13 +1,13 @@
 {
-  "version": "0.8.2",
+  "version": "0.8.3",
   "entries": {
     "forgefix": {
       "pipeline_id": "forgefix",
       "total_ran": 354,
-      "total_passed": 354,
-      "total_failed": 0,
+      "total_passed": 351,
+      "total_failed": 3,
       "historical_floor": 354,
-      "last_update": "2026-07-05T00:58:25-07:00"
+      "last_update": "2026-07-05T02:24:01-07:00"
     }
   },
   "spec_mappings": {
@@ -120,7 +120,7 @@
     "SPEC-1783237790": {
       "spec_id": "SPEC-1783237790",
       "repo_issue_id": 471,
-      "status": "in-progress",
+      "status": "ship",
       "linked_commits": []
     }
   }

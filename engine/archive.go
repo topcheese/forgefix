@@ -22,21 +22,49 @@ func ArchiveResolvedSpecs(configDir string) (string, int, error) {
 	}
 	var resolved []archivedSpec
 
+	// Create archive directory
+	archiveDir := filepath.Join(specDir, "archive")
+	if err := os.MkdirAll(archiveDir, 0755); err != nil {
+		return "", 0, fmt.Errorf("creating archive directory: %w", err)
+	}
+
+	// First pass: identify spec files to archive and move existing archive files
+	var specFiles []string
 	for _, entry := range entries {
-		if entry.IsDir() || !strings.HasSuffix(entry.Name(), ".md") {
+		if entry.IsDir() {
 			continue
 		}
-		filePath := filepath.Join(specDir, entry.Name())
+		name := entry.Name()
+		// Skip summary and other non-spec files
+		if strings.HasPrefix(name, "27-specs-summary") {
+			continue
+		}
+		// Move existing archive files from specs/ to specs/archive/
+		if strings.HasPrefix(name, "archive_") && strings.HasSuffix(name, ".md") {
+			oldPath := filepath.Join(specDir, name)
+			newPath := filepath.Join(archiveDir, name)
+			if err := os.Rename(oldPath, newPath); err != nil {
+				fmt.Fprintf(os.Stderr, "warning: failed to move %s to archive: %v\n", name, err)
+			}
+			continue // Skip processing archive files as spec files
+		}
+		// Add regular spec files for processing
+		specFiles = append(specFiles, name)
+	}
+
+	// Second pass: process the remaining spec files
+	for _, name := range specFiles {
+		filePath := filepath.Join(specDir, name)
 
 		data, err := os.ReadFile(filePath)
 		if err != nil {
-			fmt.Fprintf(os.Stderr, "warning: skipping %s: %v\n", entry.Name(), err)
+			fmt.Fprintf(os.Stderr, "warning: skipping %s: %v\n", name, err)
 			continue
 		}
 
 		fm, err := parseSpecFrontmatterOnly(string(data))
 		if err != nil {
-			fmt.Fprintf(os.Stderr, "warning: skipping %s: %v\n", entry.Name(), err)
+			fmt.Fprintf(os.Stderr, "warning: skipping %s: %v\n", name, err)
 			continue
 		}
 
@@ -44,7 +72,7 @@ func ArchiveResolvedSpecs(configDir string) (string, int, error) {
 			resolved = append(resolved, archivedSpec{
 				content:  string(data),
 				specID:   fm["spec_id"],
-				filename: entry.Name(),
+				filename: name,
 			})
 		}
 	}
@@ -97,7 +125,7 @@ func ArchiveResolvedSpecs(configDir string) (string, int, error) {
 
 	timestamp := time.Now().Format("20060102")
 	archiveName := fmt.Sprintf("archive_%s.md", timestamp)
-	archivePath := filepath.Join(specDir, archiveName)
+	archivePath := filepath.Join(archiveDir, archiveName)
 
 	var sb strings.Builder
 	sb.WriteString(fmt.Sprintf("# Spec Archive - %s\n\n", timestamp))

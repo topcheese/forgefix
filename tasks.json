@@ -11,5 +11,104 @@
     "last_error": "spec SPEC-1781317040 not found",
     "status": "FAILED",
     "created_at": "2026-07-03T21:16:27.30594-07:00"
+  },
+  {
+    "id": "task-1783241641746152000",
+    "type": "POST_RESOLUTION",
+    "spec_id": "SPEC-1783223922",
+    "repo_issue_id": 468,
+    "priority": 2,
+    "payload": "{\"spec_id\":\"SPEC-1783223922\",\"title\":\"Break up ShipReconciliation complexity\",\"version\":\"0.8.3\",\"repo_issue\":468,\"spec_url\":\"http://192.168.1.18:3000/Jimmy/forgefix/src/branch/main/specs/Break%20up%20ShipReconciliation%20complexity.md\"}",
+    "context": null,
+    "attempts": 0,
+    "created_at": "2026-07-05T01:54:01.746154-07:00"
+  },
+  {
+    "id": "task-1783241641746669000",
+    "type": "CLOSE_ISSUE",
+    "spec_id": "SPEC-1783223922",
+    "repo_issue_id": 468,
+    "priority": 2,
+    "payload": "",
+    "context": null,
+    "attempts": 0,
+    "created_at": "2026-07-05T01:54:01.74667-07:00"
+  },
+  {
+    "id": "task-1783241641746823000",
+    "type": "SYNC_METADATA",
+    "spec_id": "SPEC-1783223922",
+    "repo_issue_id": 0,
+    "priority": 1,
+    "payload": "",
+    "context": null,
+    "attempts": 0,
+    "created_at": "2026-07-05T01:54:01.746824-07:00"
+  },
+  {
+    "id": "task-1783241641747580000",
+    "type": "POST_RESOLUTION",
+    "spec_id": "SPEC-1783222864",
+    "repo_issue_id": 467,
+    "priority": 2,
+    "payload": "{\"spec_id\":\"SPEC-1783222864\",\"title\":\"Extract SpecManager Module from IssueCoordinator\",\"version\":\"0.8.3\",\"repo_issue\":467,\"spec_url\":\"http://192.168.1.18:3000/Jimmy/forgefix/src/branch/main/specs/Extract%20SpecManager%20module%20from%20IssueCoordinator.md\"}",
+    "context": null,
+    "attempts": 0,
+    "created_at": "2026-07-05T01:54:01.747581-07:00"
+  },
+  {
+    "id": "task-1783241641747730000",
+    "type": "CLOSE_ISSUE",
+    "spec_id": "SPEC-1783222864",
+    "repo_issue_id": 467,
+    "priority": 2,
+    "payload": "",
+    "context": null,
+    "attempts": 0,
+    "created_at": "2026-07-05T01:54:01.747731-07:00"
+  },
+  {
+    "id": "task-1783241641747877000",
+    "type": "SYNC_METADATA",
+    "spec_id": "SPEC-1783222864",
+    "repo_issue_id": 0,
+    "priority": 1,
+    "payload": "",
+    "context": null,
+    "attempts": 0,
+    "created_at": "2026-07-05T01:54:01.747878-07:00"
+  },
+  {
+    "id": "task-1783241641749841000",
+    "type": "POST_RESOLUTION",
+    "spec_id": "SPEC-1783237790",
+    "repo_issue_id": 471,
+    "priority": 2,
+    "payload": "{\"spec_id\":\"SPEC-1783237790\",\"title\":\"Update Spec Metadata and Changelog\",\"version\":\"0.8.3\",\"repo_issue\":471,\"spec_url\":\"http://192.168.1.18:3000/Jimmy/forgefix/src/branch/main/specs/update-spec-metadata-and-changelog.md\"}",
+    "context": null,
+    "attempts": 0,
+    "created_at": "2026-07-05T01:54:01.749841-07:00"
+  },
+  {
+    "id": "task-1783241641750041000",
+    "type": "CLOSE_ISSUE",
+    "spec_id": "SPEC-1783237790",
+    "repo_issue_id": 471,
+    "priority": 2,
+    "payload": "",
+    "context": null,
+    "attempts": 0,
+    "created_at": "2026-07-05T01:54:01.750042-07:00"
+  },
+  {
+    "id": "task-1783241641750223000",
+    "type": "SYNC_METADATA",
+    "spec_id": "SPEC-1783237790",
+    "repo_issue_id": 0,
+    "priority": 1,
+    "payload": "",
+    "context": null,
+    "attempts": 0,
+    "created_at": "2026-07-05T01:54:01.750224-07:00"
   }
 ]

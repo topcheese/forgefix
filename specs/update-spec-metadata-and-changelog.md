@@ -3,7 +3,7 @@ spec_id: "SPEC-1783237790"
 status: ship
 repo_issue: 471
 type: chore
-version: "0.8.2"
+version: "0.8.3"
 root_cause: "Multiple extraction specs were implemented but their root_cause and resolution fields were never filled in. The ledger version was stale at 0.8.1 and test counts showed 0. Several specs lacked repo_issue_ids from remote sync. CHANGELOG.md needed updating for the upcoming v0.8.2 release."
 resolution: "Updated root_cause and resolution fields for SPEC-1783222605 (GitHubClient extraction), SPEC-1783222864 (AuditLog extraction), SPEC-1783225332 (BinaryManager), SPEC-1783224084 (410 Gone handling). Bumped ledger version 0.8.1→0.8.2, updated test counts to 349/349. Added repo_issue_ids for all synced specs. Wrote CHANGELOG.md v0.8.2 release notes. Promoted completed specs to ship. Committed as c378b40."
 ---

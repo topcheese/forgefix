@@ -61,7 +61,7 @@ func TestArchiveResolvedSpecs_ArchivesClosedSpecs(t *testing.T) {
 		t.Fatalf("expected 2 archived specs (closed), got %d", count)
 	}
 
-	archivePath := filepath.Join(specsDir, archiveName)
+	archivePath := filepath.Join(specsDir, "archive", archiveName)
 	if _, err := os.Stat(archivePath); os.IsNotExist(err) {
 		t.Fatal("archive file was not created")
 	}
@@ -173,7 +173,7 @@ func TestArchiveResolvedSpecs_ArchivesOrphanedLedgerEntries(t *testing.T) {
 		t.Fatalf("expected 2 archived specs (1 file + 1 orphaned ledger), got %d", count)
 	}
 
-	archivePath := filepath.Join(specsDir, archiveName)
+	archivePath := filepath.Join(specsDir, "archive", archiveName)
 	data, err := os.ReadFile(archivePath)
 	if err != nil {
 		t.Fatal(err)
@@ -228,7 +228,7 @@ func TestArchiveResolvedSpecs_MixedResolvedAndClosed(t *testing.T) {
 		t.Fatalf("expected 2 archived specs (resolved + closed), got %d", count)
 	}
 
-	archivePath := filepath.Join(specsDir, archiveName)
+	archivePath := filepath.Join(specsDir, "archive", archiveName)
 	data, err := os.ReadFile(archivePath)
 	if err != nil {
 		t.Fatal(err)
