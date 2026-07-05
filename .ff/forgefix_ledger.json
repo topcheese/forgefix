@@ -109,7 +109,8 @@
       "repo_issue_id": 0,
       "status": "in-progress",
       "linked_commits": [
-        "5866176"
+        "5866176",
+        "9f640e2"
       ]
     }
   }

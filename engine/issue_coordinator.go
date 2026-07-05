@@ -5,7 +5,6 @@ import (
 	"errors"
 	"fmt"
 	"os"
-	"os/exec"
 	"path/filepath"
 	"strconv"
 	"strings"
@@ -22,14 +21,6 @@ type ErrorDetails struct {
 	LineNumber   int    `json:"line_number"`
 	ErrorMessage string `json:"error_message"`
 	StackTrace   string `json:"stack_trace"`
-}
-
-type AuditEntry struct {
-	Timestamp   time.Time
-	IssueNumber int
-	CommitHash  string
-	TestName    string
-	Message     string
 }
 
 type IssueCoordinator struct {
@@ -49,6 +40,7 @@ type IssueCoordinator struct {
 	failureDecaySet      bool
 	ledger               *LedgerEngine
 	titleValidator       *IssueTitleValidator
+	auditLog             *AuditLog
 }
 
 func NewIssueCoordinator(owner, repo, token, baseURL string) *IssueCoordinator {
@@ -65,6 +57,7 @@ func NewIssueCoordinator(owner, repo, token, baseURL string) *IssueCoordinator {
 		sm:             NewSpecManager(),
 		tracked:        make(map[string]int),
 		titleValidator: NewIssueTitleValidator(),
+		auditLog:       NewAuditLog(""),
 	}
 	coordinator.inactive = coordinator.isPlaceholderConfig()
 	return coordinator
@@ -120,6 +113,7 @@ func (c *IssueCoordinator) SetConfigDir(dir string) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 	c.configDir = dir
+	c.auditLog = NewAuditLog(dir)
 }
 
 func (c *IssueCoordinator) SetFailureDecay(seconds int) {
@@ -638,149 +632,8 @@ func (c *IssueCoordinator) UpdateIssueBody(issueNumber int, body string) error {
 	return c.gh.UpdateIssueBody(issueNumber, body)
 }
 
-// resolveAuditDir walks up from configDir to find the forgefix project root
-// (the directory containing forgefix_ff.yaml), so that .forgefix_history.log
-// always lands in forgefix/ regardless of where ff is invoked from.
-func resolveAuditDir(configDir string) string {
-	dir := configDir
-	for {
-		if _, err := os.Stat(filepath.Join(dir, "forgefix_ff.yaml")); err == nil {
-			return dir
-		}
-		forgefixDir := filepath.Join(dir, "forgefix")
-		if _, err := os.Stat(filepath.Join(forgefixDir, "forgefix_ff.yaml")); err == nil {
-			return forgefixDir
-		}
-		parent := filepath.Dir(dir)
-		if parent == dir {
-			break
-		}
-		dir = parent
-	}
-	return configDir
-}
-
 func (c *IssueCoordinator) LogAuditEntry(issueNumber int, testName, message string) {
-	configDir := c.configDir
-	if configDir == "" {
-		var err error
-		configDir, err = os.Getwd()
-		if err != nil {
-			return
-		}
-	}
-	configDir = resolveAuditDir(configDir)
-	commitHash := ""
-	if out, err := exec.Command("git", "rev-parse", "--short", "HEAD").Output(); err == nil {
-		commitHash = strings.TrimSpace(string(out))
-	}
-	timestamp := time.Now().Format(time.RFC3339)
-	entry := fmt.Sprintf("[%s] [#%d] [%s] [%s] [%s]\n", timestamp, issueNumber, commitHash, testName, message)
-	auditPath := FFHistoryLogPath(configDir)
-	f, err := os.OpenFile(auditPath, os.O_APPEND|os.O_WRONLY|os.O_CREATE, 0644)
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "[ERROR] failed to open audit log %s: %v\n", auditPath, err)
-		return
-	}
-	defer f.Close()
-	if _, err := f.WriteString(entry); err != nil {
-		fmt.Fprintf(os.Stderr, "[ERROR] failed to write audit log %s: %v\n", auditPath, err)
-	}
-}
-
-func ReadAuditLogEntries(configDir string) []AuditEntry {
-	configDir = resolveAuditDir(configDir)
-	path := FFHistoryLogPath(configDir)
-	data, err := os.ReadFile(path)
-	if err != nil {
-		return nil
-	}
-	var entries []AuditEntry
-	for _, line := range strings.Split(string(data), "\n") {
-		line = strings.TrimSpace(line)
-		if line == "" || !strings.HasPrefix(line, "[") {
-			continue
-		}
-		// [timestamp] [#number] [commit] [testName] [message]
-		trimmed := strings.TrimPrefix(line, "[")
-		parts := strings.Split(trimmed, "] [")
-		if len(parts) < 5 {
-			continue
-		}
-		ts, err := time.Parse(time.RFC3339, parts[0])
-		if err != nil {
-			continue
-		}
-		numberStr := strings.TrimPrefix(parts[1], "#")
-		number, err := strconv.Atoi(numberStr)
-		if err != nil {
-			continue
-		}
-		message := strings.TrimSuffix(parts[4], "]")
-		entries = append(entries, AuditEntry{
-			Timestamp:   ts,
-			IssueNumber: number,
-			CommitHash:  parts[2],
-			TestName:    parts[3],
-			Message:     message,
-		})
-	}
-	return entries
-}
-
-func ReadAuditLog(configDir string) map[string]int {
-	configDir = resolveAuditDir(configDir)
-	path := FFHistoryLogPath(configDir)
-	data, err := os.ReadFile(path)
-	if err != nil {
-		return nil
-	}
-	// Format: [timestamp] [#number] [commit] [testName] [message]
-	result := make(map[string]int)
-	for _, line := range strings.Split(string(data), "\n") {
-		line = strings.TrimSpace(line)
-		if line == "" {
-			continue
-		}
-		parts := strings.Split(line, "] [")
-		if len(parts) < 5 {
-			continue
-		}
-		numberStr := strings.TrimPrefix(parts[1], "#")
-		number, err := strconv.Atoi(numberStr)
-		if err != nil {
-			continue
-		}
-		testName := parts[3]
-		message := strings.TrimSuffix(parts[4], "]")
-		if strings.HasPrefix(message, "CLOSED") {
-			delete(result, testName)
-		} else {
-			result[testName] = number
-		}
-	}
-	return result
-}
-
-func DeleteAuditEntry(configDir string, testName string) {
-	configDir = resolveAuditDir(configDir)
-	path := FFHistoryLogPath(configDir)
-	data, err := os.ReadFile(path)
-	if err != nil {
-		return
-	}
-	var kept []string
-	for _, line := range strings.Split(string(data), "\n") {
-		if strings.Contains(line, "["+testName+"]") {
-			continue
-		}
-		kept = append(kept, line)
-	}
-	out := strings.Join(kept, "\n")
-	if out != "" && !strings.HasSuffix(out, "\n") {
-		out += "\n"
-	}
-	os.WriteFile(path, []byte(out), 0644)
+	c.auditLog.AppendEntry(issueNumber, testName, message)
 }
 
 func (c *IssueCoordinator) EnsureIssue(testName string, details *ErrorDetails) (*GitHubIssue, bool, error) {
