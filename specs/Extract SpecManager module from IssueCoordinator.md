@@ -5,7 +5,7 @@ repo_issue: ""
 type: refactor
 version: "0.8.1"
 root_cause: "\n  - SpecFile is a plain struct in issue_coordinator.go with no methods\n  - parseSpecFile, updateSpecFileRepoIssue, updateSpecFileStatus, specFileWebURL are standalone functions manipulating YAML frontmatter directly\n  - No abstraction boundary between spec YAML format and orchestration logic\n  - Every caller reaches into raw frontmatter parsing"
-resolution: "Created spec_manager.go with SpecFile as a proper domain type and injected SpecManager into IssueCoordinator. Also extracted audit log functions (resolveAuditDir, LogAuditEntry, ReadAuditLogEntries, ReadAuditLog, DeleteAuditEntry) into audit_log.go as an AuditLog type and injected it into IssueCoordinator. All 5 audit functions removed from issue_coordinator.go. path resolution logic and AuditEntry struct also moved. Package-level convenience functions remain for callers without an AuditLog reference."
+
 ---
 # Extract SpecManager Module from IssueCoordinator
 
@@ -48,6 +48,12 @@ Extract spec file parsing and manipulation from the IssueCoordinator god object 
 - [x] resolveAuditDir, LogAuditEntry, ReadAuditLogEntries, ReadAuditLog, DeleteAuditEntry removed from issue_coordinator.go
 - [x] Package-level convenience functions delegate to AuditLog methods
 - [x] SetConfigDir updates auditLog configDir
+- [x] BinaryManager in binary_manager.go with EnsureDev and InstallGlobal methods
+- [x] EnsureDev replaces Bootstrap + EnsureDevBinary (same logic, no duplication)
+- [x] InstallGlobal replaces old shortcut.go version
+- [x] copyBinary / preferLocalBinary are thin wrappers delegating to BinaryManager
+- [x] copyFile helper shared by all binary copy paths
+- [x] Bootstrap, EnsureDevBinary, InstallGlobal still work as package-level wrappers
 
 ## Verification
 

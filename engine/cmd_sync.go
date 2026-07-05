@@ -35,10 +35,11 @@ func (d *CommandDispatcher) handleSync(args []string) (CommandResult, error) {
 		fmt.Fprintf(d.Stdout, "Configuring Git NAS Gateway -> %s\n", loaded.Config.GitHub.BaseURL)
 	}
 
-	if err := Bootstrap(loaded.ConfigDir); err != nil {
+	bm := NewBinaryManager()
+	if err := bm.EnsureDev(loaded.ConfigDir); err != nil {
 		fmt.Fprintf(d.Stderr, "warning: binary bootstrap failed: %v\n", err)
 	}
-	binDir, installWarning, installErr := InstallGlobal()
+	binDir, installWarning, installErr := bm.InstallGlobal()
 	if installErr != nil {
 		fmt.Fprintf(d.Stderr, "warning: global binary update failed: %v\n", installErr)
 	} else {

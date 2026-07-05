@@ -4,7 +4,8 @@ import "fmt"
 
 // handleInstallShortcut installs the ff binary globally.
 func (d *CommandDispatcher) handleInstallShortcut(args []string) (CommandResult, error) {
-	binDir, warning, err := InstallGlobal()
+	bm := NewBinaryManager()
+	binDir, warning, err := bm.InstallGlobal()
 	if err != nil {
 		fmt.Fprintf(d.Stderr, "error: %v\n", err)
 		return CommandResult{ExitCode: 1}, nil

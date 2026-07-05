@@ -2,7 +2,6 @@ package engine
 
 import (
 	"fmt"
-	"io"
 	"os"
 	"path/filepath"
 	"runtime"
@@ -191,58 +190,7 @@ func FindMatchingConfig(startDir string) (string, error) {
 }
 
 func EnsureDevBinary(configDir string) error {
-	projectRoot := FindProjectRoot(configDir)
-
-	// Check for binary in configDir first, then fall back to projectRoot
-	srcDir := configDir
-	src := filepath.Join(srcDir, localBinaryName())
-	srcInfo, err := os.Stat(src)
-	if err != nil {
-		if os.IsNotExist(err) {
-			if projectRoot != configDir {
-				srcDir = projectRoot
-				src = filepath.Join(srcDir, localBinaryName())
-				srcInfo, err = os.Stat(src)
-				if err != nil {
-					if os.IsNotExist(err) {
-						return fmt.Errorf("local ff binary not found at %s or %s. Run 'go build -o ff .' in project root (%s)", filepath.Join(configDir, localBinaryName()), src, projectRoot)
-					}
-					return fmt.Errorf("checking local binary: %w", err)
-				}
-			} else {
-				return nil
-			}
-		} else {
-			return fmt.Errorf("checking local binary: %w", err)
-		}
-	}
-
-	dst := FFBinPath(projectRoot)
-	dstInfo, err := os.Stat(dst)
-	if err == nil && srcInfo.Size() == dstInfo.Size() {
-		return nil
-	}
-
-	if err := os.MkdirAll(FFBinDir(projectRoot), 0755); err != nil {
-		return fmt.Errorf("creating .ff/bin/: %w", err)
-	}
-
-	srcFile, err := os.Open(src)
-	if err != nil {
-		return fmt.Errorf("opening local binary: %w", err)
-	}
-	defer srcFile.Close()
-
-	dstFile, err := os.OpenFile(dst, os.O_CREATE|os.O_TRUNC|os.O_WRONLY, srcInfo.Mode())
-	if err != nil {
-		return fmt.Errorf("creating %s: %w", dst, err)
-	}
-	defer dstFile.Close()
-
-	if _, err := io.Copy(dstFile, srcFile); err != nil {
-		return fmt.Errorf("copying binary: %w", err)
-	}
-	return nil
+	return NewBinaryManager().EnsureDev(configDir)
 }
 
 func MigrateToFF(configDir string) error {
@@ -253,64 +201,9 @@ func MigrateToFF(configDir string) error {
 	if err := migrateFileToFF(projectRoot, legacyHistoryFile, ffHistoryFile); err != nil {
 		return err
 	}
-	return EnsureDevBinary(configDir)
+	return NewBinaryManager().EnsureDev(configDir)
 }
 
 func Bootstrap(configDir string) error {
-	projectRoot := FindProjectRoot(configDir)
-
-	if err := ensureFFDir(projectRoot); err != nil {
-		return err
-	}
-
-	if err := os.MkdirAll(FFBinDir(projectRoot), 0755); err != nil {
-		return fmt.Errorf("creating .ff/bin/: %w", err)
-	}
-
-	// Check for binary in configDir first, then fall back to projectRoot
-	srcDir := configDir
-	src := filepath.Join(srcDir, localBinaryName())
-	srcInfo, err := os.Stat(src)
-	if err != nil {
-		if os.IsNotExist(err) {
-			if projectRoot != configDir {
-				srcDir = projectRoot
-				src = filepath.Join(srcDir, localBinaryName())
-				srcInfo, err = os.Stat(src)
-				if err != nil {
-					if os.IsNotExist(err) {
-						return fmt.Errorf("local ff binary not found at %s or %s. Run 'go build -o ff .' in project root (%s)", filepath.Join(configDir, localBinaryName()), src, projectRoot)
-					}
-					return fmt.Errorf("checking local binary: %w", err)
-				}
-			} else {
-				return nil
-			}
-		} else {
-			return fmt.Errorf("checking local binary: %w", err)
-		}
-	}
-
-	dst := FFBinPath(projectRoot)
-	dstInfo, err := os.Stat(dst)
-	if err == nil && srcInfo.Size() == dstInfo.Size() {
-		return nil
-	}
-
-	srcFile, err := os.Open(src)
-	if err != nil {
-		return fmt.Errorf("opening local binary: %w", err)
-	}
-	defer srcFile.Close()
-
-	dstFile, err := os.OpenFile(dst, os.O_CREATE|os.O_TRUNC|os.O_WRONLY, srcInfo.Mode())
-	if err != nil {
-		return fmt.Errorf("creating %s: %w", dst, err)
-	}
-	defer dstFile.Close()
-
-	if _, err := io.Copy(dstFile, srcFile); err != nil {
-		return fmt.Errorf("copying binary: %w", err)
-	}
-	return nil
+	return NewBinaryManager().EnsureDev(configDir)
 }
