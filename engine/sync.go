@@ -435,6 +435,14 @@ func processSyncQueue(coord *IssueCoordinator, configDir string, ledger *LedgerE
 			if errors.Is(opErr, ErrResourceNotFound) {
 				// Issue no longer exists on remote — drop operation immediately
 				fmt.Fprintf(os.Stderr, "warning: %s for issue #%d returned 404, dropping from sync queue\n", op.Type, op.IssueNum)
+
+				// Proactively clean up the spec's repo_issue field so no further
+				// operations are enqueued for this deleted issue.
+				if op.SpecID != "" {
+					clearRepoIssueForSpec(configDir, op.SpecID, coord)
+				} else if op.IssueNum > 0 {
+					clearRepoIssueByNumber(configDir, op.IssueNum, coord)
+				}
 				continue
 			}
 			lastErr = opErr
@@ -647,6 +655,96 @@ func SpawnBackgroundSync(configDir, specID string) error {
 	}
 
 	return cmd.Process.Release()
+}
+
+// clearRepoIssueForSpec finds a spec file by SpecID and clears its repo_issue
+// field to 0, both in the spec file and in the ledger. This prevents future
+// sync operations from being enqueued for a deleted remote issue.
+func clearRepoIssueForSpec(configDir, specID string, coord *IssueCoordinator) {
+	specDir := filepath.Join(configDir, "specs")
+	entries, err := os.ReadDir(specDir)
+	if err != nil {
+		return
+	}
+	for _, entry := range entries {
+		if entry.IsDir() || !strings.HasSuffix(entry.Name(), ".md") {
+			continue
+		}
+		if strings.HasPrefix(entry.Name(), "archive_") {
+			continue
+		}
+		filePath := filepath.Join(specDir, entry.Name())
+		spec, err := parseSpecFile(filePath)
+		if err != nil || spec.SpecID != specID {
+			continue
+		}
+		if spec.RepoIssue == 0 {
+			return
+		}
+		if err := updateSpecFileRepoIssue(filePath, 0); err != nil {
+			fmt.Fprintf(os.Stderr, "warning: failed to clear repo_issue for spec %s: %v\n", specID, err)
+			return
+		}
+		// Update ledger as well
+		ledger := coord.GetLedger()
+		if ledger == nil {
+			ledger, _ = LoadLedger(configDir)
+		}
+		if ledger != nil {
+			if entry := ledger.GetSpecEntry(specID); entry != nil {
+				entry.RepoIssueID = 0
+				ledger.SetSpecEntry(specID, entry)
+				if err := SaveLedger(ledger, configDir); err != nil {
+					fmt.Fprintf(os.Stderr, "warning: failed to save ledger after clearing repo_issue: %v\n", err)
+				}
+			}
+		}
+		fmt.Fprintf(os.Stderr, "debug: cleared repo_issue for spec %s (issue was deleted on remote)\n", specID)
+		return
+	}
+}
+
+// clearRepoIssueByNumber finds a spec file by its repo_issue field value and clears
+// it to 0. Used when a sync queue operation fails with 404 but has no SpecID.
+func clearRepoIssueByNumber(configDir string, issueNum int, coord *IssueCoordinator) {
+	specDir := filepath.Join(configDir, "specs")
+	entries, err := os.ReadDir(specDir)
+	if err != nil {
+		return
+	}
+	for _, de := range entries {
+		if de.IsDir() || !strings.HasSuffix(de.Name(), ".md") {
+			continue
+		}
+		if strings.HasPrefix(de.Name(), "archive_") {
+			continue
+		}
+		filePath := filepath.Join(specDir, de.Name())
+		spec, err := parseSpecFile(filePath)
+		if err != nil || spec.RepoIssue != issueNum {
+			continue
+		}
+		if err := updateSpecFileRepoIssue(filePath, 0); err != nil {
+			fmt.Fprintf(os.Stderr, "warning: failed to clear repo_issue for %s: %v\n", spec.SpecID, err)
+			return
+		}
+		// Update ledger as well
+		ledger := coord.GetLedger()
+		if ledger == nil {
+			ledger, _ = LoadLedger(configDir)
+		}
+		if ledger != nil {
+			if se := ledger.GetSpecEntry(spec.SpecID); se != nil {
+				se.RepoIssueID = 0
+				ledger.SetSpecEntry(spec.SpecID, se)
+				if err := SaveLedger(ledger, configDir); err != nil {
+					fmt.Fprintf(os.Stderr, "warning: failed to save ledger after clearing repo_issue: %v\n", err)
+				}
+			}
+		}
+		fmt.Fprintf(os.Stderr, "debug: cleared repo_issue for issue #%d (deleted on remote)\n", issueNum)
+		return
+	}
 }
 
 func isResolvedStatus(status string) bool {

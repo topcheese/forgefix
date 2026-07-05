@@ -500,7 +500,73 @@ func TestIssueCloserService_Execute_CloserError(t *testing.T) {
 	}
 }
 
-// Registry tests
+func TestProcessDropsTaskOnResourceNotFound(t *testing.T) {
+	tmpDir := t.TempDir()
+	q := NewHousekeepingQueue(tmpDir)
+
+	// Registry with an action that returns "resource not found" error
+	notFoundErr := errors.New("close on issue #42: resource not found")
+	callCount := 0
+	registry := map[TaskType]IssueAction{
+		TaskTypeCloseIssue: &mockAction{fn: func(ctx context.Context, task HousekeepingTask) error {
+			callCount++
+			return notFoundErr
+		}},
+	}
+
+	task := HousekeepingTask{Type: TaskTypeCloseIssue, SpecID: "SPEC-RNF", RepoIssueID: 42, Priority: PriorityHigh}
+	q.Enqueue(task)
+
+	ctx := context.Background()
+	if err := q.Process(ctx, registry); err != nil {
+		t.Fatalf("Process failed: %v", err)
+	}
+
+	// Task should be dropped (not retried) on first 404
+	if callCount != 1 {
+		t.Errorf("expected 1 execution call (dropped on 404), got %d", callCount)
+	}
+
+	// Queue should be empty
+	if q.Len() != 0 {
+		t.Errorf("expected empty queue after 404 drop, got %d tasks", q.Len())
+	}
+}
+
+func TestProcessDropsOnResourceNotFound_RetriesOtherErrors(t *testing.T) {
+	tmpDir := t.TempDir()
+	q := NewHousekeepingQueue(tmpDir)
+
+	attempts := 0
+	registry := map[TaskType]IssueAction{
+		TaskTypePostResolution: &mockAction{fn: func(ctx context.Context, task HousekeepingTask) error {
+			attempts++
+			if attempts == 1 {
+				return errors.New("resource not found goes first")
+			}
+			return errors.New("transient network error")
+		}},
+	}
+
+	task := HousekeepingTask{Type: TaskTypePostResolution, SpecID: "SPEC-RNF2", RepoIssueID: 99, Priority: PriorityHigh}
+	q.Enqueue(task)
+
+	ctx := context.Background()
+	if err := q.Process(ctx, registry); err != nil {
+		t.Fatalf("Process failed: %v", err)
+	}
+
+	// First attempt returns "resource not found" which is DROPPED (not retried).
+	// So attempts == 1 and the queue should be empty.
+	if attempts != 1 {
+		t.Errorf("expected 1 attempt (dropped on 404), got %d", attempts)
+	}
+
+	// Queue should be empty — the dropped task is gone
+	if q.Len() != 0 {
+		t.Errorf("expected empty queue after 404 drop, got %d tasks", q.Len())
+	}
+}
 
 func TestNewDefaultRegistry(t *testing.T) {
 	commenter := &mockCommenter{
