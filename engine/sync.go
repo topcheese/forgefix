@@ -413,6 +413,7 @@ func processSyncQueue(coord *IssueCoordinator, configDir string, ledger *LedgerE
 
 	var lastErr error
 	remaining := []SyncOperation{}
+	processedSpecIDs := make(map[string]bool)
 
 	for _, op := range ops {
 		var opErr error
@@ -426,7 +427,17 @@ func processSyncQueue(coord *IssueCoordinator, configDir string, ledger *LedgerE
 		case SyncOpUpdateIssueBody:
 			opErr = processUpdateIssueBody(coord, op)
 		case SyncOpSyncSpec:
+			// Deduplicate sync operations for the same specID.
+			// If we've already processed a sync operation for this specID,
+			// skip it to prevent duplicate sync attempts.
+			if processedSpecIDs[op.SpecID] {
+				fmt.Fprintf(os.Stderr, "debug: skipping duplicate sync operation for spec %s\n", op.SpecID)
+				continue
+			}
 			opErr = syncSingleSpec(coord, configDir, op.SpecID, nil)
+			if opErr == nil {
+				processedSpecIDs[op.SpecID] = true
+			}
 		case SyncOpDeleteIssue:
 			opErr = processDeleteIssue(coord, configDir, op)
 		}

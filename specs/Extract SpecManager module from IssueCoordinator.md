@@ -1,9 +1,9 @@
 ---
 spec_id: "SPEC-1783222864"
-status: ship
+status: closed
 repo_issue: 467
 type: refactor
-version: "0.8.3"
+version: "0.8.4"
 root_cause: "SpecFile was a plain struct in issue_coordinator.go with no methods. parseSpecFile, updateSpecFileRepoIssue, updateSpecFileStatus, specFileWebURL were standalone functions manipulating YAML frontmatter directly. No abstraction boundary between spec YAML format and orchestration logic."
 resolution: "Created spec_manager.go with SpecManager interface and specManager implementation. SpecFile struct moved out of issue_coordinator.go. IssueCoordinator gets injected SpecManager. All YAML frontmatter manipulation confined to spec_manager.go. Package-level convenience functions (parseSpecFile, etc.) remain for backward compat but delegate to SpecManager."
 ---

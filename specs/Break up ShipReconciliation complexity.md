@@ -1,9 +1,9 @@
 ---
 spec_id: "SPEC-1783223922"
-status: ship
+status: closed
 repo_issue: 468
 type: refactor
-version: "0.8.3"
+version: "0.8.4"
 root_cause: "ShipReconciliation() in execute.go was a ~250-line function with ~36 branches, mixing git validation, spec gate checks, version prompting, housekeeping queue enqueuing, and housekeeper type exposure. ship_controller.go and version_manager.go were created as extraction targets but ShipReconciliation() was never converted to use them — both implementations existed independently."
 resolution: "ShipReconciliation() in execute.go refactored to a thin wrapper delegating to NewShipController(config, configDir, aiMode).Run(). housekeeper import removed from execute.go (only used in ShipReconciliation, now handled by ShipController internally). All ~250 lines of branching logic consolidated into ShipController with injected collaborators (Config, VersionManager, housekeeping queue). Tests pass without behavioral change."
 ---
