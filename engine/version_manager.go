@@ -89,6 +89,43 @@ func (vm *VersionManager) HandleShipVersion(aiMode bool) string {
 	return shipVersion
 }
 
+// UpdateSpecFileVersion updates the version: field in a spec file's YAML frontmatter.
+// If no version: field exists, it inserts one before the closing ---.
+func (vm *VersionManager) UpdateSpecFileVersion(filePath, version string) error {
+	data, err := os.ReadFile(filePath)
+	if err != nil {
+		return fmt.Errorf("reading spec file %s: %w", filePath, err)
+	}
+	content := string(data)
+	lines := strings.Split(content, "\n")
+	inFrontmatter := false
+	found := false
+	for i, line := range lines {
+		trimmed := strings.TrimSpace(line)
+		if trimmed == "---" && !inFrontmatter {
+			inFrontmatter = true
+			continue
+		}
+		if trimmed == "---" && inFrontmatter {
+			break
+		}
+		if strings.HasPrefix(trimmed, "version:") {
+			lines[i] = fmt.Sprintf("version: \"%s\"", version)
+			found = true
+		}
+	}
+	if !found {
+		// Insert version before the closing ---
+		for i, line := range lines {
+			if strings.TrimSpace(line) == "---" && i > 0 {
+				lines = append(lines[:i], append([]string{fmt.Sprintf("version: \"%s\"", version)}, lines[i:]...)...)
+				break
+			}
+		}
+	}
+	return os.WriteFile(filePath, []byte(strings.Join(lines, "\n")), 0644)
+}
+
 // incrementPatchVersion bumps the patch segment of a semver string.
 // "1.2.3" → "1.2.4". Returns "0.0.1" on parse failure.
 func incrementPatchVersion(version string) string {

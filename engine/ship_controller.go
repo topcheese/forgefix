@@ -61,7 +61,7 @@ func (sc *ShipController) Run() {
 	for _, id := range shipSpecs {
 		spec, specErr := LoadSpecByID(sc.configDir, id)
 		if specErr == nil && spec != nil {
-			if err := updateSpecFileVersion(spec.FilePath, shipVersion); err != nil {
+			if err := sc.vm.UpdateSpecFileVersion(spec.FilePath, shipVersion); err != nil {
 				fmt.Fprintf(os.Stderr, "Warning: failed to update version in spec %s: %v\n", id, err)
 			}
 		}

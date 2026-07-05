@@ -107,8 +107,10 @@
     "SPEC-1783224084": {
       "spec_id": "SPEC-1783224084",
       "repo_issue_id": 0,
-      "status": "draft",
-      "linked_commits": []
+      "status": "in-progress",
+      "linked_commits": [
+        "5866176"
+      ]
     }
   }
 }
