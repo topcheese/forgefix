@@ -3,11 +3,11 @@
   "entries": {
     "forgefix": {
       "pipeline_id": "forgefix",
-      "total_ran": 349,
-      "total_passed": 349,
+      "total_ran": 354,
+      "total_passed": 354,
       "total_failed": 0,
-      "historical_floor": 349,
-      "last_update": "2026-07-04T23:57:26-07:00"
+      "historical_floor": 354,
+      "last_update": "2026-07-05T00:58:25-07:00"
     }
   },
   "spec_mappings": {
@@ -51,7 +51,8 @@
       "repo_issue_id": 460,
       "status": "in-progress",
       "linked_commits": [
-        "63b0365"
+        "63b0365",
+        "92417f4"
       ]
     },
     "SPEC-1783157282": {
@@ -116,8 +117,8 @@
     },
     "SPEC-1783237790": {
       "spec_id": "SPEC-1783237790",
-      "repo_issue_id": 0,
-      "status": "draft",
+      "repo_issue_id": 471,
+      "status": "in-progress",
       "linked_commits": []
     }
   }

@@ -1,7 +1,7 @@
 ---
 spec_id: "SPEC-1783237790"
 status: in-progress
-repo_issue: ""
+repo_issue: 471
 type: chore
 version: "0.8.2"
 root_cause: ""
