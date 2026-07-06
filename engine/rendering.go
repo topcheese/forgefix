@@ -435,11 +435,9 @@ func getSafeColor(index int) string {
 type DashboardRenderer struct{}
 
 func (DashboardRenderer) floorString(d *Dashboard, p PipelineConfig) string {
-	ef := p.LedgerFloor
-	if e := d.GetLedgerEntry(p.ID); e != nil && e.HistoricalFloor > ef {
-		ef = e.HistoricalFloor
-	}
-	return fmt.Sprintf("%d", ef)
+	// Show total tests run across ALL pipelines, not just the first pipeline's floor.
+	// The bomb ring center represents cumulative test activity.
+	return fmt.Sprintf("%d", d.GetTotalRan())
 }
 
 func (DashboardRenderer) WriteBombDefused(sb *strings.Builder, floorStr string) {

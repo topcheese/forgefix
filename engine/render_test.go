@@ -70,6 +70,7 @@ func TestDashboardRenderer_WriteBombLive_Defused(t *testing.T) {
 	d.SetBomb(BombDefused)
 	ledger := NewLedgerEngine()
 	ledger.GetOrCreateEntry("p")
+	ledger.UpdateEntry("p", 3, 3, 0)
 	d.SetLedger(ledger)
 
 	var r DashboardRenderer
@@ -80,8 +81,9 @@ func TestDashboardRenderer_WriteBombLive_Defused(t *testing.T) {
 	if !strings.Contains(output, ">> BOMB DEFUSED <<") {
 		t.Errorf("expected defused output, got:\n%s", output)
 	}
+	// Bomb center now shows GetTotalRan() across all pipelines
 	if !strings.Contains(output, "│ 3│") {
-		t.Errorf("expected floor value in defused art, got:\n%s", output)
+		t.Errorf("expected total ran 3 in bomb center, got:\n%s", output)
 	}
 }
 
@@ -89,6 +91,10 @@ func TestDashboardRenderer_WriteBombLive_Active(t *testing.T) {
 	pipelines := []PipelineConfig{{ID: "p", Name: "Pipe", LedgerFloor: 5}}
 	d := NewDashboard(pipelines)
 	d.SetBomb(BombActive)
+	ledger := NewLedgerEngine()
+	ledger.GetOrCreateEntry("p")
+	ledger.UpdateEntry("p", 5, 5, 0)
+	d.SetLedger(ledger)
 
 	var r DashboardRenderer
 	var sb strings.Builder
@@ -98,8 +104,9 @@ func TestDashboardRenderer_WriteBombLive_Active(t *testing.T) {
 	if !strings.Contains(output, "┌───┐") {
 		t.Errorf("expected active bomb ring, got:\n%s", output)
 	}
+	// Bomb center now shows GetTotalRan() across all pipelines
 	if !strings.Contains(output, "│ 5│") {
-		t.Errorf("expected floor value in bomb ring, got:\n%s", output)
+		t.Errorf("expected total ran 5 in bomb center, got:\n%s", output)
 	}
 }
 
@@ -110,6 +117,7 @@ func TestDashboardRenderer_WriteBombFinal_Defused(t *testing.T) {
 	d.SetBomb(BombDefused)
 	ledger := NewLedgerEngine()
 	ledger.GetOrCreateEntry("p")
+	ledger.UpdateEntry("p", 7, 7, 0)
 	d.SetLedger(ledger)
 
 	var r DashboardRenderer
@@ -120,8 +128,9 @@ func TestDashboardRenderer_WriteBombFinal_Defused(t *testing.T) {
 	if !strings.Contains(output, ">> BOMB DEFUSED <<") {
 		t.Errorf("expected defused output, got:\n%s", output)
 	}
+	// Bomb center now shows GetTotalRan() across all pipelines
 	if !strings.Contains(output, "│ 7│") {
-		t.Errorf("expected floor value, got:\n%s", output)
+		t.Errorf("expected total ran 7 in bomb center, got:\n%s", output)
 	}
 }
 
