@@ -127,8 +127,10 @@
     "SPEC-1783363349": {
       "spec_id": "SPEC-1783363349",
       "repo_issue_id": 473,
-      "status": "backlog",
-      "linked_commits": []
+      "status": "in-progress",
+      "linked_commits": [
+        "6e19afe"
+      ]
     }
   }
 }

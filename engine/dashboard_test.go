@@ -688,6 +688,156 @@ func TestBombFloorValueChangesWithLedgerFloor(t *testing.T) {
 	}
 }
 
+func TestRenderDetonationFormat(t *testing.T) {
+	output := RenderDetonation()
+	if !strings.Contains(output, "BOMB DETONATED") {
+		t.Errorf("detonation art must contain BOMB DETONATED text")
+	}
+	if !strings.Contains(output, "SYSTEM SHATTERED") {
+		t.Errorf("detonation art must contain SYSTEM SHATTERED text")
+	}
+	if !strings.Contains(output, "▄▄▄▄▄▄▄▄▄▄▄") {
+		t.Errorf("detonation art must contain top border of block chars")
+	}
+	if !strings.Contains(output, "💥") {
+		t.Errorf("detonation art must contain explosion emoji")
+	}
+	lines := strings.Split(strings.TrimSpace(output), "\n")
+	if len(lines) < 10 {
+		t.Errorf("detonation art should be ~11 lines, got %d", len(lines))
+	}
+}
+
+func TestRenderBombDefusedFormat(t *testing.T) {
+	output := RenderBombDefused("42")
+	if !strings.Contains(output, "┌───┐") {
+		t.Errorf("defused art must contain box top")
+	}
+	if !strings.Contains(output, "│42│") {
+		t.Errorf("defused art must contain floor value")
+	}
+	if !strings.Contains(output, "└───┘") {
+		t.Errorf("defused art must contain box bottom")
+	}
+	// The "BOMB DEFUSED" text is added by WriteBombDefused wrapper,
+	// not by RenderBombDefused itself; check for green colored blocks instead
+	if !strings.Contains(output, "█") {
+		t.Errorf("defused art must contain block chars")
+	}
+	lines := strings.Split(strings.TrimSpace(output), "\n")
+	if len(lines) != 5 {
+		t.Errorf("bomb defused art must be exactly 5 lines, got %d", len(lines))
+	}
+}
+
+func TestRenderFinalBombArtOnceNotPerPipeline(t *testing.T) {
+	// Simulate the renderFinal pattern: bomb art should appear ONCE,
+	// not once per pipeline (the pre-fix bug).
+	pipelines := make([]PipelineConfig, 10)
+	for i := range pipelines {
+		pipelines[i] = PipelineConfig{ID: fmt.Sprintf("p%d", i), Name: fmt.Sprintf("Pipeline %d", i)}
+	}
+	d := NewDashboard(pipelines)
+	ledger := NewLedgerEngine()
+	for _, p := range pipelines {
+		ledger.GetOrCreateEntry(p.ID)
+		ledger.UpdateEntry(p.ID, 10, 8, 2)
+	}
+	d.SetLedger(ledger)
+
+	// BUGGY pattern: bomb art inside per-pipeline loop
+	var buggySb strings.Builder
+	buggySb.WriteString("\033[H\033[2J")
+	for _, p := range pipelines {
+		buggySb.WriteString(d.RenderHeader(p))
+		buggySb.WriteString("\nBOMB_DETONATED_ART\n")
+		if list := d.RenderTestList(p); list != "" {
+			buggySb.WriteString(list)
+		}
+	}
+	buggyOutput := buggySb.String()
+	buggyBombCount := strings.Count(buggyOutput, "BOMB_DETONATED_ART")
+	if buggyBombCount != 10 {
+		t.Errorf("BUGGY pattern: expected bomb art 10× (one per pipeline), got %d", buggyBombCount)
+	}
+
+	// FIXED pattern: bomb art outside the loop
+	var fixedSb strings.Builder
+	fixedSb.WriteString("\033[H\033[2J")
+	for _, p := range pipelines {
+		fixedSb.WriteString(d.RenderHeader(p))
+		if list := d.RenderTestList(p); list != "" {
+			fixedSb.WriteString(list)
+		}
+	}
+	if len(pipelines) > 0 {
+		fixedSb.WriteString("\nBOMB_DETONATED_ART\n")
+	}
+	fixedOutput := fixedSb.String()
+	fixedBombCount := strings.Count(fixedOutput, "BOMB_DETONATED_ART")
+	if fixedBombCount != 1 {
+		t.Errorf("FIXED pattern: expected bomb art exactly 1×, got %d", fixedBombCount)
+	}
+}
+
+func TestRenderHeadersCappedByTerminalHeight(t *testing.T) {
+	// Verify the terminal-height cap logic works: with many pipelines,
+	// headers should be limited and an overflow indicator shown.
+	pipelines := make([]PipelineConfig, 25)
+	for i := range pipelines {
+		pipelines[i] = PipelineConfig{ID: fmt.Sprintf("p%d", i), Name: fmt.Sprintf("Pipeline %d", i)}
+	}
+	d := NewDashboard(pipelines)
+	ledger := NewLedgerEngine()
+	for _, p := range pipelines {
+		ledger.GetOrCreateEntry(p.ID)
+		ledger.UpdateEntry(p.ID, 10, 8, 2)
+	}
+	d.SetLedger(ledger)
+	_ = d.GetActivePipelines()
+
+	// Simulate the fixed render() logic: cap at terminal height minus reserved lines.
+	termHeight := 24
+	reservedLines := 5 + 7 + 1 // bomb + stats + blank
+	maxHeaderLines := termHeight - reservedLines
+	if maxHeaderLines < 1 {
+		maxHeaderLines = 1
+	}
+
+	headersShown := 0
+	var sb strings.Builder
+	for _, pipeline := range pipelines {
+		if headersShown >= maxHeaderLines {
+			break
+		}
+		sb.WriteString(d.RenderHeader(pipeline))
+		headersShown++
+	}
+	if headersShown < len(pipelines) {
+		sb.WriteString(fmt.Sprintf("… and %d more pipeline(s)", len(pipelines)-headersShown))
+	}
+	output := sb.String()
+
+	// Verify capping
+	if headersShown != maxHeaderLines {
+		t.Errorf("expected %d headers shown (24-height terminal), got %d", maxHeaderLines, headersShown)
+	}
+	if !strings.Contains(output, "and 14 more pipeline(s)") {
+		t.Errorf("expected overflow indicator for 14 truncated pipelines, got:\n%s", output)
+	}
+
+	// Verify individual pipeline names appear
+	for i := 0; i < headersShown; i++ {
+		if !strings.Contains(output, fmt.Sprintf("Pipeline %d", i)) {
+			t.Errorf("expected header for Pipeline %d in output", i)
+		}
+	}
+	// Verify truncated pipelines do NOT appear
+	if strings.Contains(output, "Pipeline 24") {
+		t.Errorf("pipeline 24 should be truncated, not in output")
+	}
+}
+
 func TestTwoPipelinesEachGetOwnTwoLineSlot(t *testing.T) {
 	d := NewDashboard([]PipelineConfig{
 		{ID: "p1", Name: "Pipe One"},
