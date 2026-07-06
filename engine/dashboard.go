@@ -195,15 +195,31 @@ func (u *UI) render() {
 
 	pipelines := u.dashboard.GetActivePipelines()
 
+	// Reserve lines for bomb art (~5 lines), stats section (7 lines),
+	// and a blank line between headers and bomb. Cap pipeline headers
+	// so the bomb + stats remain visible.
+	reservedLines := 5 + 7 + 1 // bomb + stats + blank
+	maxHeaderLines := termHeight - reservedLines
+	if maxHeaderLines < 1 {
+		maxHeaderLines = 1
+	}
+	headersShown := 0
 	for _, pipeline := range pipelines {
+		if headersShown >= maxHeaderLines {
+			break
+		}
 		sb.WriteString(u.dashboard.RenderHeader(pipeline))
+		headersShown++
+	}
+	if headersShown < len(pipelines) {
+		sb.WriteString(fmt.Sprintf("  %s… and %d more pipeline(s)%s\n", Yellow, len(pipelines)-headersShown, Reset))
 	}
 
 	sb.WriteString("\n")
 
 	r.WriteBombLive(&sb, u.dashboard, pipelines)
 
-	fixedLines := len(pipelines) + 1 + 6 + 7
+	fixedLines := headersShown + 1 + 6 + 7
 	availableForTests := termHeight - fixedLines
 	if availableForTests < 0 {
 		availableForTests = 0
@@ -291,11 +307,15 @@ func (u *UI) renderFinal(d *Dashboard, config *Config) {
 
 	for _, p := range config.Pipelines {
 		sb.WriteString(d.RenderHeader(p))
-		r.WriteBombFinal(&sb, d, p)
-
 		if list := d.RenderTestList(p); list != "" {
 			sb.WriteString(list)
 		}
+	}
+
+	// Render bomb state ONCE (not per pipeline) to avoid flooding output
+	// with repeated 11-line ASCII art when many pipelines are configured.
+	if len(config.Pipelines) > 0 {
+		r.WriteBombFinal(&sb, d, config.Pipelines[0])
 	}
 
 	if d.Bomb == BombDetonated {

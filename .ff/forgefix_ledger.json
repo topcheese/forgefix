@@ -123,6 +123,12 @@
       "repo_issue_id": 472,
       "status": "ship",
       "linked_commits": []
+    },
+    "SPEC-1783363349": {
+      "spec_id": "SPEC-1783363349",
+      "repo_issue_id": 0,
+      "status": "draft",
+      "linked_commits": []
     }
   }
 }
