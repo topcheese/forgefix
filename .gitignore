@@ -21,6 +21,9 @@ Thumbs.db
 tmp/
 /build/
 
+# Runtime data directories (created by first run)
+.crush/
+
 # Config files (contain secrets — use .env or template copies)
 forgefix_ff.yaml
 *_bak.yaml
