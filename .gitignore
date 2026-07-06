@@ -1,6 +1,6 @@
-# Runtime state directories
-.ff/
-**/.ff/
+# Runtime state files (but keep forgefix_ledger.json — FF needs it to identify project)
+.ff/*
+!.ff/forgefix_ledger.json
 
 # Binaries
 ff
