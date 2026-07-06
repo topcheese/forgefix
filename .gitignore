@@ -20,3 +20,7 @@ Thumbs.db
 # Build artifacts
 tmp/
 /build/
+
+# Config files (contain secrets — use .env or template copies)
+forgefix_ff.yaml
+*_bak.yaml
