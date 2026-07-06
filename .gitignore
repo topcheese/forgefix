@@ -24,3 +24,9 @@ tmp/
 # Config files (contain secrets — use .env or template copies)
 forgefix_ff.yaml
 *_bak.yaml
+
+# OpenCode agent configuration (dev tooling, not part of ForgeFix)
+.opencode/
+
+# Swarm agent runtime state
+.swarm/
