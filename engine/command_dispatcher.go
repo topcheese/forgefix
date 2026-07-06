@@ -50,6 +50,18 @@ func (d *CommandDispatcher) Execute(cmd string, args []string) (CommandResult, e
 		return d.handleListSpecs(args)
 	case "ship":
 		return d.handleShip(args)
+	case "config":
+		if len(args) > 0 && args[0] == "validate" {
+			return d.handleConfig(args)
+		}
+		if GitPassthroughCommands["config"] {
+			return d.handleGitPassthrough("config", args)
+		}
+		return d.handleRun("config", args)
+	case "export":
+		return d.handleExport(args)
+	case "import":
+		return d.handleImport(args)
 	case "sync":
 		return d.handleSync(args)
 	case "spec":

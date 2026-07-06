@@ -1,6 +1,6 @@
 ---
 spec_id: "SPEC-1783157282"
-status: backlog
+status: ship
 repo_issue: 461
 type: feature
 version: "v0.9.0"
@@ -23,17 +23,19 @@ Add `ff config validate` command to validate the forgefix configuration file and
 
 ## Implementation
 
-1. Create `cmd_config.go` with validate subcommand
-2. Reuse existing config parsing from config.go
-3. Add validation functions for each field type
-4. Output errors to stderr with helpful messages
+1. Created `engine/cmd_config.go` with handleConfig method
+2. Added `case "config":` to `command_dispatcher.go` (conditionally routes `config validate` to handler, other config subcommands to git passthrough)
+3. Validates: github owner/repo/token, base_url format, pipeline configs, language configs
+4. Reuses existing `LoadPipelineConfig` for config loading
+5. Outputs errors to stderr with actionable messages and config file path
 
 ## Acceptance Criteria
 
-- [ ] `ff config validate` exits 0 for valid config
-- [ ] `ff config validate` reports missing required fields
-- [ ] `ff config validate` reports invalid field formats
-- [ ] Error messages are actionable and specific
+- [x] `ff config validate` exits 0 for valid config
+- [x] `ff config validate` reports missing required fields
+- [x] `ff config validate` reports invalid field formats
+- [x] Error messages are actionable and specific
+- [x] `ff config` (without validate) still passes through to git
 
 ## Verification
 

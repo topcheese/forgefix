@@ -1,6 +1,6 @@
 ---
 spec_id: "SPEC-1783157283"
-status: backlog
+status: ship
 repo_issue: 462
 type: feature
 version: "v0.9.0"
@@ -23,18 +23,19 @@ Add `ff export` and `ff import` commands to allow transferring specs between pro
 
 ## Implementation
 
-1. Create `cmd_export.go` and `cmd_import.go`
-2. Use tarball format for multi-spec exports
-3. Include spec files and optionally ledger entries
-4. Handle version conflicts on import
-5. Interactive prompts for duplicate handling (or `--force` flag)
+1. Created `engine/cmd_export.go` with handleExport and handleImport methods
+2. Added `case "export":` and `case "import":` to `command_dispatcher.go`
+3. Export uses tar.gz format, supporting --spec/-s filter and --output/-o flags
+4. Import detects duplicates (skips by default), uses --force to overwrite
+5. Import auto-registers new specs in the ledger
 
 ## Acceptance Criteria
 
-- [ ] `ff export -o specs.tar.gz` creates export file
-- [ ] `ff export SPEC-1783157280` exports single spec
-- [ ] `ff import specs.tar.gz` imports specs
-- [ ] Duplicate specs are detected and handled
+- [x] `ff export -o specs.tar.gz` creates export file
+- [x] `ff export -s SPEC-1783157282 -o spec.tar.gz` exports single spec
+- [x] `ff import specs.tar.gz` imports specs
+- [x] Duplicate specs are detected and skipped without --force
+- [x] `--force` flag overwrites existing spec files
 
 ## Verification
 

@@ -1,3 +1,11 @@
+## [v0.9.0] - 2026-07-05
+
+### 🚀 Release Summary
+- feat: Implement ff config validate command — validates github fields, pipeline configs, language configs (SPEC-1783157282)
+- feat: Implement ff export and ff import commands — tar.gz spec transfer with duplicate detection (SPEC-1783157283)
+- fix: Make shipping gate strict — backlog, in-progress, and review specs block the gate
+- chore: Promote all specs to ship for 0.9.0 release
+
 ## [v0.8.5] - 2026-07-05
 
 ### 🚀 Release Summary

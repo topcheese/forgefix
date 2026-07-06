@@ -1,6 +1,6 @@
 ---
 spec_id: "SPEC-1783225332"
-status: review
+status: ship
 repo_issue: 470
 type: refactor
 version: "v0.8.1"

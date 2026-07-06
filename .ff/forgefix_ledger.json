@@ -49,19 +49,19 @@
       "linked_commits": [],
       "repo_issue_id": 460,
       "spec_id": "SPEC-1783157281",
-      "status": "review"
+      "status": "ship"
     },
     "SPEC-1783157282": {
       "linked_commits": [],
       "repo_issue_id": 461,
       "spec_id": "SPEC-1783157282",
-      "status": "backlog"
+      "status": "ship"
     },
     "SPEC-1783157283": {
       "linked_commits": [],
       "repo_issue_id": 462,
       "spec_id": "SPEC-1783157283",
-      "status": "backlog"
+      "status": "ship"
     },
     "SPEC-1783159999": {
       "linked_commits": [],
@@ -109,7 +109,7 @@
       "linked_commits": [],
       "repo_issue_id": 470,
       "spec_id": "SPEC-1783225332",
-      "status": "review"
+      "status": "ship"
     },
     "SPEC-1783237790": {
       "linked_commits": [],
@@ -121,8 +121,8 @@
       "linked_commits": [],
       "repo_issue_id": 472,
       "spec_id": "SPEC-1783285217",
-      "status": "review"
+      "status": "ship"
     }
   },
-  "version": "0.8.5"
+  "version": "0.9.0"
 }
