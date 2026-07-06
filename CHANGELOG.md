@@ -1,3 +1,12 @@
+## [v0.8.5] - 2026-07-05
+
+### 🚀 Release Summary
+- feat: Implement ff status dashboard command with spec counts, sync status, and ship gate blocking indicators (SPEC-1783157281)
+- fix: Fix sync inconsistency with deduplication of duplicate spec sync operations (SPEC-1783285217)
+- refactor: Consolidate three binary copy paths into BinaryManager (SPEC-1783225332)
+- fix: Make shipping gate strict — backlog, in-progress, and review specs block the gate
+- test: Update shipping gate tests to match strict gate behavior
+
 ## [v0.8.2] - 2026-07-05
 
 ### 🚀 Release Summary

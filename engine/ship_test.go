@@ -48,33 +48,33 @@ func TestCheckShipGateSpecStatuses_AllShip(t *testing.T) {
 	}
 }
 
-func TestCheckShipGateSpecStatuses_BacklogPasses(t *testing.T) {
+func TestCheckShipGateSpecStatuses_BacklogBlocks(t *testing.T) {
 	configDir := setupSpecsDir(t, map[string]string{
 		"SPEC-100": "ship",
 		"SPEC-200": "backlog",
 		"SPEC-300": "ship",
 	})
 
-	shipSpecs, err := checkShipGateSpecStatuses(configDir)
-	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
+	_, err := checkShipGateSpecStatuses(configDir)
+	if err == nil {
+		t.Fatal("expected error for backlog spec, got nil")
 	}
-	if len(shipSpecs) != 2 {
-		t.Fatalf("expected 2 ship specs (backlog should not block), got %d", len(shipSpecs))
+	if !strings.Contains(err.Error(), "SPEC-200") {
+		t.Errorf("error should mention SPEC-200, got: %v", err)
 	}
 }
 
-func TestCheckShipGateSpecStatuses_InProgressPasses(t *testing.T) {
+func TestCheckShipGateSpecStatuses_InProgressBlocks(t *testing.T) {
 	configDir := setupSpecsDir(t, map[string]string{
 		"SPEC-100": "in-progress",
 	})
 
-	shipSpecs, err := checkShipGateSpecStatuses(configDir)
-	if err != nil {
-		t.Fatalf("unexpected error for in-progress spec: %v", err)
+	_, err := checkShipGateSpecStatuses(configDir)
+	if err == nil {
+		t.Fatal("expected error for in-progress spec, got nil")
 	}
-	if len(shipSpecs) != 0 {
-		t.Fatalf("expected 0 ship specs, got %d", len(shipSpecs))
+	if !strings.Contains(err.Error(), "SPEC-100") {
+		t.Errorf("error should mention SPEC-100, got: %v", err)
 	}
 }
 
@@ -133,10 +133,10 @@ func TestCheckShipGateSpecStatuses_MultipleBlocking(t *testing.T) {
 	if err == nil {
 		t.Fatal("expected error for blocking only, got nil")
 	}
+	if !strings.Contains(err.Error(), "SPEC-100") {
+		t.Errorf("error should mention in-progress SPEC-100, got: %v", err)
+	}
 	if !strings.Contains(err.Error(), "SPEC-200") {
 		t.Errorf("error should mention SPEC-200, got: %v", err)
-	}
-	if strings.Contains(err.Error(), "SPEC-100") {
-		t.Errorf("error should not mention in-progress SPEC-100, got: %v", err)
 	}
 }

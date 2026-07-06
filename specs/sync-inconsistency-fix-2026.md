@@ -1,7 +1,7 @@
 ---
 spec_id: "SPEC-1783285217"
-status: backlog
-repo_issue: ""
+status: review
+repo_issue: 472
 type: feature
 version: "v0.8.0"
 root_cause: ""
