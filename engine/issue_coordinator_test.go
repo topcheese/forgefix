@@ -1194,5 +1194,3 @@ func TestBatchCloseIssues_Inactive(t *testing.T) {
 		}
 	}
 }
-
-

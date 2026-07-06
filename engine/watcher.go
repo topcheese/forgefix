@@ -206,16 +206,16 @@ func (w *Watcher) EmitLSPDiagnostics() {
 						JSONRPC: "2.0",
 						Method:  "textDocument/publishDiagnostics",
 						Params: LSPDiagnosticsParams{
-							URI:         uri,
+							URI: uri,
 							Diagnostics: []LSPDiagnostic{{
 								Range: LSPRange{
 									Start: LSPPosition{Line: 0, Character: 0},
 									End:   LSPPosition{Line: 0, Character: 0},
 								},
 								Severity: 1,
-								Source:    "forgefix",
-								Message:   fmt.Sprintf("TEST TIMEOUT: test '%s' exceeded %ds hard limit", info.Name, TestTimeoutSecs),
-								Code:      "TEST_TIMEOUT",
+								Source:   "forgefix",
+								Message:  fmt.Sprintf("TEST TIMEOUT: test '%s' exceeded %ds hard limit", info.Name, TestTimeoutSecs),
+								Code:     "TEST_TIMEOUT",
 							}},
 						},
 					}
@@ -234,16 +234,16 @@ type LSPPublishDiagnostics struct {
 }
 
 type LSPDiagnosticsParams struct {
-	URI         string         `json:"uri"`
+	URI         string          `json:"uri"`
 	Diagnostics []LSPDiagnostic `json:"diagnostics"`
 }
 
 type LSPDiagnostic struct {
-	Range    LSPRange     `json:"range"`
-	Severity int          `json:"severity"`
-	Source   string       `json:"source"`
-	Message  string       `json:"message"`
-	Code     string       `json:"code"`
+	Range    LSPRange `json:"range"`
+	Severity int      `json:"severity"`
+	Source   string   `json:"source"`
+	Message  string   `json:"message"`
+	Code     string   `json:"code"`
 }
 
 type LSPRange struct {

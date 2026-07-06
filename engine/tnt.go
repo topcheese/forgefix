@@ -227,7 +227,7 @@ func NormalizeCode(code string) string {
 func normalizeWhitespace(line string) string {
 	// First, replace escaped tab sequences with actual tabs
 	line = strings.ReplaceAll(line, "\\t", "\t")
-	
+
 	var result strings.Builder
 	inIndentation := true
 	lastWasSpace := false

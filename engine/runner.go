@@ -30,11 +30,11 @@ type Runner struct {
 
 func NewRunner(config PipelineConfig, dashboard *Dashboard) *Runner {
 	return &Runner{
-		config:      config,
-		dashboard:   dashboard,
-		StdoutChan:  make(chan string, 10000),
-		StderrChan:  make(chan string, 10000),
-		ExitChan:    make(chan int, 1),
+		config:     config,
+		dashboard:  dashboard,
+		StdoutChan: make(chan string, 10000),
+		StderrChan: make(chan string, 10000),
+		ExitChan:   make(chan int, 1),
 	}
 }
 

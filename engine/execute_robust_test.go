@@ -310,8 +310,8 @@ func TestDetonationConditionFiresOnFailure(t *testing.T) {
 
 func TestTUIHeaderBombTotalsStablePosition(t *testing.T) {
 	cases := []struct {
-		name      string
-		historyN  int
+		name     string
+		historyN int
 	}{
 		{"zero-history", 0},
 		{"three-history", 3},

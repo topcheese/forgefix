@@ -8,9 +8,9 @@ import (
 // ErrorTracker tracks system errors and error logs.
 // Single Responsibility: Track and provide access to system errors and execution logs.
 type ErrorTracker struct {
-	mu         sync.RWMutex
-	systemErr  []string
-	errorLogs  []ErrorLog
+	mu        sync.RWMutex
+	systemErr []string
+	errorLogs []ErrorLog
 }
 
 func NewErrorTracker() *ErrorTracker {

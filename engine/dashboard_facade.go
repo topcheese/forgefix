@@ -9,25 +9,25 @@ import (
 // This allows gradual migration without breaking all consumers at once.
 type DashboardFacade struct {
 	// New services
-	testTracker    *TestTrackerService
-	pipelineMgr    *PipelineManager
-	ledger         *LedgerEngine
-	errorTracker   *ErrorTracker
-	
+	testTracker  *TestTrackerService
+	pipelineMgr  *PipelineManager
+	ledger       *LedgerEngine
+	errorTracker *ErrorTracker
+
 	// Legacy state (for backward compat)
-	mu                    sync.RWMutex
-	PipelineActive        bool
-	Bomb                  BombState
-	BombFrame             int
-	stopCh                chan struct{}
-	stopOnce              sync.Once
-	dirty                 atomic.Int32
-	Coord                 *IssueCoordinator
-	IssueRefs             map[string]*IssueInfo
-	FailureDecaySecs      int
-	TestCommandCompleted  bool
-	TimeoutFired          bool
-	ConfigDir             string
+	mu                   sync.RWMutex
+	PipelineActive       bool
+	Bomb                 BombState
+	BombFrame            int
+	stopCh               chan struct{}
+	stopOnce             sync.Once
+	dirty                atomic.Int32
+	Coord                *IssueCoordinator
+	IssueRefs            map[string]*IssueInfo
+	FailureDecaySecs     int
+	TestCommandCompleted bool
+	TimeoutFired         bool
+	ConfigDir            string
 }
 
 func NewDashboardFacade(pipelines []PipelineConfig, configDir string) *DashboardFacade {
@@ -302,7 +302,9 @@ func (f *DashboardFacade) CollectFailedTests() []TestInfo {
 	// Get from test tracker
 	for _, p := range f.pipelineMgr.GetPipelines() {
 		ran, passed, failedCount, _, completed := f.testTracker.GetMetrics(p.ID)
-		_ = ran; _ = passed; _ = failedCount
+		_ = ran
+		_ = passed
+		_ = failedCount
 		for _, info := range completed {
 			if info.State == StateDud {
 				failed = append(failed, *info)

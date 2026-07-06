@@ -32,4 +32,5 @@ func AutoStageAndCommit(gitRoot, commitMsg string) (string, error) {
 	}
 	return strings.TrimSpace(string(hashOut)), nil
 }
+
 // auto-stage test

@@ -7,8 +7,8 @@ import (
 // PipelineManager manages pipeline lifecycle state.
 // Single Responsibility: Track which pipelines are skipped/active.
 type PipelineManager struct {
-	mu              sync.RWMutex
-	pipelines       []PipelineConfig
+	mu               sync.RWMutex
+	pipelines        []PipelineConfig
 	skippedPipelines map[string]bool
 }
 

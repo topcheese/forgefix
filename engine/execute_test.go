@@ -29,14 +29,14 @@ func TestEmitDetonatedPayloadStructure(t *testing.T) {
 	dashboard := NewDashboard([]PipelineConfig{
 		{ID: "test-pipe", Name: "Test Pipeline"},
 	})
-	
+
 	// Execute a dry-run recover wrapper to ensure the serializer functions smoothly
 	defer func() {
 		if r := recover(); r != nil {
 			t.Fatalf("EmitDetonated panicked unexpectedly during serialization: %v", r)
 		}
 	}()
-	
+
 	// Test the core structural transformation mapping
 	payload := dashboard.ToAIPayload()
 	payload.Status = "DETONATED"

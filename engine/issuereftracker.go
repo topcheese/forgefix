@@ -7,7 +7,7 @@ import (
 // IssueRefTracker tracks GitHub issue references for tests.
 // Single Responsibility: Map test names to GitHub issue numbers/URLs.
 type IssueRefTracker struct {
-	mu       sync.RWMutex
+	mu        sync.RWMutex
 	issueRefs map[string]*IssueInfo
 }
 

@@ -8,7 +8,6 @@ import (
 // AI MODE STRUCTURED OUTPUT
 // ============================================================================
 
-
 type AITestEntry struct {
 	ID     string `json:"id"`
 	Status string `json:"status"`
@@ -37,9 +36,9 @@ type AIMetricsSummary struct {
 }
 
 type AIResponsePayload struct {
-	Status    string            `json:"status"`
-	Version   string            `json:"version"`
-	Metrics   AIMetricsSummary  `json:"metrics"`
+	Status    string             `json:"status"`
+	Version   string             `json:"version"`
+	Metrics   AIMetricsSummary   `json:"metrics"`
 	Pipelines []AIPipelineResult `json:"pipelines"`
 }
 

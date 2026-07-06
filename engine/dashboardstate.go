@@ -8,28 +8,28 @@ import (
 // DashboardState manages the dashboard's runtime state.
 // Single Responsibility: Track bomb state, pipeline active flag, timeout, dirty flag, config dir, failure decay.
 type DashboardState struct {
-	mu                    sync.RWMutex
-	PipelineActive        bool
-	Bomb                  BombState
-	BombFrame             int
-	TimeoutFired          bool
-	TestCommandCompleted  bool
-	ConfigDir             string
-	FailureDecaySecs      int
-	stopCh                chan struct{}
-	stopOnce              sync.Once
-	dirty                 atomic.Int32
+	mu                   sync.RWMutex
+	PipelineActive       bool
+	Bomb                 BombState
+	BombFrame            int
+	TimeoutFired         bool
+	TestCommandCompleted bool
+	ConfigDir            string
+	FailureDecaySecs     int
+	stopCh               chan struct{}
+	stopOnce             sync.Once
+	dirty                atomic.Int32
 }
 
 func NewDashboardState(pipelines []PipelineConfig) *DashboardState {
 	return &DashboardState{
-		PipelineActive:   true,
-		Bomb:             BombIdle,
-		BombFrame:        0,
-		TimeoutFired:     false,
+		PipelineActive:       true,
+		Bomb:                 BombIdle,
+		BombFrame:            0,
+		TimeoutFired:         false,
 		TestCommandCompleted: false,
-		FailureDecaySecs: 15,
-		stopCh:           make(chan struct{}),
+		FailureDecaySecs:     15,
+		stopCh:               make(chan struct{}),
 	}
 }
 

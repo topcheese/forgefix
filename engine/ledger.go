@@ -140,7 +140,7 @@ func (le *LedgerEngine) SaveToFile(path string) error {
 		le.specMappings = make(map[string]*SpecEntry)
 	}
 	data, err := json.MarshalIndent(struct {
-		Version      string                    `json:"version"`
+		Version      string                  `json:"version"`
 		Entries      map[string]*LedgerEntry `json:"entries"`
 		SpecMappings map[string]*SpecEntry   `json:"spec_mappings"`
 	}{
@@ -457,18 +457,18 @@ func (le *LedgerEngine) SyncFromSpecsDir(configDir string) error {
 
 		if le.specMappings[specID] == nil {
 			le.specMappings[specID] = &SpecEntry{
-				SpecID:       specID,
-				RepoIssueID:  0,
-				Status:       status,
+				SpecID:        specID,
+				RepoIssueID:   0,
+				Status:        status,
 				LinkedCommits: []string{},
 				Type:          specType,
 			}
 		}
 		if le.specMappings[specID] == nil {
 			le.specMappings[specID] = &SpecEntry{
-				SpecID:       specID,
-				RepoIssueID:  0,
-				Status:       status,
+				SpecID:        specID,
+				RepoIssueID:   0,
+				Status:        status,
 				LinkedCommits: []string{},
 				Type:          specType,
 			}

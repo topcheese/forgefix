@@ -492,7 +492,7 @@ func (d *Dashboard) GetTimeoutTests(pipelineID string, timeoutSecs int) []struct
 	return timeoutTests
 }
 
-	// TriggerDetonation sets the bomb state to detonated
+// TriggerDetonation sets the bomb state to detonated
 func (d *Dashboard) TriggerDetonation() {
 	d.mu.Lock()
 	defer d.mu.Unlock()

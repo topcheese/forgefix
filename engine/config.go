@@ -102,79 +102,79 @@ var defaultTestCommands = map[string]struct {
 	TokenPatterns TokenPatterns
 }{
 	"go.mod": {
-		Command: "go test -json ./...",
+		Command:       "go test -json ./...",
 		TokenPatterns: TokenPatterns{TokenRun: `"Action":"run"`, TokenPass: `"Action":"pass"`, TokenFail: `"Action":"fail"`},
 	},
 	"pubspec.yaml": {
-		Command: "flutter test --machine",
+		Command:       "flutter test --machine",
 		TokenPatterns: TokenPatterns{TokenRun: `"type":"testStart"`, TokenPass: `"result":"success"`, TokenFail: `"result":"failure"`},
 	},
 	"package.json": {
-		Command: "npm test -- --json 2>/dev/null || npm test",
+		Command:       "npm test -- --json 2>/dev/null || npm test",
 		TokenPatterns: TokenPatterns{TokenRun: `"type":"test"`, TokenPass: `"pass":true`, TokenFail: `"fail":true`},
 	},
 	"Cargo.toml": {
-		Command: "cargo test -- --format=json 2>/dev/null || cargo test",
+		Command:       "cargo test -- --format=json 2>/dev/null || cargo test",
 		TokenPatterns: TokenPatterns{TokenRun: `"event":"started"`, TokenPass: `"event":"ok"`, TokenFail: `"event":"failed"`},
 	},
 	"Gemfile": {
-		Command: "bundle exec rspec --format json 2>/dev/null || bundle exec rspec",
+		Command:       "bundle exec rspec --format json 2>/dev/null || bundle exec rspec",
 		TokenPatterns: TokenPatterns{TokenRun: `"status":"pending"`, TokenPass: `"status":"passed"`, TokenFail: `"status":"failed"`},
 	},
 	"setup.py": {
-		Command: "python -m pytest --json-report 2>/dev/null || python -m pytest",
+		Command:       "python -m pytest --json-report 2>/dev/null || python -m pytest",
 		TokenPatterns: TokenPatterns{TokenRun: `"when":"call"`, TokenPass: `"outcome":"passed"`, TokenFail: `"outcome":"failed"`},
 	},
 	"pyproject.toml": {
-		Command: "python -m pytest --json-report 2>/dev/null || python -m pytest",
+		Command:       "python -m pytest --json-report 2>/dev/null || python -m pytest",
 		TokenPatterns: TokenPatterns{TokenRun: `"when":"call"`, TokenPass: `"outcome":"passed"`, TokenFail: `"outcome":"failed"`},
 	},
 	"pom.xml": {
-		Command: "mvn test 2>&1",
+		Command:       "mvn test 2>&1",
 		TokenPatterns: TokenPatterns{TokenRun: "Running ", TokenPass: "Tests run:", TokenFail: "FAILURE"},
 	},
 	"build.gradle": {
-		Command: "./gradlew test 2>&1",
+		Command:       "./gradlew test 2>&1",
 		TokenPatterns: TokenPatterns{TokenRun: "> Task :test", TokenPass: "BUILD SUCCESSFUL", TokenFail: "BUILD FAILED"},
 	},
 	"mix.exs": {
-		Command: "mix test 2>&1",
+		Command:       "mix test 2>&1",
 		TokenPatterns: TokenPatterns{TokenRun: "Running ", TokenPass: "PASS", TokenFail: "FAIL"},
 	},
 	"composer.json": {
-		Command: "composer test 2>&1 || vendor/bin/phpunit 2>&1",
+		Command:       "composer test 2>&1 || vendor/bin/phpunit 2>&1",
 		TokenPatterns: TokenPatterns{TokenRun: "Running ", TokenPass: "OK", TokenFail: "FAILURES"},
 	},
 	"CMakeLists.txt": {
-		Command: "ctest --output-on-failure 2>&1",
+		Command:       "ctest --output-on-failure 2>&1",
 		TokenPatterns: TokenPatterns{TokenRun: "Start ", TokenPass: "Passed", TokenFail: "Failed"},
 	},
 	"Makefile": {
-		Command: "make test 2>&1",
+		Command:       "make test 2>&1",
 		TokenPatterns: TokenPatterns{TokenRun: "Running ", TokenPass: "PASS", TokenFail: "FAIL"},
 	},
 	"Rakefile": {
-		Command: "rake test 2>&1",
+		Command:       "rake test 2>&1",
 		TokenPatterns: TokenPatterns{TokenRun: "Running ", TokenPass: "PASS", TokenFail: "FAIL"},
 	},
 	"cabal.project": {
-		Command: "cabal test 2>&1",
+		Command:       "cabal test 2>&1",
 		TokenPatterns: TokenPatterns{TokenRun: "Test suite ", TokenPass: "PASS", TokenFail: "FAIL"},
 	},
 	"Package.swift": {
-		Command: "swift test 2>&1",
+		Command:       "swift test 2>&1",
 		TokenPatterns: TokenPatterns{TokenRun: "Test Case ", TokenPass: "passed", TokenFail: "failed"},
 	},
 	"project.json": {
-		Command: "dotnet test --logger:json 2>/dev/null || dotnet test 2>&1",
+		Command:       "dotnet test --logger:json 2>/dev/null || dotnet test 2>&1",
 		TokenPatterns: TokenPatterns{TokenRun: `"DisplayName"`, TokenPass: `"Outcome":"Passed"`, TokenFail: `"Outcome":"Failed"`},
 	},
 	"deno.json": {
-		Command: "deno test --reporter=json 2>/dev/null || deno test 2>&1",
+		Command:       "deno test --reporter=json 2>/dev/null || deno test 2>&1",
 		TokenPatterns: TokenPatterns{TokenRun: `"type":"test"`, TokenPass: `"result":"passed"`, TokenFail: `"result":"failed"`},
 	},
 	"bun.lock": {
-		Command: "bun test --reporter=json 2>/dev/null || bun test 2>&1",
+		Command:       "bun test --reporter=json 2>/dev/null || bun test 2>&1",
 		TokenPatterns: TokenPatterns{TokenRun: `"type":"test"`, TokenPass: `"passed":true`, TokenFail: `"failed":true`},
 	},
 }
