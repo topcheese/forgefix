@@ -20,7 +20,7 @@ func (d *CommandDispatcher) handleCommit(args []string) (CommandResult, error) {
 		msg = ExtractMessageFromArgs(args)
 	}
 
-	commitHash, specID, err := runCommit(d.WorkDir, msg, flags.SpecID, flags.SpecType, flags.SpecVersion, d)
+	commitHash, specID, commitMsg, err := runCommit(d.WorkDir, msg, flags.SpecID, flags.SpecType, flags.SpecVersion, d)
 	if err != nil {
 		fmt.Fprintf(d.Stderr, "error: %v\n", err)
 		return CommandResult{ExitCode: 1}, nil
@@ -37,6 +37,13 @@ func (d *CommandDispatcher) handleCommit(args []string) (CommandResult, error) {
 		}
 
 		_ = UpdateLedgerAfterCommit(ledgerDir, specID, commitHash)
+
+		// Post the commit message as a comment on the linked remote issue
+		if entry, lErr := getSpecEntry(ledgerDir, specID); lErr == nil && entry.RepoIssueID > 0 {
+			if err := QueuePostComment(ledgerDir, "", entry.RepoIssueID, "Commit", commitMsg); err != nil {
+				fmt.Fprintf(d.Stderr, "warning: failed to queue commit comment: %v\n", err)
+			}
+		}
 	}
 
 	return CommandResult{ExitCode: 0}, nil
@@ -44,10 +51,10 @@ func (d *CommandDispatcher) handleCommit(args []string) (CommandResult, error) {
 
 // runCommit executes the full commit workflow: resolves the spec, stages, commits,
 // and updates the ledger. Returns the commit hash and spec ID.
-func runCommit(wd, msg, flagSpecID, specType, specVersion string, d *CommandDispatcher) (string, string, error) {
+func runCommit(wd, msg, flagSpecID, specType, specVersion string, d *CommandDispatcher) (string, string, string, error) {
 	gitRoot, err := findGitRootWalk(wd)
 	if err != nil {
-		return "", "", err
+		return "", "", "", err
 	}
 
 	specID := flagSpecID
@@ -58,7 +65,7 @@ func runCommit(wd, msg, flagSpecID, specType, specVersion string, d *CommandDisp
 		var err error
 		specID, err = promptForSpecSelection(wd, d)
 		if err != nil {
-			return "", "", err
+			return "", "", "", err
 		}
 	}
 
@@ -66,11 +73,11 @@ func runCommit(wd, msg, flagSpecID, specType, specVersion string, d *CommandDisp
 	if specID != "" {
 		specs, err := loadActiveSpecs(wd)
 		if err != nil {
-			return "", "", fmt.Errorf("loading specs: %w", err)
+			return "", "", "", fmt.Errorf("loading specs: %w", err)
 		}
 
 		if !specExists(specs, specID) {
-			return "", "", fmt.Errorf("spec %s not found in active specs", specID)
+			return "", "", "", fmt.Errorf("spec %s not found in active specs", specID)
 		}
 
 		specDir := filepath.Join(wd, "specs")
@@ -91,7 +98,7 @@ func runCommit(wd, msg, flagSpecID, specType, specVersion string, d *CommandDisp
 			}
 
 			if err := updateSpecFileTypeVersion(specFile, specType, specVersion); err != nil {
-				return "", "", fmt.Errorf("updating spec metadata: %w", err)
+				return "", "", "", fmt.Errorf("updating spec metadata: %w", err)
 			}
 			fmt.Fprintf(d.Stdout, "Updated spec %s: type=%q version=%q\n", specID, specType, specVersion)
 		}
@@ -102,10 +109,10 @@ func runCommit(wd, msg, flagSpecID, specType, specVersion string, d *CommandDisp
 			_, _ = fmt.Scanln(&response)
 			msg = strings.TrimSpace(response)
 			if strings.ToLower(msg) == "q" {
-				return "", "", fmt.Errorf("aborted by user")
+				return "", "", "", fmt.Errorf("aborted by user")
 			}
 			if msg == "" {
-				return "", "", fmt.Errorf("empty commit message")
+				return "", "", "", fmt.Errorf("empty commit message")
 			}
 		}
 
@@ -117,10 +124,10 @@ func runCommit(wd, msg, flagSpecID, specType, specVersion string, d *CommandDisp
 			_, _ = fmt.Scanln(&response)
 			msg = strings.TrimSpace(response)
 			if strings.ToLower(msg) == "q" {
-				return "", "", fmt.Errorf("aborted by user")
+				return "", "", "", fmt.Errorf("aborted by user")
 			}
 			if msg == "" {
-				return "", "", fmt.Errorf("empty commit message")
+				return "", "", "", fmt.Errorf("empty commit message")
 			}
 		}
 		commitMsg = msg
@@ -128,10 +135,10 @@ func runCommit(wd, msg, flagSpecID, specType, specVersion string, d *CommandDisp
 
 	commitHash, err := AutoStageAndCommit(gitRoot, commitMsg)
 	if err != nil {
-		return "", "", err
+		return "", "", "", err
 	}
 
-	return commitHash, specID, nil
+	return commitHash, specID, commitMsg, nil
 }
 
 // UpdateLedgerAfterCommit records the commit in the ledger and advances status.
@@ -702,4 +709,17 @@ func ExtractMessageFromArgs(args []string) string {
 		msgParts = append(msgParts, arg)
 	}
 	return strings.Join(msgParts, " ")
+}
+
+// getSpecEntry loads the ledger and returns the spec entry for the given spec ID.
+func getSpecEntry(configDir, specID string) (*SpecEntry, error) {
+	ledger, err := LoadLedger(configDir)
+	if err != nil {
+		return nil, err
+	}
+	entry := ledger.GetSpecEntry(specID)
+	if entry == nil {
+		return nil, fmt.Errorf("spec %s not found in ledger", specID)
+	}
+	return entry, nil
 }
