@@ -14,6 +14,8 @@ import (
 	"time"
 
 	"ForgeFix/engine/housekeeper"
+
+	"golang.org/x/term"
 )
 
 type SyncFailure struct {
@@ -381,6 +383,10 @@ func RunBackgroundSync(configDir, specID string) error {
 		if err := DrainHousekeepingQueue(configDir, coord); err != nil {
 			fmt.Fprintf(os.Stderr, "warning: housekeeping drain failed: %v\n", err)
 		}
+
+		// After syncing all specs, check if any are in "review" status
+		// and prompt the user to advance them to "ship".
+		promoteReviewSpecs(configDir)
 	}
 
 	hasFailures, _ := HasPendingSyncFailures(configDir)
@@ -871,4 +877,38 @@ func DrainHousekeepingQueueFromConfig(configDir string) error {
 	coord := NewIssueCoordinator(loaded.Config.GitHub.Owner, loaded.Config.GitHub.Repo, loaded.Config.GitHub.Token, baseURL)
 	coord.SetConfigDir(configDir)
 	return DrainHousekeepingQueue(configDir, coord)
+}
+
+// promoteReviewSpecs checks the ledger for specs in "review" status and prompts
+// the user to advance them to "ship" after a successful sync. Skips if stdin
+// is not a terminal (non-interactive / AI mode / background sync).
+func promoteReviewSpecs(configDir string) {
+	if !term.IsTerminal(int(os.Stdin.Fd())) {
+		return
+	}
+
+	ledger, err := LoadLedger(configDir)
+	if err != nil {
+		return
+	}
+
+	for _, entry := range ledger.GetAllSpecEntries() {
+		if entry.Status == "review" {
+			fmt.Fprintf(os.Stderr, "\nSpec %s is in review status. Advance to ship? [y/N]: ", entry.SpecID)
+			var response string
+			_, scanErr := fmt.Scanln(&response)
+			if scanErr != nil {
+				continue
+			}
+			if strings.ToLower(strings.TrimSpace(response)) == "y" {
+				entry.Status = "ship"
+				ledger.SetSpecEntry(entry.SpecID, entry)
+				fmt.Fprintf(os.Stderr, "✓ Advanced %s to ship\n", entry.SpecID)
+			}
+		}
+	}
+
+	if err := SaveLedger(ledger, configDir); err != nil {
+		fmt.Fprintf(os.Stderr, "warning: failed to save ledger after promotion: %v\n", err)
+	}
 }
