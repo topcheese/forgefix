@@ -139,8 +139,15 @@
       "status": "in-progress",
       "linked_commits": [
         "5a15a66",
-        "8b94f6b"
+        "8b94f6b",
+        "cbaafcf"
       ]
+    },
+    "SPEC-1783487662": {
+      "spec_id": "SPEC-1783487662",
+      "repo_issue_id": 475,
+      "status": "backlog",
+      "linked_commits": []
     }
   }
 }

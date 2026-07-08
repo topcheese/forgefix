@@ -141,7 +141,10 @@ func runCommit(wd, msg, flagSpecID, specType, specVersion string, d *CommandDisp
 	return commitHash, specID, commitMsg, nil
 }
 
-// UpdateLedgerAfterCommit records the commit in the ledger and advances status.
+// UpdateLedgerAfterCommit records the commit in the ledger and syncs status
+// from the spec file's frontmatter. Preserves the spec file's actual status
+// rather than always advancing to "in-progress" — users may have set it to
+// "ship" before committing, and this should propagate to the ledger.
 func UpdateLedgerAfterCommit(configDir, specID, commitHash string) error {
 	ledger, err := LoadLedger(configDir)
 	if err != nil {
@@ -149,7 +152,18 @@ func UpdateLedgerAfterCommit(configDir, specID, commitHash string) error {
 	}
 	if entry := ledger.GetSpecEntry(specID); entry != nil {
 		entry.LinkedCommits = append(entry.LinkedCommits, commitHash)
-		entry.Status = "in-progress"
+		// Read the spec file's current status from the YAML frontmatter
+		specDir := filepath.Join(filepath.Dir(configDir), "specs")
+		specFile, findErr := findSpecFileByID(specDir, specID)
+		if findErr == nil {
+			if spec, parseErr := parseSpecFile(specFile); parseErr == nil && spec.Status != "" {
+				entry.Status = spec.Status
+			} else {
+				entry.Status = "in-progress"
+			}
+		} else {
+			entry.Status = "in-progress"
+		}
 		ledger.SetSpecEntry(specID, entry)
 		return SaveLedger(ledger, configDir)
 	}
