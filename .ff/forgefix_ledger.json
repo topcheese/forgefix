@@ -136,12 +136,13 @@
     "SPEC-1783365439": {
       "spec_id": "SPEC-1783365439",
       "repo_issue_id": 474,
-      "status": "in-progress",
+      "status": "review",
       "linked_commits": [
         "5a15a66",
         "8b94f6b",
         "cbaafcf",
-        "ba7e9cb"
+        "ba7e9cb",
+        "f3c855a"
       ]
     },
     "SPEC-1783487662": {
