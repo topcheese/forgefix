@@ -75,8 +75,7 @@ func createSpec(configDir, name string, d *CommandDispatcher, aiMode bool) error
 	specID := fmt.Sprintf("SPEC-%d", time.Now().Unix())
 	now := time.Now().Format("2006-01-02")
 
-	title := strings.ReplaceAll(name, "-", " ")
-	title = strings.Title(strings.ToLower(title))
+	title := sanitizeSpecTitle(name)
 
 	origSpecID, origTitle, isDup := FindDuplicateSpec(configDir, title)
 	if isDup {
@@ -199,6 +198,18 @@ func deleteSpec(configDir, specID string) error {
 	}
 
 	return nil
+}
+
+// sanitizeSpecTitle normalizes a raw spec name (e.g. from `ff spec --ai "fix --ai null
+// pointer"`) into a clean issue title. It replaces runs of dashes with spaces and
+// collapses any resulting multiple spaces into one, so phrases like "--ai" no
+// longer produce double/garbled spacing. The result is Title-cased.
+func sanitizeSpecTitle(name string) string {
+	replaced := strings.ReplaceAll(name, "-", " ")
+	fields := strings.Fields(replaced)
+	title := strings.Join(fields, " ")
+	title = strings.Title(strings.ToLower(title))
+	return title
 }
 
 // updateExistingSpec resets a spec's status to draft.

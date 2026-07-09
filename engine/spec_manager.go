@@ -22,8 +22,6 @@ type SpecFile struct {
 	Resolution string
 }
 
-}
-
 // htmlCommentRE matches HTML comments spanning multiple lines.
 var htmlCommentRE = regexp.MustCompile(`(?s)<!--.*?-->`)
 
@@ -90,9 +88,9 @@ func effectiveSpecBody(spec *SpecFile) string {
 	return spec.Body
 }
 
-// normalizeWhitespace collapses all runs of whitespace (including newlines) to a
-// single space and trims the ends, so comparisons ignore formatting-only diffs.
-func normalizeWhitespace(s string) string {
+// collapseWS collapses all runs of whitespace (including newlines) to a single
+// space and trims the ends, so comparisons ignore formatting-only diffs.
+func collapseWS(s string) string {
 	return strings.Join(strings.Fields(s), " ")
 }
 

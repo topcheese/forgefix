@@ -117,6 +117,12 @@ func (sc *ShipController) requireGitHubConfig() {
 }
 
 // buildCoordinator creates an IssueCoordinator from the controller's config.
+func (sc *ShipController) buildCoordinator() *IssueCoordinator {
+	return NewCoordinatorFromConfig(sc.config, sc.configDir, sc.aiMode)
+}
+
+// buildReleaseBody builds the markdown body for the remote release, listing
+// each shipped spec as a bullet point. Called after a successful push.
 func (sc *ShipController) buildReleaseBody(shipSpecs []string, shipVersion string) string {
 	var sb strings.Builder
 	sb.WriteString(fmt.Sprintf("## ForgeFix Release %s\n\n", shipVersion))
@@ -329,22 +335,6 @@ func (sc *ShipController) enqueueHousekeeping(shipSpecs []string, shipVersion st
 
 	fmt.Printf("Enqueued %d housekeeping task(s) for shipped specs.\n", len(shipSpecs))
 	fmt.Println("Run `ff sync` to close remote issues and post resolution comments.")
-}
-
-// buildReleaseBody builds the markdown body for the remote release, listing
-// every shipped spec (ID + title) so the release page summarizes the ship.
-func (sc *ShipController) buildReleaseBody(shipSpecs []string, shipVersion string) string {
-	var sb strings.Builder
-	sb.WriteString(fmt.Sprintf("## ForgeFix Release %s\n\n", shipVersion))
-	sb.WriteString("Shipped specs:\n\n")
-	for _, id := range shipSpecs {
-		title := id
-		if spec, err := LoadSpecByID(sc.configDir, id); err == nil && spec != nil && spec.Title != "" {
-			title = spec.Title
-		}
-		sb.WriteString(fmt.Sprintf("- `%s` %s\n", id, title))
-	}
-	return sb.String()
 }
 
 // fatalError logs an error message and exits. In AI mode it also emits an AI event.

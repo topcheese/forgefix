@@ -1,6 +1,7 @@
 package tests
 
 import (
+	"encoding/json"
 	"fmt"
 	"net/http"
 	"net/http/httptest"
@@ -8,10 +9,27 @@ import (
 	"os/exec"
 	"path/filepath"
 	"strings"
+	"sync"
 	"testing"
 
 	"ForgeFix/engine"
 )
+
+// mockRepoCapture records issue payloads POSTed to the mock VCS server so tests
+// can assert on the request bodies that ff sync produces.
+type mockRepoCapture struct {
+	mu            sync.Mutex
+	postedIssues []map[string]any
+}
+
+// PostedIssues returns a copy of the captured POST /issues payloads.
+func (c *mockRepoCapture) PostedIssues() []map[string]any {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	out := make([]map[string]any, len(c.postedIssues))
+	copy(out, c.postedIssues)
+	return out
+}
 
 // TestSpecLifecycle covers the end-to-end spec lifecycle without network:
 //
@@ -28,7 +46,7 @@ func TestSpecLifecycle(t *testing.T) {
 	ffBin := buildFF(t)
 
 	createTemplate(t, dir)
-	mockSrv, yamlContent := createMockRepo(t)
+	mockSrv, yamlContent, _ := createMockRepo(t)
 	defer mockSrv.Close()
 	yamlPath := filepath.Join(dir, "test_ff.yaml")
 	if err := os.WriteFile(yamlPath, []byte(yamlContent), 0644); err != nil {
@@ -337,8 +355,9 @@ repo_issue: ""
 	}
 }
 
-func createMockRepo(t *testing.T) (*httptest.Server, string) {
+func createMockRepo(t *testing.T) (*httptest.Server, string, *mockRepoCapture) {
 	t.Helper()
+	cap := &mockRepoCapture{}
 	var createdIssueNumber int
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if strings.Contains(r.URL.Path, "/issues/999") {
@@ -349,6 +368,13 @@ func createMockRepo(t *testing.T) (*httptest.Server, string) {
 		switch {
 		case strings.Contains(r.URL.Path, "/issues") && r.Method == http.MethodPost:
 			createdIssueNumber++
+			// Capture the request body so tests can assert what ff sync posted.
+			var payload map[string]any
+			if err := json.NewDecoder(r.Body).Decode(&payload); err == nil {
+				cap.mu.Lock()
+				cap.postedIssues = append(cap.postedIssues, payload)
+				cap.mu.Unlock()
+			}
 			w.WriteHeader(http.StatusCreated)
 			fmt.Fprintf(w, `{"id":%d,"number":%d,"title":"test","body":"","state":"open"}`, createdIssueNumber, createdIssueNumber)
 		case strings.Contains(r.URL.Path, "/issues") && r.Method == http.MethodGet:
@@ -387,7 +413,7 @@ github:
   token: "mock-token"
   base_url: "%s"
 `, srv.URL)
-	return srv, yamlContent
+	return srv, yamlContent, cap
 }
 
 func initGitRepo(t *testing.T, dir string) {
@@ -423,7 +449,7 @@ func Test404Reconciliation(t *testing.T) {
 
 	ffBin := buildFF(t)
 	createTemplate(t, dir)
-	mockSrv, yamlContent := createMockRepo(t)
+	mockSrv, yamlContent, _ := createMockRepo(t)
 	defer mockSrv.Close()
 
 	yamlPath := filepath.Join(dir, "test_ff.yaml")

@@ -3,11 +3,11 @@
   "entries": {
     "forgefix": {
       "pipeline_id": "forgefix",
-      "total_ran": 368,
-      "total_passed": 368,
+      "total_ran": 20,
+      "total_passed": 20,
       "total_failed": 0,
       "historical_floor": 368,
-      "last_update": "2026-07-09T07:19:26-07:00"
+      "last_update": "2026-07-09T12:57:15-07:00"
     }
   },
   "spec_mappings": {
@@ -111,7 +111,8 @@
       "status": "review",
       "linked_commits": [
         "e77ab00",
-        "b028f48"
+        "b028f48",
+        "323029f"
       ]
     },
     "SPEC-1783612710": {
