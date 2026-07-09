@@ -1,9 +1,9 @@
 ---
 spec_id: "SPEC-1783365439"
-status: ship
+status: closed
 repo_issue: 474
 type: bug
-version: "0.9.3"
+version: "0.9.4"
 root_cause: "floorString() returned LedgerFloor of first pipeline only — bomb ring showed 0 when first pipeline had no floor configured"
 resolution: "Changed floorString to return d.GetTotalRan() — total test count across all pipelines"
 ---

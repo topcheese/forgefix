@@ -315,7 +315,7 @@ func HasPendingSyncFailures(configDir string) (bool, error) {
 	return len(failures) > 0, nil
 }
 
-func RunBackgroundSync(configDir, specID string) error {
+func RunBackgroundSync(configDir, specID string, aiMode bool) error {
 	loaded, err := LoadPipelineConfig(configDir)
 	if err != nil {
 		return fmt.Errorf("loading config: %w", err)
@@ -386,7 +386,7 @@ func RunBackgroundSync(configDir, specID string) error {
 
 		// After syncing all specs, check if any are in "review" status
 		// and prompt the user to advance them to "ship".
-		promoteReviewSpecs(configDir)
+		promoteReviewSpecs(configDir, aiMode)
 	}
 
 	hasFailures, _ := HasPendingSyncFailures(configDir)
@@ -883,9 +883,9 @@ func DrainHousekeepingQueueFromConfig(configDir string) error {
 // promoteReviewSpecs checks the ledger for specs in "review" status and prompts
 // the user to confirm manual testing before advancing to "ship". Uses the
 // spec title (from the spec file) for the prompt, not the opaque spec ID.
-// Skips if stdin is not a terminal (non-interactive / AI mode / background sync).
-func promoteReviewSpecs(configDir string) {
-	if !term.IsTerminal(int(os.Stdin.Fd())) {
+// Skips if stdin is not a terminal unless aiMode is true (auto-promote).
+func promoteReviewSpecs(configDir string, aiMode bool) {
+	if !term.IsTerminal(int(os.Stdin.Fd())) && !aiMode {
 		return
 	}
 
@@ -894,7 +894,7 @@ func promoteReviewSpecs(configDir string) {
 		return
 	}
 
-	specDir := filepath.Join(filepath.Dir(configDir), "specs")
+	specDir := filepath.Join(configDir, "specs")
 
 	type candidate struct {
 		id       string
@@ -944,13 +944,17 @@ func promoteReviewSpecs(configDir string) {
 	for _, c := range candidates {
 		fmt.Fprintf(os.Stderr, "  - %s: %s\n", c.id, c.title)
 	}
-	fmt.Fprintf(os.Stderr, "\nPromote these to \"ship\"? [y/N]: ")
-	var response string
-	if _, scanErr := fmt.Scanln(&response); scanErr != nil {
-		return
-	}
-	if strings.ToLower(strings.TrimSpace(response)) != "y" {
-		return
+	if aiMode {
+		fmt.Fprintf(os.Stderr, "Auto-promoting %d spec(s) to ship (--ai mode)\n", len(candidates))
+	} else {
+		fmt.Fprintf(os.Stderr, "\nPromote these to \"ship\"? [y/N]: ")
+		var response string
+		if _, scanErr := fmt.Scanln(&response); scanErr != nil {
+			return
+		}
+		if strings.ToLower(strings.TrimSpace(response)) != "y" {
+			return
+		}
 	}
 
 	for _, c := range candidates {

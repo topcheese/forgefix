@@ -3,7 +3,7 @@ spec_id: "SPEC-1783605913"
 status: review
 repo_issue: 484
 type: refactor
-version: "v0.8.0"
+version: "0.9.5"
 root_cause: ""
 resolution: ""
 ---

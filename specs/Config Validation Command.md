@@ -1,9 +1,9 @@
 ---
 spec_id: "SPEC-1783157282"
-status: ship
+status: closed
 repo_issue: 461
 type: feature
-version: "0.9.3"
+version: "0.9.4"
 root_cause: ""
 resolution: ""
 ---

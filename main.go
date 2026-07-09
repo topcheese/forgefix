@@ -221,7 +221,7 @@ func promptRetrySyncFailures(configDir string) error {
 	input = strings.TrimSpace(strings.ToLower(input))
 	if input == "" || input == "y" || input == "yes" {
 		fmt.Fprintln(os.Stderr, "Retrying sync...")
-		if err := engine.RunBackgroundSync(configDir, ""); err != nil {
+		if err := engine.RunBackgroundSync(configDir, "", false); err != nil {
 			return fmt.Errorf("sync retry failed: %w", err)
 		}
 		fmt.Fprintln(os.Stderr, "Sync retry completed.")

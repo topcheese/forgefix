@@ -1,9 +1,9 @@
 ---
 spec_id: "SPEC-1783603629"
-status: review
-repo_issue: ""
+status: closed
+repo_issue: 487
 type: feature
-version: "v0.8.0"
+version: "0.9.5"
 root_cause: ""
 resolution: ""
 ---

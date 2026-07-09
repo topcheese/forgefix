@@ -559,14 +559,14 @@ sync_schedule:
 	}
 
 	// First call should perform full sync (fresh state)
-	if err := RunBackgroundSync(dir, ""); err != nil {
+	if err := RunBackgroundSync(dir, "", false); err != nil {
 		t.Fatalf("RunBackgroundSync: %v", err)
 	}
 
 	// Second call should NOT perform full sync (just marked)
 	// Change the mock to record calls
 	callsBefore := len(sm.Calls())
-	if err := RunBackgroundSync(dir, ""); err != nil {
+	if err := RunBackgroundSync(dir, "", false); err != nil {
 		t.Fatalf("RunBackgroundSync: %v", err)
 	}
 	callsAfter := len(sm.Calls())

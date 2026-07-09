@@ -49,7 +49,7 @@ func (d *CommandDispatcher) handleSync(args []string) (CommandResult, error) {
 		}
 	}
 
-	if err := RunBackgroundSync(loaded.ConfigDir, specID); err != nil {
+	if err := RunBackgroundSync(loaded.ConfigDir, specID, flags.AIMode); err != nil {
 		fmt.Fprintf(d.Stderr, "sync failed: %v\n", err)
 		return CommandResult{ExitCode: 1}, nil
 	}

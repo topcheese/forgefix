@@ -1,9 +1,9 @@
 ---
 spec_id: "SPEC-1783157281"
-status: ship
+status: closed
 repo_issue: 460
 type: feature
-version: "0.9.3"
+version: "0.9.4"
 root_cause: "No central dashboard to quickly assess project health, spec status distribution, sync state, and ship-gate readiness."
 resolution: "Created engine/cmd_status.go with handleStatus method on CommandDispatcher. Added 'status' case to command_dispatcher.go switch. Dashboard shows: spec counts by status (color-coded via buildColorMap), pipeline test stats, last sync time, pending sync failures, and ship-gate blocking specs. Also created engine/cmd_status_test.go with 5 test cases validating routing, blocking spec detection, sync failure display, healthy state, and spec count output."
 ---
