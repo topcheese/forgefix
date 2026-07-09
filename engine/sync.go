@@ -358,6 +358,10 @@ func RunBackgroundSync(configDir, specID string, aiMode bool) error {
 		return fmt.Errorf("checking sync schedule: %w", err)
 	}
 
+	// Promote review specs to "ship" BEFORE syncing with remote, so the sync
+	// doesn't prematurely close them when it sees a previously-closed remote issue.
+	promoteReviewSpecs(configDir, aiMode)
+
 	var syncErr error
 	if specID != "" {
 		syncErr = syncSingleSpec(coord, configDir, specID, loaded.Config)
@@ -383,10 +387,6 @@ func RunBackgroundSync(configDir, specID string, aiMode bool) error {
 		if err := DrainHousekeepingQueue(configDir, coord); err != nil {
 			fmt.Fprintf(os.Stderr, "warning: housekeeping drain failed: %v\n", err)
 		}
-
-		// After syncing all specs, check if any are in "review" status
-		// and prompt the user to advance them to "ship".
-		promoteReviewSpecs(configDir, aiMode)
 	}
 
 	hasFailures, _ := HasPendingSyncFailures(configDir)

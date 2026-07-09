@@ -1,5 +1,5 @@
 {
-  "version": "0.9.5",
+  "version": "0.9.7",
   "entries": {
     "forgefix": {
       "pipeline_id": "forgefix",
@@ -46,24 +46,6 @@
         "32400a9"
       ]
     },
-    "SPEC-1783157281": {
-      "spec_id": "Project Status Dashboard Command",
-      "repo_issue_id": 460,
-      "status": "closed",
-      "linked_commits": []
-    },
-    "SPEC-1783157282": {
-      "spec_id": "Config Validation Command",
-      "repo_issue_id": 461,
-      "status": "closed",
-      "linked_commits": []
-    },
-    "SPEC-1783157283": {
-      "spec_id": "Spec Export and Import",
-      "repo_issue_id": 462,
-      "status": "closed",
-      "linked_commits": []
-    },
     "SPEC-1783159999": {
       "spec_id": "SPEC-1783159999",
       "repo_issue_id": 0,
@@ -82,88 +64,10 @@
       "status": "ship",
       "linked_commits": []
     },
-    "SPEC-1783222605": {
-      "spec_id": "SPEC-1783222605",
-      "repo_issue_id": 466,
-      "status": "closed",
-      "linked_commits": []
-    },
-    "SPEC-1783222864": {
-      "spec_id": "Extract SpecManager Module from IssueCoordinator",
-      "repo_issue_id": 467,
-      "status": "closed",
-      "linked_commits": []
-    },
-    "SPEC-1783223922": {
-      "spec_id": "Break up ShipReconciliation complexity",
-      "repo_issue_id": 468,
-      "status": "closed",
-      "linked_commits": []
-    },
-    "SPEC-1783224084": {
-      "spec_id": "SPEC-1783224084",
-      "repo_issue_id": 469,
-      "status": "closed",
-      "linked_commits": []
-    },
-    "SPEC-1783225332": {
-      "spec_id": "Consolidate Overlapping Binary Management Into BinaryManager",
-      "repo_issue_id": 470,
-      "status": "closed",
-      "linked_commits": []
-    },
-    "SPEC-1783237790": {
-      "spec_id": "Update Spec Metadata and Changelog",
-      "repo_issue_id": 471,
-      "status": "closed",
-      "linked_commits": []
-    },
-    "SPEC-1783285217": {
-      "spec_id": "Sync Inconsistency Fix 2026",
-      "repo_issue_id": 472,
-      "status": "closed",
-      "linked_commits": []
-    },
-    "SPEC-1783363349": {
-      "spec_id": "Fix Dashboard Terminal Overflow And Per Pipeline Bomb Rendering In Renderfinal",
-      "repo_issue_id": 473,
-      "status": "closed",
-      "linked_commits": []
-    },
-    "SPEC-1783365439": {
-      "spec_id": "Fix Bomb Animation Center To Show Total Running Test Count Across All Pipelines, Not Just First Pipeline Floor",
-      "repo_issue_id": 474,
-      "status": "closed",
-      "linked_commits": []
-    },
-    "SPEC-1783487662": {
-      "spec_id": "SPEC-1783487662",
-      "repo_issue_id": 475,
-      "status": "closed",
-      "linked_commits": []
-    },
-    "SPEC-1783495360": {
-      "spec_id": "Refactor Ledger: Spec_id Field Should Be Spec Title Not Duplicate Id",
-      "repo_issue_id": 476,
-      "status": "closed",
-      "linked_commits": []
-    },
-    "SPEC-1783533749": {
-      "spec_id": "Test Baseline Counting Fails After Test Suite Refactor — Historical_floor Not Tracking Test Deletions",
-      "repo_issue_id": 477,
-      "status": "closed",
-      "linked_commits": []
-    },
     "SPEC-1783569007": {
       "spec_id": "Backlog Command",
       "repo_issue_id": 485,
       "status": "draft",
-      "linked_commits": []
-    },
-    "SPEC-1783572691": {
-      "spec_id": "Fix Spec Status Sync Across Commit Sync And Ship Lifecycle",
-      "repo_issue_id": 479,
-      "status": "closed",
       "linked_commits": []
     },
     "SPEC-1783573136": {
@@ -177,26 +81,6 @@
       "repo_issue_id": 481,
       "status": "draft",
       "linked_commits": []
-    },
-    "SPEC-1783600141": {
-      "spec_id": "Harden Spec Status Sync And Unblock Ship Gate",
-      "repo_issue_id": 482,
-      "status": "closed",
-      "linked_commits": []
-    },
-    "SPEC-1783603629": {
-      "spec_id": "Make ff commit --ai Auto-detect Spec From Working Tree",
-      "repo_issue_id": 487,
-      "status": "closed",
-      "linked_commits": []
-    },
-    "SPEC-1783605913": {
-      "spec_id": "Refactor Git Staging And Commit Abstractions",
-      "repo_issue_id": 484,
-      "status": "review",
-      "linked_commits": [
-        "d643a6d"
-      ]
     }
   }
 }
