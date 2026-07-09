@@ -81,6 +81,14 @@
       "repo_issue_id": 481,
       "status": "draft",
       "linked_commits": []
+    },
+    "SPEC-1783610857": {
+      "spec_id": "Update Forgefix Skill With All Lifecycle And Command Changes",
+      "repo_issue_id": 0,
+      "status": "review",
+      "linked_commits": [
+        "836e74b"
+      ]
     }
   }
 }
