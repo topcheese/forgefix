@@ -1,6 +1,6 @@
 ---
 spec_id: "SPEC-1783495360"
-status: resolved
+status: closed
 repo_issue: 476
 type: refactor
 version: "v0.8.0"

@@ -1,13 +1,13 @@
 {
-  "version": "0.9.0",
+  "version": "0.9.2",
   "entries": {
     "forgefix": {
       "pipeline_id": "forgefix",
-      "total_ran": 358,
-      "total_passed": 358,
-      "total_failed": 0,
-      "historical_floor": 358,
-      "last_update": "2026-07-08T19:21:47-07:00"
+      "total_ran": 368,
+      "total_passed": 365,
+      "total_failed": 3,
+      "historical_floor": 365,
+      "last_update": "2026-07-09T00:29:00-07:00"
     }
   },
   "spec_mappings": {
@@ -127,62 +127,54 @@
     "SPEC-1783363349": {
       "spec_id": "Fix Dashboard Terminal Overflow And Per Pipeline Bomb Rendering In Renderfinal",
       "repo_issue_id": 473,
-      "status": "in-progress",
-      "linked_commits": [
-        "6e19afe",
-        "d220c9a"
-      ]
+      "status": "ship",
+      "linked_commits": []
     },
     "SPEC-1783365439": {
       "spec_id": "Fix Bomb Animation Center To Show Total Running Test Count Across All Pipelines, Not Just First Pipeline Floor",
       "repo_issue_id": 474,
-      "status": "review",
-      "linked_commits": [
-        "5a15a66",
-        "8b94f6b",
-        "cbaafcf",
-        "ba7e9cb",
-        "f3c855a",
-        "f53745a"
-      ]
+      "status": "ship",
+      "linked_commits": []
     },
     "SPEC-1783487662": {
       "spec_id": "SPEC-1783487662",
       "repo_issue_id": 475,
-      "status": "backlog",
+      "status": "closed",
       "linked_commits": []
     },
     "SPEC-1783495360": {
       "spec_id": "Refactor Ledger: Spec_id Field Should Be Spec Title Not Duplicate Id",
       "repo_issue_id": 476,
-      "status": "resolved",
+      "status": "closed",
       "linked_commits": []
     },
     "SPEC-1783533749": {
-      "spec_id": "Test Baseline Counting Fails After Test Suite Refactor   Historical_floor Not Tracking Test Deletions",
+      "spec_id": "Test Baseline Counting Fails After Test Suite Refactor — Historical_floor Not Tracking Test Deletions",
       "repo_issue_id": 477,
-      "status": "backlog",
+      "status": "closed",
       "linked_commits": []
     },
     "SPEC-1783569007": {
       "spec_id": "Backlog Command",
-      "repo_issue_id": 0,
-      "status": "test",
-      "linked_commits": [
-        "135afd2"
-      ]
+      "repo_issue_id": 478,
+      "status": "draft",
+      "linked_commits": []
     },
     "SPEC-1783572691": {
       "spec_id": "Fix Spec Status Sync Across Commit Sync And Ship Lifecycle",
-      "repo_issue_id": 0,
-      "status": "review",
-      "linked_commits": [
-        "f9a0853"
-      ]
+      "repo_issue_id": 479,
+      "status": "ship",
+      "linked_commits": []
     },
     "SPEC-1783573136": {
-      "spec_id": "Ff Commit   Ai Should Be Fully Non Interactive Without   Spec",
-      "repo_issue_id": 0,
+      "spec_id": "ff commit --ai should be fully non-interactive without --spec",
+      "repo_issue_id": 480,
+      "status": "draft",
+      "linked_commits": []
+    },
+    "SPEC-1783576585": {
+      "spec_id": "Promote",
+      "repo_issue_id": 481,
       "status": "draft",
       "linked_commits": []
     }
