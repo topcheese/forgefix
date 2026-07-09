@@ -631,7 +631,7 @@ func syncSingleSpec(coord *IssueCoordinator, configDir, specID string, cfg *Conf
 
 		if ledger != nil && spec.SpecID != "" {
 			ledger.SetSpecEntry(spec.SpecID, &SpecEntry{
-				SpecID:        spec.SpecID,
+				SpecID:        spec.Title,
 				RepoIssueID:   spec.RepoIssue,
 				Status:        spec.Status,
 				LinkedCommits: []string{},
@@ -879,9 +879,10 @@ func DrainHousekeepingQueueFromConfig(configDir string) error {
 	return DrainHousekeepingQueue(configDir, coord)
 }
 
-// promoteReviewSpecs checks the ledger for specs in "review" status and prompts
-// the user to advance them to "ship" after a successful sync. Skips if stdin
-// is not a terminal (non-interactive / AI mode / background sync).
+// promoteReviewSpecs checks the ledger for specs in "test" status and prompts
+// the user to confirm manual testing before advancing to "ship". Uses the
+// spec title (from the spec file) for the prompt, not the opaque spec ID.
+// Skips if stdin is not a terminal (non-interactive / AI mode / background sync).
 func promoteReviewSpecs(configDir string) {
 	if !term.IsTerminal(int(os.Stdin.Fd())) {
 		return
@@ -892,19 +893,50 @@ func promoteReviewSpecs(configDir string) {
 		return
 	}
 
-	for _, entry := range ledger.GetAllSpecEntries() {
-		if entry.Status == "review" {
-			fmt.Fprintf(os.Stderr, "\nSpec %s is in review status. Advance to ship? [y/N]: ", entry.SpecID)
-			var response string
-			_, scanErr := fmt.Scanln(&response)
-			if scanErr != nil {
-				continue
+	specDir := filepath.Join(filepath.Dir(configDir), "specs")
+
+	for specID, entry := range ledger.GetAllSpecEntries() {
+		if entry.Status != "test" {
+			continue
+		}
+
+		// Read the spec file to get the human-readable title
+		title := entry.SpecID // fallback if file can't be read
+		// Try known spec files — find by ID search
+		if entries, readErr := os.ReadDir(specDir); readErr == nil {
+			for _, de := range entries {
+				if de.IsDir() || !strings.HasSuffix(de.Name(), ".md") {
+					continue
+				}
+				fp := filepath.Join(specDir, de.Name())
+				data, readErr := os.ReadFile(fp)
+				if readErr != nil {
+					continue
+				}
+				content := string(data)
+				if strings.Contains(content, fmt.Sprintf(`spec_id: "%s"`, specID)) {
+					// Extract title from first # heading
+					for _, line := range strings.Split(content, "\n") {
+						if strings.HasPrefix(strings.TrimSpace(line), "# ") {
+							title = strings.TrimSpace(strings.TrimPrefix(line, "# "))
+							break
+						}
+					}
+					break
+				}
 			}
-			if strings.ToLower(strings.TrimSpace(response)) == "y" {
-				entry.Status = "ship"
-				ledger.SetSpecEntry(entry.SpecID, entry)
-				fmt.Fprintf(os.Stderr, "✓ Advanced %s to ship\n", entry.SpecID)
-			}
+		}
+
+		fmt.Fprintf(os.Stderr, "\n\"%s\" — Has this spec been reviewed and tested? [y/N]: ", title)
+		var response string
+		_, scanErr := fmt.Scanln(&response)
+		if scanErr != nil {
+			continue
+		}
+		if strings.ToLower(strings.TrimSpace(response)) == "y" {
+			entry.Status = "ship"
+			ledger.SetSpecEntry(specID, entry)
+			fmt.Fprintf(os.Stderr, "✓ Advanced \"%s\" to ship\n", title)
 		}
 	}
 

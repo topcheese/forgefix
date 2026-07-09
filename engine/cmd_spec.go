@@ -120,7 +120,7 @@ func createSpec(configDir, name string, d *CommandDispatcher, aiMode bool) error
 	ledger, lerr := LoadLedger(configDir)
 	if lerr == nil {
 		entry := &SpecEntry{
-			SpecID:        specID,
+			SpecID:        title,
 			RepoIssueID:   0,
 			Status:        "draft",
 			LinkedCommits: []string{},

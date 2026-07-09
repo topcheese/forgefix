@@ -98,7 +98,7 @@ func ArchiveResolvedSpecs(configDir string) (string, int, error) {
 		// File is missing; reconstruct minimal archive entry from ledger data
 		var sb strings.Builder
 		sb.WriteString("---\n")
-		sb.WriteString(fmt.Sprintf("spec_id: \"%s\"\n", entry.SpecID))
+		sb.WriteString(fmt.Sprintf("spec_id: \"%s\"\n", specID))
 		sb.WriteString(fmt.Sprintf("status: %s\n", entry.Status))
 		if entry.RepoIssueID > 0 {
 			sb.WriteString(fmt.Sprintf("repo_issue: %d\n", entry.RepoIssueID))
@@ -110,11 +110,11 @@ func ArchiveResolvedSpecs(configDir string) (string, int, error) {
 			sb.WriteString(fmt.Sprintf("linked_commits: %s\n", strings.Join(entry.LinkedCommits, ", ")))
 		}
 		sb.WriteString("---\n")
-		sb.WriteString(fmt.Sprintf("# %s\n\n", entry.SpecID))
+		sb.WriteString(fmt.Sprintf("# %s\n\n", specID))
 		sb.WriteString("*Spec file was missing at time of archive. Content reconstructed from ledger.*\n")
 		resolved = append(resolved, archivedSpec{
 			content:  sb.String(),
-			specID:   entry.SpecID,
+			specID:   specID,
 			filename: "",
 		})
 	}

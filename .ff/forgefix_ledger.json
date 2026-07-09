@@ -3,11 +3,11 @@
   "entries": {
     "forgefix": {
       "pipeline_id": "forgefix",
-      "total_ran": 358,
-      "total_passed": 358,
-      "total_failed": 0,
+      "total_ran": 22,
+      "total_passed": 20,
+      "total_failed": 2,
       "historical_floor": 358,
-      "last_update": "2026-07-07T22:10:16-07:00"
+      "last_update": "2026-07-08T18:59:55-07:00"
     }
   },
   "spec_mappings": {
@@ -47,19 +47,19 @@
       ]
     },
     "SPEC-1783157281": {
-      "spec_id": "SPEC-1783157281",
+      "spec_id": "Project Status Dashboard Command",
       "repo_issue_id": 460,
       "status": "ship",
       "linked_commits": []
     },
     "SPEC-1783157282": {
-      "spec_id": "SPEC-1783157282",
+      "spec_id": "Config Validation Command",
       "repo_issue_id": 461,
       "status": "ship",
       "linked_commits": []
     },
     "SPEC-1783157283": {
-      "spec_id": "SPEC-1783157283",
+      "spec_id": "Spec Export and Import",
       "repo_issue_id": 462,
       "status": "ship",
       "linked_commits": []
@@ -89,13 +89,13 @@
       "linked_commits": []
     },
     "SPEC-1783222864": {
-      "spec_id": "SPEC-1783222864",
+      "spec_id": "Extract SpecManager Module from IssueCoordinator",
       "repo_issue_id": 467,
       "status": "closed",
       "linked_commits": []
     },
     "SPEC-1783223922": {
-      "spec_id": "SPEC-1783223922",
+      "spec_id": "Break up ShipReconciliation complexity",
       "repo_issue_id": 468,
       "status": "closed",
       "linked_commits": []
@@ -107,25 +107,25 @@
       "linked_commits": []
     },
     "SPEC-1783225332": {
-      "spec_id": "SPEC-1783225332",
+      "spec_id": "Consolidate Overlapping Binary Management Into BinaryManager",
       "repo_issue_id": 470,
       "status": "ship",
       "linked_commits": []
     },
     "SPEC-1783237790": {
-      "spec_id": "SPEC-1783237790",
+      "spec_id": "Update Spec Metadata and Changelog",
       "repo_issue_id": 471,
       "status": "closed",
       "linked_commits": []
     },
     "SPEC-1783285217": {
-      "spec_id": "SPEC-1783285217",
+      "spec_id": "Sync Inconsistency Fix 2026",
       "repo_issue_id": 472,
       "status": "ship",
       "linked_commits": []
     },
     "SPEC-1783363349": {
-      "spec_id": "SPEC-1783363349",
+      "spec_id": "Fix Dashboard Terminal Overflow And Per Pipeline Bomb Rendering In Renderfinal",
       "repo_issue_id": 473,
       "status": "in-progress",
       "linked_commits": [
@@ -134,7 +134,7 @@
       ]
     },
     "SPEC-1783365439": {
-      "spec_id": "SPEC-1783365439",
+      "spec_id": "Fix Bomb Animation Center To Show Total Running Test Count Across All Pipelines, Not Just First Pipeline Floor",
       "repo_issue_id": 474,
       "status": "review",
       "linked_commits": [
@@ -142,13 +142,26 @@
         "8b94f6b",
         "cbaafcf",
         "ba7e9cb",
-        "f3c855a"
+        "f3c855a",
+        "f53745a"
       ]
     },
     "SPEC-1783487662": {
       "spec_id": "SPEC-1783487662",
       "repo_issue_id": 475,
       "status": "backlog",
+      "linked_commits": []
+    },
+    "SPEC-1783495360": {
+      "spec_id": "Refactor Ledger: Spec_id Field Should Be Spec Title Not Duplicate Id",
+      "repo_issue_id": 0,
+      "status": "draft",
+      "linked_commits": []
+    },
+    "SPEC-1783533749": {
+      "spec_id": "Test Baseline Counting Fails After Test Suite Refactor   Historical_floor Not Tracking Test Deletions",
+      "repo_issue_id": 0,
+      "status": "draft",
       "linked_commits": []
     }
   }

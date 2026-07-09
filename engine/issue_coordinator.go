@@ -1022,7 +1022,7 @@ func (c *IssueCoordinator) SyncSpecs(configDir string) error {
 
 		if ledger != nil && spec.SpecID != "" {
 			ledger.SetSpecEntry(spec.SpecID, &SpecEntry{
-				SpecID:        spec.SpecID,
+				SpecID:        spec.Title,
 				RepoIssueID:   spec.RepoIssue,
 				Status:        spec.Status,
 				LinkedCommits: []string{},

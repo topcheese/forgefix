@@ -58,7 +58,7 @@ type LedgerEntry struct {
 }
 
 type SpecEntry struct {
-	SpecID        string   `json:"spec_id"`
+	SpecID        string   `json:"spec_id"`        // Human-readable title from spec file heading (map key is the real spec ID)
 	RepoIssueID   int      `json:"repo_issue_id"`
 	Status        string   `json:"status"`
 	LinkedCommits []string `json:"linked_commits"`
@@ -433,7 +433,8 @@ func (le *LedgerEngine) SyncFromSpecsDir(configDir string) error {
 			continue
 		}
 		frontmatter := parts[1]
-		var specID, status, specType string
+		body := strings.TrimSpace(parts[2])
+		var specID, status, specType, title string
 		lines := strings.Split(frontmatter, "\n")
 		for _, line := range lines {
 			line = strings.TrimSpace(line)
@@ -448,6 +449,11 @@ func (le *LedgerEngine) SyncFromSpecsDir(configDir string) error {
 				specType = strings.Trim(specType, `"`)
 			}
 		}
+		// Extract title from markdown heading
+		if strings.HasPrefix(body, "# ") {
+			titleLine := strings.SplitN(body, "\n", 2)[0]
+			title = strings.TrimPrefix(titleLine, "# ")
+		}
 		if specID == "" || status == "" {
 			continue
 		}
@@ -456,17 +462,13 @@ func (le *LedgerEngine) SyncFromSpecsDir(configDir string) error {
 		}
 
 		if le.specMappings[specID] == nil {
-			le.specMappings[specID] = &SpecEntry{
-				SpecID:        specID,
-				RepoIssueID:   0,
-				Status:        status,
-				LinkedCommits: []string{},
-				Type:          specType,
+			// spec_id field holds the human-readable title (map key is the real spec ID)
+			titleVal := title
+			if titleVal == "" {
+				titleVal = specID
 			}
-		}
-		if le.specMappings[specID] == nil {
 			le.specMappings[specID] = &SpecEntry{
-				SpecID:        specID,
+				SpecID:        titleVal,
 				RepoIssueID:   0,
 				Status:        status,
 				LinkedCommits: []string{},

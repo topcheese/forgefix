@@ -176,7 +176,7 @@ func (d *CommandDispatcher) handleImport(args []string) (CommandResult, error) {
 		for _, spec := range loadSpecFiles(specDir) {
 			if entry := ledger.GetSpecEntry(spec.SpecID); entry == nil {
 				ledger.SetSpecEntry(spec.SpecID, &SpecEntry{
-					SpecID:        spec.SpecID,
+					SpecID:        spec.Title,
 					Status:        spec.Status,
 					RepoIssueID:   0,
 					LinkedCommits: []string{},
@@ -196,6 +196,7 @@ func (d *CommandDispatcher) handleImport(args []string) (CommandResult, error) {
 
 type specFileMeta struct {
 	SpecID string
+	Title  string
 	Status string
 }
 
@@ -217,11 +218,23 @@ func loadSpecFiles(specDir string) []specFileMeta {
 		content := string(data)
 		specID := extractSpecField(content, "spec_id:")
 		status := extractSpecField(content, "status:")
+		title := extractSpecTitle(content)
 		if specID != "" {
-			specs = append(specs, specFileMeta{SpecID: specID, Status: status})
+			specs = append(specs, specFileMeta{SpecID: specID, Title: title, Status: status})
 		}
 	}
 	return specs
+}
+
+// extractSpecTitle pulls the first "# Heading" from the spec file body.
+func extractSpecTitle(content string) string {
+	for _, line := range strings.Split(content, "\n") {
+		trimmed := strings.TrimSpace(line)
+		if strings.HasPrefix(trimmed, "# ") {
+			return strings.TrimSpace(strings.TrimPrefix(trimmed, "# "))
+		}
+	}
+	return ""
 }
 
 func extractSpecField(content, prefix string) string {

@@ -4,6 +4,8 @@
 
 [![Go Version](https://img.shields.io/badge/Go-1.26.2-00ADD8?logo=go)](https://go.dev) ![Status](https://img.shields.io/badge/status-beta-yellow)
 
+![ForgeFix — It does what it says on the tin](assets/dashboard.png)
+
 ---
 
 ## Why ForgeFix?
