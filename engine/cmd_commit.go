@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"regexp"
 	"sort"
@@ -36,6 +37,12 @@ func (d *CommandDispatcher) handleCommit(args []string) (CommandResult, error) {
 		if err := UpdateLedgerAfterCommit(ledgerDir, specID, commitHash); err != nil {
 			fmt.Fprintf(d.Stderr, "error: %v\n", err)
 			return CommandResult{ExitCode: 1}, nil
+		}
+
+		// Fold the metadata changes into the previous commit so they're not left
+		// as untracked side effects. The commit message remains the same.
+		if err := amendLastCommit(d.WorkDir); err != nil {
+			fmt.Fprintf(d.Stderr, "warning: failed to amend metadata into commit: %v\n", err)
 		}
 
 		if err := SpawnBackgroundSync(ledgerDir, specID); err != nil {
@@ -141,6 +148,23 @@ func runCommit(wd, msg, flagSpecID, specType, specVersion string, aiMode bool, d
 			}
 		}
 		commitMsg = msg
+	}
+
+	// Write metadata to disk BEFORE the commit so they're included in the
+	// staged changes and don't remain as untracked side effects.
+	if specID != "" {
+		configDir := SpecConfigDir(wd)
+		specDir := filepath.Join(wd, "specs")
+		if specFile, fErr := findSpecFileByID(specDir, specID); fErr == nil {
+			_ = UpdateSpecFileStatus(specFile, "review")
+		}
+		if ledger, lErr := LoadLedger(configDir); lErr == nil {
+			if entry := ledger.GetSpecEntry(specID); entry != nil {
+				entry.Status = "review"
+				ledger.SetSpecEntry(specID, entry)
+				_ = SaveLedger(ledger, configDir)
+			}
+		}
 	}
 
 	commitHash, err := AutoStageAndCommit(gitRoot, commitMsg)
@@ -809,4 +833,27 @@ func getSpecEntry(configDir, specID string) (*SpecEntry, error) {
 		return nil, fmt.Errorf("spec %s not found in ledger", specID)
 	}
 	return entry, nil
+}
+
+// amendLastCommit stages all working-tree changes and amends them into the
+// previous commit with --no-edit. This folds metadata updates (spec status,
+// ledger bindings) into the commit that produced them so they don't remain
+// as untracked side effects.
+func amendLastCommit(wd string) error {
+	gitRoot, err := findGitRootWalk(wd)
+	if err != nil {
+		return err
+	}
+	add := exec.Command("git", "-C", gitRoot, "add", ".")
+	if out, err := add.CombinedOutput(); err != nil {
+		return fmt.Errorf("git add .: %w\n%s", err, out)
+	}
+	amend := exec.Command("git", "-C", gitRoot, "commit", "--amend", "--no-edit")
+	if out, err := amend.CombinedOutput(); err != nil {
+		// "nothing to commit" means there was nothing to fold — not an error
+		if !strings.Contains(string(out), "nothing to commit") {
+			return fmt.Errorf("git commit --amend --no-edit: %w\n%s", err, out)
+		}
+	}
+	return nil
 }
