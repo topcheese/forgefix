@@ -9,6 +9,8 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+
+	"ForgeFix/engine"
 )
 
 // TestSpecLifecycle covers the end-to-end spec lifecycle without network:
@@ -155,18 +157,11 @@ func TestSpecLifecycle(t *testing.T) {
 		}
 
 		// Need to manually promote to "ship" since promoteReviewSpecs is skipped
-		// in non-interactive mode. We directly update the spec file and ledger.
+		// in non-interactive mode. We use the frontmatter-safe helper for the
+		// spec file, then update the ledger directly.
 		specPath := filepath.Join(dir, "specs", "test-feature.md")
-		specData, err := os.ReadFile(specPath)
-		if err != nil {
-			t.Fatal(err)
-		}
-
-		// Update spec file to "ship" on disk
-		specStr := string(specData)
-		specStr = strings.ReplaceAll(specStr, "status: draft", "status: ship")
-		if err := os.WriteFile(specPath, []byte(specStr), 0644); err != nil {
-			t.Fatal(err)
+		if err := engine.UpdateSpecFileStatus(specPath, "ship"); err != nil {
+			t.Fatalf("updating spec file status: %v", err)
 		}
 
 		// Update ledger to "ship"

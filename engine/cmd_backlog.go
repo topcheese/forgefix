@@ -53,7 +53,7 @@ func (d *CommandDispatcher) handleBacklog(args []string) (CommandResult, error) 
 		return d.promptAdvancement(specID, specFile, entry, ledger)
 	}
 
-	if err := updateSpecFileStatus(specFile, "backlog"); err != nil {
+	if err := UpdateSpecFileStatus(specFile, "backlog"); err != nil {
 		fmt.Fprintf(d.Stderr, "error: updating spec file: %v\n", err)
 		return CommandResult{ExitCode: 1}, nil
 	}
@@ -107,7 +107,7 @@ func (d *CommandDispatcher) promptAdvancement(specID, specFile string, entry *Sp
 		return CommandResult{ExitCode: 1}, nil
 	}
 
-	if err := updateSpecFileStatus(specFile, newStatus); err != nil {
+	if err := UpdateSpecFileStatus(specFile, newStatus); err != nil {
 		fmt.Fprintf(d.Stderr, "error: updating spec file: %v\n", err)
 		return CommandResult{ExitCode: 1}, nil
 	}
@@ -176,7 +176,7 @@ func queueSpecBackgroundSync(configDir, specID string, stdout, stderr io.Writer)
 	}
 }
 
-func updateSpecFileStatus(filePath, status string) error {
+func UpdateSpecFileStatus(filePath, status string) error {
 	data, err := os.ReadFile(filePath)
 	if err != nil {
 		return err

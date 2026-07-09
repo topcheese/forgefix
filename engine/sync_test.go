@@ -787,7 +787,7 @@ func TestSpecMetadataSyncer_UpdatesDiskAndLedger(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if !strings.Contains(string(data), "status: closed") && !strings.Contains(string(data), `status: "closed"`) {
+	if !strings.Contains(string(data), "status: closed") {
 		t.Errorf("expected spec file disk status to be 'closed', got:\n%s", string(data))
 	}
 
@@ -841,8 +841,8 @@ func TestSpecMetadataSyncer_ErrorSpecNotInLedger(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if !strings.Contains(string(data), "status: closed") && !strings.Contains(string(data), `status: "closed"`) {
-		t.Errorf("expected spec file to have status closed even when ledger write failed, got:\n%s", string(data))
+	if !strings.Contains(string(data), "status: closed") {
+		t.Errorf("expected spec file to have status 'closed' even when ledger write failed, got:\n%s", string(data))
 	}
 }
 

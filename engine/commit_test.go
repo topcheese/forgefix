@@ -150,6 +150,85 @@ created: 2024-01-01
 	}
 }
 
+func TestRunCommit_DedupPreservesOtherSpecRefs(t *testing.T) {
+	tmpDir := t.TempDir()
+	initGitRepo(t, tmpDir)
+
+	specDir := filepath.Join(tmpDir, "specs")
+	if err := os.MkdirAll(specDir, 0755); err != nil {
+		t.Fatal(err)
+	}
+	specContent := `---
+spec_id: "SPEC-111"
+status: in-progress
+type: feature
+repo_issue: ""
+created: 2024-01-01
+---
+# Test
+`
+	if err := os.WriteFile(filepath.Join(specDir, "SPEC-111.md"), []byte(specContent), 0644); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(tmpDir, "a.txt"), []byte("data"), 0644); err != nil {
+		t.Fatal(err)
+	}
+
+	d := &CommandDispatcher{Stdout: io.Discard, Stderr: io.Discard}
+	// Committing to SPEC-111, message references SPEC-456 and SPEC-789
+	_, _, commitMsg, err := runCommit(tmpDir, "[SPEC-111] integrate with [SPEC-456] and [SPEC-789]", "SPEC-111", "", "", d)
+	if err != nil {
+		t.Fatalf("runCommit failed: %v", err)
+	}
+	if commitMsg != "feat: [SPEC-111] integrate with [SPEC-456] and [SPEC-789]" {
+		t.Errorf("expected other spec refs preserved, got: %q", commitMsg)
+	}
+	logOut := runGit(t, tmpDir, "log", "--oneline", "-1")
+	if !strings.Contains(logOut, "integrate with [SPEC-456] and [SPEC-789]") {
+		t.Errorf("expected git log to preserve other spec refs, got: %s", logOut)
+	}
+}
+
+func TestRunCommit_DedupOnlyTagNoBody(t *testing.T) {
+	tmpDir := t.TempDir()
+	initGitRepo(t, tmpDir)
+
+	specDir := filepath.Join(tmpDir, "specs")
+	if err := os.MkdirAll(specDir, 0755); err != nil {
+		t.Fatal(err)
+	}
+	specFile := filepath.Join(specDir, "SPEC-999.md")
+	specContent := `---
+spec_id: "SPEC-999"
+status: in-progress
+type: feature
+repo_issue: ""
+created: 2024-01-01
+---
+# Test
+`
+	if err := os.WriteFile(specFile, []byte(specContent), 0644); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(tmpDir, "z.txt"), []byte("data"), 0644); err != nil {
+		t.Fatal(err)
+	}
+
+	d := &CommandDispatcher{Stdout: io.Discard, Stderr: io.Discard}
+	_, _, commitMsg, err := runCommit(tmpDir, "[SPEC-999]", "SPEC-999", "", "", d)
+	if err != nil {
+		t.Fatalf("runCommit failed: %v", err)
+	}
+	// Must not repeat the tag: "feat: [SPEC-999] [SPEC-999]"
+	if commitMsg != "feat: [SPEC-999]" {
+		t.Errorf("expected no doubled tag, got: %q", commitMsg)
+	}
+	logOut := runGit(t, tmpDir, "log", "--oneline", "-1")
+	if !strings.Contains(logOut, "feat: [SPEC-999]") {
+		t.Errorf("expected git log to match, got: %s", logOut)
+	}
+}
+
 func TestRunCommit_DedupNoSpecInMessage(t *testing.T) {
 	tmpDir := t.TempDir()
 	initGitRepo(t, tmpDir)

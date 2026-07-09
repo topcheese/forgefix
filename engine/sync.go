@@ -816,7 +816,7 @@ func (s *specMetadataSyncer) SyncMetadata(specID string) error {
 		return fmt.Errorf("spec %s not found on disk", specID)
 	}
 
-	if err := updateSpecFileStatus(filePath, "closed"); err != nil {
+	if err := UpdateSpecFileStatus(filePath, "closed"); err != nil {
 		return fmt.Errorf("updating spec file: %w", err)
 	}
 
@@ -962,7 +962,7 @@ func promoteReviewSpecs(configDir string) {
 		ledger.SetSpecEntry(c.id, entry)
 
 		if c.filePath != "" {
-			if err := updateSpecFileStatus(c.filePath, "ship"); err != nil {
+			if err := UpdateSpecFileStatus(c.filePath, "ship"); err != nil {
 				fmt.Fprintf(os.Stderr, "warning: failed to update spec file %s: %v\n", c.filePath, err)
 			}
 		}

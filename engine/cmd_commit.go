@@ -119,13 +119,9 @@ func runCommit(wd, msg, flagSpecID, specType, specVersion string, d *CommandDisp
 			}
 		}
 
-		// Strip any existing [SPEC-XXXXX] prefix from the message to avoid doubling
-		re := regexp.MustCompile(`\[SPEC-\d+\]`)
-		cleaned := strings.TrimSpace(re.ReplaceAllString(msg, ""))
-		if cleaned == "" {
-			cleaned = msg
-		}
-		commitMsg = fmt.Sprintf("feat: [%s] %s", specID, cleaned)
+		// Strip the current spec's tag from message to avoid doubling, but leave other spec references intact
+		cleaned := strings.TrimSpace(strings.ReplaceAll(msg, "["+specID+"]", ""))
+		commitMsg = strings.TrimSpace(fmt.Sprintf("feat: [%s] %s", specID, cleaned))
 	} else {
 		if msg == "" {
 			fmt.Fprint(d.Stdout, "Commit message (or q to quit): ")
@@ -171,7 +167,7 @@ func UpdateLedgerAfterCommit(configDir, specID, commitHash string) error {
 	if err != nil {
 		return fmt.Errorf("spec file not found on disk for %s: %w", specID, err)
 	}
-	if err := updateSpecFileStatus(specFile, "review"); err != nil {
+	if err := UpdateSpecFileStatus(specFile, "review"); err != nil {
 		return fmt.Errorf("updating spec file status: %w", err)
 	}
 
