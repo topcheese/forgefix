@@ -1,7 +1,7 @@
 ---
 spec_id: "SPEC-1783605913"
 status: review
-repo_issue: ""
+repo_issue: 484
 type: refactor
 version: "v0.8.0"
 root_cause: ""

@@ -3,7 +3,7 @@ spec_id: "SPEC-1783225332"
 status: ship
 repo_issue: 470
 type: refactor
-version: "v0.8.1"
+version: "0.9.3"
 root_cause: "Bootstrap(), EnsureDevBinary(), and InstallGlobal() each had independent copy implementations for copying the ff binary. copyBinary in shortcut.go was a separate implementation. Three copy paths with the same logic."
 resolution: "Created binary_manager.go with BinaryManager type. EnsureDev() replaces both Bootstrap() and EnsureDevBinary() (same logic consolidated). InstallGlobal() replaces old shortcut.go version. copyFile() helper shared by all paths. Package-level convenience wrappers in ffdir.go and shortcut.go delegate to BinaryManager."
 ---

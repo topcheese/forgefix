@@ -3,7 +3,7 @@ spec_id: "SPEC-1783363349"
 status: ship
 repo_issue: 473
 type: bug
-version: "v0.9.0"
+version: "0.9.3"
 root_cause: "renderFinal() called WriteBombFinal inside per-pipeline loop, rendering 11-line ASCII explosion once per pipeline (17x = 187 lines). render() printed all pipeline headers unconditionally regardless of terminal height, causing TUI overflow."
 resolution: "Moved WriteBombFinal outside loop to render bomb art once. Added terminal-height cap on pipeline headers with '…and N more' overflow indicator."
 ---

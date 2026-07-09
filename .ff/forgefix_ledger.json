@@ -1,5 +1,5 @@
 {
-  "version": "0.9.2",
+  "version": "0.9.3",
   "entries": {
     "forgefix": {
       "pipeline_id": "forgefix",
@@ -7,7 +7,7 @@
       "total_passed": 368,
       "total_failed": 0,
       "historical_floor": 368,
-      "last_update": "2026-07-09T06:12:45-07:00"
+      "last_update": "2026-07-09T07:19:26-07:00"
     }
   },
   "spec_mappings": {
@@ -195,12 +195,9 @@
     },
     "SPEC-1783605913": {
       "spec_id": "Refactor Git Staging And Commit Abstractions",
-      "repo_issue_id": 0,
+      "repo_issue_id": 484,
       "status": "review",
-      "linked_commits": [
-        "0c44a0d",
-        "3a97310"
-      ]
+      "linked_commits": []
     }
   }
 }

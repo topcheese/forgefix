@@ -3,7 +3,7 @@ spec_id: "SPEC-1783285217"
 status: ship
 repo_issue: 472
 type: feature
-version: "v0.8.0"
+version: "0.9.3"
 root_cause: ""
 resolution: ""
 ---
