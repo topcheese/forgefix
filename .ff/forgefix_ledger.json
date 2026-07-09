@@ -90,6 +90,14 @@
         "836e74b",
         "b4dfa9d"
       ]
+    },
+    "SPEC-1783612199": {
+      "spec_id": "Create Agent Focused Forgefix Skill Variant",
+      "repo_issue_id": 0,
+      "status": "review",
+      "linked_commits": [
+        "7b94eb0"
+      ]
     }
   }
 }
