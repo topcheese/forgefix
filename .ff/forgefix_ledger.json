@@ -87,7 +87,8 @@
       "repo_issue_id": 0,
       "status": "review",
       "linked_commits": [
-        "836e74b"
+        "836e74b",
+        "b4dfa9d"
       ]
     }
   }

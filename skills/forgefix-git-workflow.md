@@ -118,7 +118,7 @@ ff commit --ai "add Zod schema validation to POST endpoint"
 ff commit --ai "add validation error UI to form component"
 ```
 
-A spec can have multiple commits (one logical feature). A commit must belong to at most one spec.
+A spec can have multiple commits (one logical feature). A commit must belong to at least one spec.
 
 ### 4. Commit with Spec Binding
 
