@@ -693,8 +693,11 @@ func parseSpecFileForCommit(filePath string) (*SpecFileCommit, error) {
 	return spec, nil
 }
 
-// autoDetectSpecFromWorkingTree picks the most recently modified spec file in
-// specs/ so that `ff commit --ai` can bind to it without an interactive prompt.
+// autoDetectSpecFromWorkingTree picks the most relevant spec file in specs/
+// so that `ff commit --ai` can bind to it without an interactive prompt.
+// It prefers active specs (not yet shipped/closed) over shipped ones, and
+// among those picks the most recently modified. This prevents auto-generated
+// side-effect writes to shipped spec files from stealing the binding.
 func autoDetectSpecFromWorkingTree(wd string) (string, error) {
 	specDir := filepath.Join(wd, "specs")
 	entries, err := os.ReadDir(specDir)
@@ -706,11 +709,12 @@ func autoDetectSpecFromWorkingTree(wd string) (string, error) {
 	}
 
 	type candidate struct {
-		specID  string
+		specID string
+		status string
 		modTime time.Time
 	}
 
-	var candidates []candidate
+	var all, active []candidate
 	for _, entry := range entries {
 		if entry.IsDir() || !strings.HasSuffix(entry.Name(), ".md") {
 			continue
@@ -730,18 +734,27 @@ func autoDetectSpecFromWorkingTree(wd string) (string, error) {
 		if spec.SpecID == "" {
 			continue
 		}
-		candidates = append(candidates, candidate{specID: spec.SpecID, modTime: info.ModTime()})
+		c := candidate{specID: spec.SpecID, status: spec.Status, modTime: info.ModTime()}
+		all = append(all, c)
+		if spec.Status != "ship" && spec.Status != "closed" {
+			active = append(active, c)
+		}
 	}
 
-	if len(candidates) == 0 {
+	if len(all) == 0 {
 		return "", fmt.Errorf("no spec files found in specs/; create one with `ff spec --ai <title>` first")
 	}
 
-	sort.Slice(candidates, func(i, j int) bool {
-		return candidates[i].modTime.After(candidates[j].modTime)
+	pool := all
+	if len(active) > 0 {
+		pool = active
+	}
+
+	sort.Slice(pool, func(i, j int) bool {
+		return pool[i].modTime.After(pool[j].modTime)
 	})
 
-	return candidates[0].specID, nil
+	return pool[0].specID, nil
 }
 
 // extractSpecID extracts a SPEC-XXXXXXX ID from a commit message.
