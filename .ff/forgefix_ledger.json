@@ -98,6 +98,26 @@
       "linked_commits": [
         "7b94eb0"
       ]
+    },
+    "SPEC-1783612708": {
+      "spec_id": "Add Test Coverage For Issue Body Verification In Sync",
+      "repo_issue_id": 0,
+      "status": "draft",
+      "linked_commits": []
+    },
+    "SPEC-1783612709": {
+      "spec_id": "Add Gitea Release Creation To Ff Ship",
+      "repo_issue_id": 0,
+      "status": "review",
+      "linked_commits": [
+        "e77ab00"
+      ]
+    },
+    "SPEC-1783612710": {
+      "spec_id": "Fix Issue Body Syncing To Post Complete Spec Content",
+      "repo_issue_id": 0,
+      "status": "draft",
+      "linked_commits": []
     }
   }
 }
