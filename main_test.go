@@ -369,6 +369,54 @@ created: 2024-01-01
 	}
 }
 
+func TestUpdateLedgerAfterCommit_SpecFileNotFound(t *testing.T) {
+	tmpDir := t.TempDir()
+	createTestConfig(t, tmpDir)
+
+	ledgerDir := filepath.Join(tmpDir, ".ff")
+	if err := os.MkdirAll(ledgerDir, 0755); err != nil {
+		t.Fatalf("creating ledger dir: %v", err)
+	}
+	ledgerPath := filepath.Join(ledgerDir, "forgefix_ledger.json")
+	ledger := engine.NewLedgerEngine()
+	entry := &engine.SpecEntry{
+		SpecID:        "SPEC-123",
+		RepoIssueID:   1,
+		Status:        "in-progress",
+		LinkedCommits: []string{},
+		Type:          "feature",
+	}
+	ledger.SetSpecEntry("SPEC-123", entry)
+	if err := ledger.SaveToFile(ledgerPath); err != nil {
+		t.Fatalf("saving ledger: %v", err)
+	}
+
+	// Do NOT create spec file on disk — should get an error
+	err := engine.UpdateLedgerAfterCommit(tmpDir, "SPEC-123", "abc123")
+	if err == nil {
+		t.Fatal("expected error when spec file not found, got nil")
+	}
+	if !strings.Contains(err.Error(), "spec file not found") {
+		t.Errorf("expected 'spec file not found' error, got: %v", err)
+	}
+
+	// Verify ledger was NOT updated — status should still be "in-progress"
+	ledger2, err := engine.LoadLedger(tmpDir)
+	if err != nil {
+		t.Fatalf("loading ledger: %v", err)
+	}
+	specEntry := ledger2.GetSpecEntry("SPEC-123")
+	if specEntry == nil {
+		t.Fatal("SPEC-123 not found in ledger")
+	}
+	if specEntry.Status != "in-progress" {
+		t.Errorf("expected status to remain 'in-progress' (disk write should not have happened), got: %s", specEntry.Status)
+	}
+	if len(specEntry.LinkedCommits) != 0 {
+		t.Errorf("expected 0 linked commits (ledger save skipped on error), got %d", len(specEntry.LinkedCommits))
+	}
+}
+
 func TestPromptForInitInstallsBinaryOnYes(t *testing.T) {
 	tmpDir := t.TempDir()
 	projectName := filepath.Base(tmpDir)

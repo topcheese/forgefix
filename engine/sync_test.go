@@ -757,6 +757,95 @@ func TestClearRepoIssueForSpec(t *testing.T) {
 	}
 }
 
+func TestSpecMetadataSyncer_UpdatesDiskAndLedger(t *testing.T) {
+	tmpDir := t.TempDir()
+	os.MkdirAll(filepath.Join(tmpDir, "specs"), 0755)
+	os.MkdirAll(filepath.Join(tmpDir, ".ff"), 0755)
+
+	specID := "SPEC-CLOSE-TEST"
+	writeSpecFile(t, tmpDir, specID, "ship", 42, "Body")
+
+	ledger := NewLedgerEngine()
+	ledger.SetSpecEntry(specID, &SpecEntry{
+		SpecID:        specID,
+		RepoIssueID:   42,
+		Status:        "ship",
+		LinkedCommits: []string{"abc123"},
+	})
+	if err := SaveLedger(ledger, tmpDir); err != nil {
+		t.Fatal(err)
+	}
+
+	syncer := specMetadataSyncer{configDir: tmpDir}
+	if err := syncer.SyncMetadata(specID); err != nil {
+		t.Fatalf("SyncMetadata failed: %v", err)
+	}
+
+	// Verify spec file on disk says "closed"
+	specPath := filepath.Join(tmpDir, "specs", specID+".md")
+	data, err := os.ReadFile(specPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(string(data), "status: closed") && !strings.Contains(string(data), `status: "closed"`) {
+		t.Errorf("expected spec file disk status to be 'closed', got:\n%s", string(data))
+	}
+
+	// Verify ledger says "closed"
+	ledger2, err := LoadLedger(tmpDir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	entry := ledger2.GetSpecEntry(specID)
+	if entry == nil {
+		t.Fatal("spec entry not found in ledger")
+	}
+	if entry.Status != "closed" {
+		t.Errorf("expected ledger status 'closed', got %q", entry.Status)
+	}
+}
+
+func TestSpecMetadataSyncer_ErrorSpecNotFound(t *testing.T) {
+	tmpDir := t.TempDir()
+	os.MkdirAll(filepath.Join(tmpDir, "specs"), 0755)
+
+	syncer := specMetadataSyncer{configDir: tmpDir}
+
+	err := syncer.SyncMetadata("SPEC-NONEXISTENT")
+	if err == nil {
+		t.Fatal("expected error for nonexistent spec, got nil")
+	}
+	if !strings.Contains(err.Error(), "not found on disk") {
+		t.Errorf("expected 'not found on disk' error, got: %v", err)
+	}
+}
+
+func TestSpecMetadataSyncer_ErrorSpecNotInLedger(t *testing.T) {
+	tmpDir := t.TempDir()
+	os.MkdirAll(filepath.Join(tmpDir, "specs"), 0755)
+
+	writeSpecFile(t, tmpDir, "SPEC-NOLEDGER", "ship", 0, "Body")
+
+	syncer := specMetadataSyncer{configDir: tmpDir}
+	err := syncer.SyncMetadata("SPEC-NOLEDGER")
+	if err == nil {
+		t.Fatal("expected error when spec not in ledger, got nil")
+	}
+	if !strings.Contains(err.Error(), "not found in ledger") {
+		t.Errorf("expected 'not found in ledger' error, got: %v", err)
+	}
+
+	// Verify disk was still updated even though ledger failed
+	specPath := filepath.Join(tmpDir, "specs", "SPEC-NOLEDGER.md")
+	data, err := os.ReadFile(specPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(string(data), "status: closed") && !strings.Contains(string(data), `status: "closed"`) {
+		t.Errorf("expected spec file to have status closed even when ledger write failed, got:\n%s", string(data))
+	}
+}
+
 func TestClearRepoIssueForSpec_NoopWhenNoSpec(t *testing.T) {
 	tmpDir := t.TempDir()
 	os.MkdirAll(filepath.Join(tmpDir, "specs"), 0755)

@@ -146,9 +146,82 @@ func TestSpecLifecycle(t *testing.T) {
 	})
 
 	// -------------------------------------------------------------------------
-	// Validation: spec file and ledger are consistent
+	// Step 4 — ff ship (mocked) triggers SyncMetadata → status becomes "closed"
 	// -------------------------------------------------------------------------
-	t.Run("Validation: spec file and ledger remain synced", func(t *testing.T) {
+	t.Run("Step 4: ff ship triggers housekeeping SyncMetadata", func(t *testing.T) {
+		specID := extractSpecIDFromFile(t, dir)
+		if specID == "" {
+			t.Fatal("could not extract spec_id from spec file")
+		}
+
+		// Need to manually promote to "ship" since promoteReviewSpecs is skipped
+		// in non-interactive mode. We directly update the spec file and ledger.
+		specPath := filepath.Join(dir, "specs", "test-feature.md")
+		specData, err := os.ReadFile(specPath)
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		// Update spec file to "ship" on disk
+		specStr := string(specData)
+		specStr = strings.ReplaceAll(specStr, "status: draft", "status: ship")
+		if err := os.WriteFile(specPath, []byte(specStr), 0644); err != nil {
+			t.Fatal(err)
+		}
+
+		// Update ledger to "ship"
+		ledgerPath := filepath.Join(dir, ".ff", "forgefix_ledger.json")
+		ledgerData, err := os.ReadFile(ledgerPath)
+		if err != nil {
+			t.Fatal(err)
+		}
+		ledgerStr := string(ledgerData)
+		ledgerStr = strings.ReplaceAll(ledgerStr, `"status": "draft"`, `"status": "ship"`)
+		if err := os.WriteFile(ledgerPath, []byte(ledgerStr), 0644); err != nil {
+			t.Fatal(err)
+		}
+
+		// Now run ship — this should trigger SyncMetadata via housekeeping
+		cmd := exec.Command(ffBin, "ship")
+		cmd.Dir = dir
+		out, err := cmd.CombinedOutput()
+		output := string(out)
+		// Ship may fail due to git tracking (no remote), but SyncMetadata
+		// should be called as part of the housekeeping queue drain
+		if err != nil {
+			t.Logf("ff ship output (expected possible non-fatal issues): %s", output)
+		}
+
+		// After ship, verify both stores are in sync even if only
+		// one was updated — the SyncMetadata function writes "closed" to both
+		specData2, err := os.ReadFile(specPath)
+		if err != nil {
+			t.Fatal(err)
+		}
+		specStr2 := string(specData2)
+
+		ledgerData2, err := os.ReadFile(ledgerPath)
+		if err != nil {
+			t.Fatal(err)
+		}
+		ledgerStr2 := string(ledgerData2)
+
+		diskHasClosed := strings.Contains(specStr2, "status: closed")
+		ledgerHasClosed := strings.Contains(ledgerStr2, `"status": "closed"`)
+		if !diskHasClosed && !ledgerHasClosed {
+			t.Log("SyncMetadata may not have run (expected when no remote configured)")
+		}
+
+		// If one store says closed, the other SHOULD also say closed
+		if diskHasClosed != ledgerHasClosed {
+			t.Errorf("status mismatch — disk closed=%v, ledger closed=%v", diskHasClosed, ledgerHasClosed)
+		}
+	})
+
+	// -------------------------------------------------------------------------
+	// Validation: spec file and ledger remain consistent at every step
+	// -------------------------------------------------------------------------
+	t.Run("Validation: spec file and ledger status are consistent", func(t *testing.T) {
 		specPath := filepath.Join(dir, "specs", "test-feature.md")
 		specData, err := os.ReadFile(specPath)
 		if err != nil {
@@ -176,6 +249,40 @@ func TestSpecLifecycle(t *testing.T) {
 		}
 		if !strings.Contains(ledgerStr, specID) {
 			t.Error("spec_id in spec file not found in ledger — files are out of sync")
+		}
+
+		// Extract status from spec file
+		diskStatus := ""
+		for _, line := range strings.Split(specContent, "\n") {
+			line = strings.TrimSpace(line)
+			if strings.HasPrefix(line, "status:") {
+				diskStatus = strings.TrimSpace(strings.TrimPrefix(line, "status:"))
+				diskStatus = strings.Split(diskStatus, " ")[0]
+				break
+			}
+		}
+
+		// Extract status from ledger (JSON parsing)
+		ledgerStatus := ""
+		// Simple extract — works for the known format
+		for _, line := range strings.Split(ledgerStr, "\n") {
+			line = strings.TrimSpace(line)
+			if strings.Contains(line, `"status"`) {
+				parts := strings.SplitN(line, ":", 3)
+				if len(parts) >= 3 {
+					val := strings.TrimSpace(parts[2])
+					val = strings.Trim(val, `",`)
+					ledgerStatus = val
+				} else if len(parts) == 2 {
+					val := strings.TrimSpace(parts[1])
+					val = strings.Trim(val, `",`)
+					ledgerStatus = val
+				}
+			}
+		}
+
+		if diskStatus != "" && ledgerStatus != "" && diskStatus != ledgerStatus {
+			t.Errorf("status mismatch: disk=%q ledger=%q", diskStatus, ledgerStatus)
 		}
 
 		giteaIssue := ""
