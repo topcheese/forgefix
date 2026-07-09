@@ -589,13 +589,15 @@ func checkShipGateSpecStatuses(configDir string) (shipSpecs []string, err error)
 		for _, spec := range ledger.GetAllSpecEntries() {
 			if spec.Status == "ship" {
 				shipSpecs = append(shipSpecs, spec.SpecID)
-			} else if spec.Status == "backlog" || spec.Status == "in-progress" || spec.Status == "review" {
+			} else if spec.Status == "in-progress" {
 				blocking = append(blocking, fmt.Sprintf("  %s (%s)", spec.SpecID, spec.Status))
 			}
+			// backlog and review status do NOT block — they are non-blocking labels
 		}
 	}
 
 	// Then, check spec files on disk (for any additional ship-ready specs)
+	// Disk status takes precedence over ledger status
 	for _, entry := range entries {
 		if entry.IsDir() || !strings.HasSuffix(entry.Name(), ".md") {
 			continue
@@ -617,7 +619,15 @@ func checkShipGateSpecStatuses(configDir string) (shipSpecs []string, err error)
 			if !found {
 				shipSpecs = append(shipSpecs, spec.SpecID)
 			}
-		} else if spec.Status == "backlog" || spec.Status == "in-progress" || spec.Status == "review" {
+			// Disk says ship, so remove from blocking if present (disk takes precedence)
+			newBlocking := make([]string, 0, len(blocking))
+			for _, b := range blocking {
+				if !strings.Contains(b, spec.SpecID) {
+					newBlocking = append(newBlocking, b)
+				}
+			}
+			blocking = newBlocking
+		} else if spec.Status == "in-progress" {
 			// Check if this spec is already in blocking list from ledger
 			found := false
 			for _, existing := range blocking {
@@ -630,6 +640,7 @@ func checkShipGateSpecStatuses(configDir string) (shipSpecs []string, err error)
 				blocking = append(blocking, fmt.Sprintf("  %s (%s)", spec.SpecID, spec.Status))
 			}
 		}
+		// backlog and review status do NOT block - disk backlog/review specs can still ship other specs
 	}
 
 	if len(blocking) > 0 {

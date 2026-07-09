@@ -48,19 +48,19 @@ func TestCheckShipGateSpecStatuses_AllShip(t *testing.T) {
 	}
 }
 
-func TestCheckShipGateSpecStatuses_BacklogBlocks(t *testing.T) {
+func TestCheckShipGateSpecStatuses_BacklogPasses(t *testing.T) {
 	configDir := setupSpecsDir(t, map[string]string{
 		"SPEC-100": "ship",
 		"SPEC-200": "backlog",
 		"SPEC-300": "ship",
 	})
 
-	_, err := checkShipGateSpecStatuses(configDir)
-	if err == nil {
-		t.Fatal("expected error for backlog spec, got nil")
+	shipSpecs, err := checkShipGateSpecStatuses(configDir)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
 	}
-	if !strings.Contains(err.Error(), "SPEC-200") {
-		t.Errorf("error should mention SPEC-200, got: %v", err)
+	if len(shipSpecs) != 2 {
+		t.Fatalf("expected 2 ship specs, got %d: %v", len(shipSpecs), shipSpecs)
 	}
 }
 
@@ -78,17 +78,17 @@ func TestCheckShipGateSpecStatuses_InProgressBlocks(t *testing.T) {
 	}
 }
 
-func TestCheckShipGateSpecStatuses_ReviewBlocks(t *testing.T) {
+func TestCheckShipGateSpecStatuses_ReviewPasses(t *testing.T) {
 	configDir := setupSpecsDir(t, map[string]string{
 		"SPEC-100": "review",
 	})
 
-	_, err := checkShipGateSpecStatuses(configDir)
-	if err == nil {
-		t.Fatal("expected error for review spec, got nil")
+	shipSpecs, err := checkShipGateSpecStatuses(configDir)
+	if err != nil {
+		t.Fatalf("unexpected error for review spec: %v", err)
 	}
-	if !strings.Contains(err.Error(), "review") {
-		t.Errorf("error should mention 'review', got: %v", err)
+	if len(shipSpecs) != 0 {
+		t.Fatalf("expected 0 ship specs, got %d", len(shipSpecs))
 	}
 }
 
@@ -126,7 +126,7 @@ func TestCheckShipGateSpecStatuses_DraftPasses(t *testing.T) {
 func TestCheckShipGateSpecStatuses_MultipleBlocking(t *testing.T) {
 	configDir := setupSpecsDir(t, map[string]string{
 		"SPEC-100": "in-progress",
-		"SPEC-200": "review",
+		"SPEC-200": "backlog",
 	})
 
 	_, err := checkShipGateSpecStatuses(configDir)
@@ -136,7 +136,7 @@ func TestCheckShipGateSpecStatuses_MultipleBlocking(t *testing.T) {
 	if !strings.Contains(err.Error(), "SPEC-100") {
 		t.Errorf("error should mention in-progress SPEC-100, got: %v", err)
 	}
-	if !strings.Contains(err.Error(), "SPEC-200") {
-		t.Errorf("error should mention SPEC-200, got: %v", err)
+	if strings.Contains(err.Error(), "SPEC-200") {
+		t.Errorf("error should NOT mention backlog SPEC-200, got: %v", err)
 	}
 }

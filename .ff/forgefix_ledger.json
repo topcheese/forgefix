@@ -3,11 +3,11 @@
   "entries": {
     "forgefix": {
       "pipeline_id": "forgefix",
-      "total_ran": 22,
-      "total_passed": 20,
-      "total_failed": 2,
+      "total_ran": 358,
+      "total_passed": 358,
+      "total_failed": 0,
       "historical_floor": 358,
-      "last_update": "2026-07-08T18:59:55-07:00"
+      "last_update": "2026-07-08T19:21:47-07:00"
     }
   },
   "spec_mappings": {
@@ -154,12 +154,18 @@
     },
     "SPEC-1783495360": {
       "spec_id": "Refactor Ledger: Spec_id Field Should Be Spec Title Not Duplicate Id",
-      "repo_issue_id": 0,
-      "status": "draft",
+      "repo_issue_id": 476,
+      "status": "resolved",
       "linked_commits": []
     },
     "SPEC-1783533749": {
       "spec_id": "Test Baseline Counting Fails After Test Suite Refactor   Historical_floor Not Tracking Test Deletions",
+      "repo_issue_id": 477,
+      "status": "backlog",
+      "linked_commits": []
+    },
+    "SPEC-1783569007": {
+      "spec_id": "Backlog Command",
       "repo_issue_id": 0,
       "status": "draft",
       "linked_commits": []

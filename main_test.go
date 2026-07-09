@@ -352,8 +352,8 @@ created: 2024-01-01
 	if specEntry == nil {
 		t.Fatal("SPEC-123 not found in ledger")
 	}
-	if specEntry.Status != "review" {
-		t.Errorf("expected review status after commit, got: %s", specEntry.Status)
+	if specEntry.Status != "test" {
+		t.Errorf("expected test status after commit, got: %s", specEntry.Status)
 	}
 	if len(specEntry.LinkedCommits) == 0 {
 		t.Error("expected linked commits, got none")

@@ -1,7 +1,7 @@
 ---
 spec_id: "SPEC-1783495360"
 status: resolved
-repo_issue: ""
+repo_issue: 476
 type: refactor
 version: "v0.8.0"
 root_cause: "spec_id field duplicated the map key, wasting a field that could hold the human-readable title"
@@ -42,6 +42,19 @@ Refactor the `forgefix_ledger.json` to change the `spec_id` field in each spec m
 - Run `go test ./...` to ensure all tests pass
 - Run `ff ship` to verify shipping gate works
 - Manually inspect ledger to confirm titles are present
+
+## What was done
+
+- `engine/ledger.go`: Updated `SpecEntry` struct comment; `SyncFromSpecsDir` extracts title from `# heading` and sets `SpecID: title`
+- `engine/cmd_spec.go`: Creation site changed to `SpecID: title`
+- `engine/sync.go`: `syncSingleSpec` uses `spec.Title`; `promoteReviewSpecs` loop uses map key for frontmatter match and `SetSpecEntry`
+- `engine/cmd_export.go`: Added `Title` field to `specFileMeta`, added `extractSpecTitle()` helper, import uses `spec.Title`
+- `engine/issue_coordinator.go`: Creation site uses `spec.Title`
+- `engine/archive.go`: Uses map key `specID` instead of `entry.SpecID` for frontmatter and heading reconstruction
+- `.ff/forgefix_ledger.json`: Migrated 12 entries to titles, 11 kept as spec ID fallback (no spec file on disk)
+- `assets/dashboard.png`: Added dashboard screenshot to README
+- All tests pass (`go test ./...` — 4/4 packages)
+- Commit: `3afd5ba` — `refactor: ledger spec_id field now holds spec title [SPEC-1783495360]`
 
 <!--
 Available types: feature, bug, chore, docs, refactor, ops

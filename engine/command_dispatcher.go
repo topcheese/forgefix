@@ -66,6 +66,8 @@ func (d *CommandDispatcher) Execute(cmd string, args []string) (CommandResult, e
 		return d.handleSync(args)
 	case "spec":
 		return d.handleSpec(args)
+	case "backlog":
+		return d.handleBacklog(args)
 	case "commit":
 		return d.handleCommit(args)
 	case "--install-shortcut":

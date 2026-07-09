@@ -142,7 +142,8 @@ func runCommit(wd, msg, flagSpecID, specType, specVersion string, d *CommandDisp
 }
 
 // UpdateLedgerAfterCommit records the commit in the ledger and advances status to
-// "review" (not "in-progress") so the user can sync to ship when ready.
+// "test" — the spec is ready for human testing. Once tested, ff sync will
+// prompt to advance further.
 func UpdateLedgerAfterCommit(configDir, specID, commitHash string) error {
 	ledger, err := LoadLedger(configDir)
 	if err != nil {
@@ -150,7 +151,7 @@ func UpdateLedgerAfterCommit(configDir, specID, commitHash string) error {
 	}
 	if entry := ledger.GetSpecEntry(specID); entry != nil {
 		entry.LinkedCommits = append(entry.LinkedCommits, commitHash)
-		entry.Status = "review"
+		entry.Status = "test"
 		ledger.SetSpecEntry(specID, entry)
 		return SaveLedger(ledger, configDir)
 	}
@@ -592,7 +593,7 @@ created: %s
 	}
 
 	entry := &SpecEntry{
-		SpecID:        newSpecID,
+		SpecID:        title,
 		RepoIssueID:   0,
 		Status:        "draft",
 		LinkedCommits: []string{},
