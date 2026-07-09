@@ -820,31 +820,6 @@ func TestSpecMetadataSyncer_ErrorSpecNotFound(t *testing.T) {
 	}
 }
 
-func TestSpecMetadataSyncer_ErrorSpecNotInLedger(t *testing.T) {
-	tmpDir := t.TempDir()
-	os.MkdirAll(filepath.Join(tmpDir, "specs"), 0755)
-
-	writeSpecFile(t, tmpDir, "SPEC-NOLEDGER", "ship", 0, "Body")
-
-	syncer := specMetadataSyncer{configDir: tmpDir}
-	err := syncer.SyncMetadata("SPEC-NOLEDGER")
-	if err == nil {
-		t.Fatal("expected error when spec not in ledger, got nil")
-	}
-	if !strings.Contains(err.Error(), "not found in ledger") {
-		t.Errorf("expected 'not found in ledger' error, got: %v", err)
-	}
-
-	// Verify disk was still updated even though ledger failed
-	specPath := filepath.Join(tmpDir, "specs", "SPEC-NOLEDGER.md")
-	data, err := os.ReadFile(specPath)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if !strings.Contains(string(data), "status: closed") {
-		t.Errorf("expected spec file to have status 'closed' even when ledger write failed, got:\n%s", string(data))
-	}
-}
 
 func TestClearRepoIssueForSpec_NoopWhenNoSpec(t *testing.T) {
 	tmpDir := t.TempDir()

@@ -321,7 +321,24 @@ func RunBackgroundSync(configDir, specID string, aiMode bool) error {
 		return fmt.Errorf("loading config: %w", err)
 	}
 
+	// Reconcile ledger from spec files early, regardless of remote access
+	if reconcilLedger, reconcilErr := LoadLedger(configDir); reconcilErr == nil {
+		if reconcilErr := reconcilLedger.SyncFromSpecsDir(configDir); reconcilErr == nil {
+			if saveErr := SaveLedger(reconcilLedger, configDir); saveErr != nil {
+				fmt.Fprintf(os.Stderr, "warning: failed to save reconciled ledger: %v\n", saveErr)
+			}
+		}
+	}
+
 	if loaded.Config.GitHub == nil || loaded.Config.GitHub.Token == "" || loaded.Config.GitHub.Owner == "" || loaded.Config.GitHub.Repo == "" {
+		// Reconcile ledger from spec files even without remote access
+		if ledger, loadErr := LoadLedger(configDir); loadErr == nil {
+			if syncErr := ledger.SyncFromSpecsDir(configDir); syncErr == nil {
+				if saveErr := SaveLedger(ledger, configDir); saveErr != nil {
+					fmt.Fprintf(os.Stderr, "warning: failed to save reconciled ledger: %v\n", saveErr)
+				}
+			}
+		}
 		return nil
 	}
 
@@ -870,6 +887,14 @@ func DrainHousekeepingQueueFromConfig(configDir string) error {
 		return fmt.Errorf("loading config: %w", err)
 	}
 	if loaded.Config.GitHub == nil || loaded.Config.GitHub.Token == "" || loaded.Config.GitHub.Owner == "" || loaded.Config.GitHub.Repo == "" {
+		// Reconcile ledger from spec files even without remote access
+		if ledger, loadErr := LoadLedger(configDir); loadErr == nil {
+			if syncErr := ledger.SyncFromSpecsDir(configDir); syncErr == nil {
+				if saveErr := SaveLedger(ledger, configDir); saveErr != nil {
+					fmt.Fprintf(os.Stderr, "warning: failed to save reconciled ledger: %v\n", saveErr)
+				}
+			}
+		}
 		return nil
 	}
 	baseURL := loaded.Config.GitHub.BaseURL

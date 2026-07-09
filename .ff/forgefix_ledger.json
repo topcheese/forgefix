@@ -3,11 +3,11 @@
   "entries": {
     "forgefix": {
       "pipeline_id": "forgefix",
-      "total_ran": 20,
-      "total_passed": 20,
+      "total_ran": 368,
+      "total_passed": 368,
       "total_failed": 0,
       "historical_floor": 368,
-      "last_update": "2026-07-09T12:57:15-07:00"
+      "last_update": "2026-07-09T15:48:50-07:00"
     }
   },
   "spec_mappings": {
@@ -84,20 +84,15 @@
     },
     "SPEC-1783610857": {
       "spec_id": "Update Forgefix Skill With All Lifecycle And Command Changes",
-      "repo_issue_id": 0,
+      "repo_issue_id": 488,
       "status": "review",
-      "linked_commits": [
-        "836e74b",
-        "b4dfa9d"
-      ]
+      "linked_commits": []
     },
     "SPEC-1783612199": {
       "spec_id": "Create Agent Focused Forgefix Skill Variant",
-      "repo_issue_id": 0,
+      "repo_issue_id": 489,
       "status": "review",
-      "linked_commits": [
-        "7b94eb0"
-      ]
+      "linked_commits": []
     },
     "SPEC-1783612708": {
       "spec_id": "Add Test Coverage For Issue Body Verification In Sync",
@@ -119,6 +114,12 @@
       "spec_id": "Fix Issue Body Syncing To Post Complete Spec Content",
       "repo_issue_id": 0,
       "status": "draft",
+      "linked_commits": []
+    },
+    "SPEC-1783825678": {
+      "spec_id": "SPEC-1783825678",
+      "repo_issue_id": 57,
+      "status": "ship",
       "linked_commits": []
     }
   }

@@ -457,12 +457,16 @@ func (le *LedgerEngine) SyncFromSpecsDir(configDir string) error {
 		if specID == "" || status == "" {
 			continue
 		}
-		if status == "closed" {
-			continue
-		}
 
-		if le.specMappings[specID] == nil {
-			// spec_id field holds the human-readable title (map key is the real spec ID)
+		if existing, ok := le.specMappings[specID]; ok {
+			existing.Status = status
+			if title != "" {
+				existing.SpecID = title
+			}
+			if specType != "" {
+				existing.Type = specType
+			}
+		} else {
 			titleVal := title
 			if titleVal == "" {
 				titleVal = specID
