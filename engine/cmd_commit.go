@@ -835,8 +835,8 @@ func getSpecEntry(configDir, specID string) (*SpecEntry, error) {
 	return entry, nil
 }
 
-// amendLastCommit stages all working-tree changes and amends them into the
-// previous commit with --no-edit. This folds metadata updates (spec status,
+// amendLastCommit adds all modified working-tree files and amends them into
+// the previous commit with --no-edit. This folds metadata updates (spec status,
 // ledger bindings) into the commit that produced them so they don't remain
 // as untracked side effects.
 func amendLastCommit(wd string) error {
@@ -844,14 +844,17 @@ func amendLastCommit(wd string) error {
 	if err != nil {
 		return err
 	}
-	add := exec.Command("git", "-C", gitRoot, "add", ".")
+	// Use git add --all to include tracked files modified by metadata updates.
+	// A plain "git add ." can miss files excluded by .gitignore patterns.
+	add := exec.Command("git", "-C", gitRoot, "add", "--all")
 	if out, err := add.CombinedOutput(); err != nil {
-		return fmt.Errorf("git add .: %w\n%s", err, out)
+		return fmt.Errorf("git add --all: %w\n%s", err, out)
 	}
 	amend := exec.Command("git", "-C", gitRoot, "commit", "--amend", "--no-edit")
 	if out, err := amend.CombinedOutput(); err != nil {
-		// "nothing to commit" means there was nothing to fold — not an error
-		if !strings.Contains(string(out), "nothing to commit") {
+		// "nothing to commit" / "no changes" means there was nothing to fold
+		if !strings.Contains(string(out), "nothing to commit") &&
+			!strings.Contains(string(out), "no changes") {
 			return fmt.Errorf("git commit --amend --no-edit: %w\n%s", err, out)
 		}
 	}
