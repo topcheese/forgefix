@@ -198,7 +198,8 @@
       "repo_issue_id": 0,
       "status": "review",
       "linked_commits": [
-        "0c44a0d"
+        "0c44a0d",
+        "3a97310"
       ]
     }
   }
