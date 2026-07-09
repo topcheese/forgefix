@@ -177,6 +177,12 @@
       "repo_issue_id": 481,
       "status": "draft",
       "linked_commits": []
+    },
+    "SPEC-1783600141": {
+      "spec_id": "Harden Spec Status Sync And Unblock Ship Gate",
+      "repo_issue_id": 0,
+      "status": "draft",
+      "linked_commits": []
     }
   }
 }
