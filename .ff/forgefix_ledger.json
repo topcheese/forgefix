@@ -192,6 +192,14 @@
         "4d6556c",
         "1a57587"
       ]
+    },
+    "SPEC-1783605913": {
+      "spec_id": "Refactor Git Staging And Commit Abstractions",
+      "repo_issue_id": 0,
+      "status": "review",
+      "linked_commits": [
+        "0c44a0d"
+      ]
     }
   }
 }
