@@ -1,6 +1,6 @@
 ---
 spec_id: "SPEC-1783603629"
-status: draft
+status: review
 repo_issue: ""
 type: feature
 version: "v0.8.0"

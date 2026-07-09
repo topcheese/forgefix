@@ -187,8 +187,10 @@
     "SPEC-1783603629": {
       "spec_id": "Make Ff Commit   Ai Auto Detect Spec From Working Tree",
       "repo_issue_id": 0,
-      "status": "draft",
-      "linked_commits": []
+      "status": "review",
+      "linked_commits": [
+        "4d6556c"
+      ]
     }
   }
 }
