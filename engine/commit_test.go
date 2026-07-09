@@ -97,7 +97,7 @@ created: 2024-01-01
 	d := &CommandDispatcher{Stdout: io.Discard, Stderr: io.Discard}
 	// User passes message that already contains the spec ID tag — dedup should
 	// strip [SPEC-123] before the function prepends "feat: [SPEC-123]"
-	hash, specID, commitMsg, err := runCommit(tmpDir, "implement feature [SPEC-123]", "SPEC-123", "", "", d)
+	hash, specID, commitMsg, err := runCommit(tmpDir, "implement feature [SPEC-123]", "SPEC-123", "", "", false, d)
 	if err != nil {
 		t.Fatalf("runCommit failed: %v", err)
 	}
@@ -141,7 +141,7 @@ created: 2024-01-01
 	}
 
 	d := &CommandDispatcher{Stdout: io.Discard, Stderr: io.Discard}
-	_, _, commitMsg, err := runCommit(tmpDir, "[SPEC-456] add new feature", "SPEC-456", "", "", d)
+	_, _, commitMsg, err := runCommit(tmpDir, "[SPEC-456] add new feature", "SPEC-456", "", "", false, d)
 	if err != nil {
 		t.Fatalf("runCommit failed: %v", err)
 	}
@@ -176,7 +176,7 @@ created: 2024-01-01
 
 	d := &CommandDispatcher{Stdout: io.Discard, Stderr: io.Discard}
 	// Committing to SPEC-111, message references SPEC-456 and SPEC-789
-	_, _, commitMsg, err := runCommit(tmpDir, "[SPEC-111] integrate with [SPEC-456] and [SPEC-789]", "SPEC-111", "", "", d)
+	_, _, commitMsg, err := runCommit(tmpDir, "[SPEC-111] integrate with [SPEC-456] and [SPEC-789]", "SPEC-111", "", "", false, d)
 	if err != nil {
 		t.Fatalf("runCommit failed: %v", err)
 	}
@@ -215,7 +215,7 @@ created: 2024-01-01
 	}
 
 	d := &CommandDispatcher{Stdout: io.Discard, Stderr: io.Discard}
-	_, _, commitMsg, err := runCommit(tmpDir, "[SPEC-999]", "SPEC-999", "", "", d)
+	_, _, commitMsg, err := runCommit(tmpDir, "[SPEC-999]", "SPEC-999", "", "", false, d)
 	if err != nil {
 		t.Fatalf("runCommit failed: %v", err)
 	}
@@ -254,7 +254,7 @@ created: 2024-01-01
 	}
 
 	d := &CommandDispatcher{Stdout: io.Discard, Stderr: io.Discard}
-	_, _, commitMsg, err := runCommit(tmpDir, "implement feature", "SPEC-789", "", "", d)
+	_, _, commitMsg, err := runCommit(tmpDir, "implement feature", "SPEC-789", "", "", false, d)
 	if err != nil {
 		t.Fatalf("runCommit failed: %v", err)
 	}

@@ -4,10 +4,10 @@
     "forgefix": {
       "pipeline_id": "forgefix",
       "total_ran": 368,
-      "total_passed": 365,
-      "total_failed": 3,
-      "historical_floor": 365,
-      "last_update": "2026-07-09T00:29:00-07:00"
+      "total_passed": 368,
+      "total_failed": 0,
+      "historical_floor": 368,
+      "last_update": "2026-07-09T06:12:45-07:00"
     }
   },
   "spec_mappings": {
@@ -180,6 +180,12 @@
     },
     "SPEC-1783600141": {
       "spec_id": "Harden Spec Status Sync And Unblock Ship Gate",
+      "repo_issue_id": 482,
+      "status": "ship",
+      "linked_commits": []
+    },
+    "SPEC-1783603629": {
+      "spec_id": "Make Ff Commit   Ai Auto Detect Spec From Working Tree",
       "repo_issue_id": 0,
       "status": "draft",
       "linked_commits": []

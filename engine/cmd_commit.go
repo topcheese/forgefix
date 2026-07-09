@@ -7,6 +7,7 @@ import (
 	"os"
 	"path/filepath"
 	"regexp"
+	"sort"
 	"strconv"
 	"strings"
 	"time"
@@ -20,7 +21,7 @@ func (d *CommandDispatcher) handleCommit(args []string) (CommandResult, error) {
 		msg = ExtractMessageFromArgs(args)
 	}
 
-	commitHash, specID, commitMsg, err := runCommit(d.WorkDir, msg, flags.SpecID, flags.SpecType, flags.SpecVersion, d)
+	commitHash, specID, commitMsg, err := runCommit(d.WorkDir, msg, flags.SpecID, flags.SpecType, flags.SpecVersion, flags.AIMode, d)
 	if err != nil {
 		fmt.Fprintf(d.Stderr, "error: %v\n", err)
 		return CommandResult{ExitCode: 1}, nil
@@ -54,7 +55,7 @@ func (d *CommandDispatcher) handleCommit(args []string) (CommandResult, error) {
 
 // runCommit executes the full commit workflow: resolves the spec, stages, commits,
 // and updates the ledger. Returns the commit hash and spec ID.
-func runCommit(wd, msg, flagSpecID, specType, specVersion string, d *CommandDispatcher) (string, string, string, error) {
+func runCommit(wd, msg, flagSpecID, specType, specVersion string, aiMode bool, d *CommandDispatcher) (string, string, string, error) {
 	gitRoot, err := findGitRootWalk(wd)
 	if err != nil {
 		return "", "", "", err
@@ -66,7 +67,11 @@ func runCommit(wd, msg, flagSpecID, specType, specVersion string, d *CommandDisp
 	}
 	if specID == "" {
 		var err error
-		specID, err = promptForSpecSelection(wd, d)
+		if aiMode {
+			specID, err = autoDetectSpecFromWorkingTree(wd)
+		} else {
+			specID, err = promptForSpecSelection(wd, d)
+		}
 		if err != nil {
 			return "", "", "", err
 		}
@@ -686,6 +691,57 @@ func parseSpecFileForCommit(filePath string) (*SpecFileCommit, error) {
 	}
 
 	return spec, nil
+}
+
+// autoDetectSpecFromWorkingTree picks the most recently modified spec file in
+// specs/ so that `ff commit --ai` can bind to it without an interactive prompt.
+func autoDetectSpecFromWorkingTree(wd string) (string, error) {
+	specDir := filepath.Join(wd, "specs")
+	entries, err := os.ReadDir(specDir)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return "", fmt.Errorf("no specs directory found; create one with `ff spec --ai <title>` first")
+		}
+		return "", err
+	}
+
+	type candidate struct {
+		specID  string
+		modTime time.Time
+	}
+
+	var candidates []candidate
+	for _, entry := range entries {
+		if entry.IsDir() || !strings.HasSuffix(entry.Name(), ".md") {
+			continue
+		}
+		if strings.HasPrefix(entry.Name(), "archive_") {
+			continue
+		}
+		path := filepath.Join(specDir, entry.Name())
+		info, infoErr := entry.Info()
+		if infoErr != nil {
+			continue
+		}
+		spec, parseErr := parseSpecFileForCommit(path)
+		if parseErr != nil {
+			continue
+		}
+		if spec.SpecID == "" {
+			continue
+		}
+		candidates = append(candidates, candidate{specID: spec.SpecID, modTime: info.ModTime()})
+	}
+
+	if len(candidates) == 0 {
+		return "", fmt.Errorf("no spec files found in specs/; create one with `ff spec --ai <title>` first")
+	}
+
+	sort.Slice(candidates, func(i, j int) bool {
+		return candidates[i].modTime.After(candidates[j].modTime)
+	})
+
+	return candidates[0].specID, nil
 }
 
 // extractSpecID extracts a SPEC-XXXXXXX ID from a commit message.
