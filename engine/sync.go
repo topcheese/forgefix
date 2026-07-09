@@ -591,7 +591,7 @@ func syncSingleSpec(coord *IssueCoordinator, configDir, specID string, cfg *Conf
 				}
 				title = strings.TrimSpace(title[:cutAt])
 			}
-			issue, err := coord.CreateIssueWithBody(title, spec.Body)
+			issue, err := coord.CreateIssueWithBody(title, effectiveSpecBody(spec))
 			if err != nil {
 				return fmt.Errorf("creating issue for spec %s: %w", spec.Title, err)
 			}
@@ -609,8 +609,9 @@ func syncSingleSpec(coord *IssueCoordinator, configDir, specID string, cfg *Conf
 				}
 			}
 			if remoteIssue != nil {
-				if remoteIssue.Body != spec.Body {
-					if err := coord.UpdateIssueBody(spec.RepoIssue, spec.Body); err != nil {
+				desiredBody := effectiveSpecBody(spec)
+				if normalizeWhitespace(remoteIssue.Body) != normalizeWhitespace(desiredBody) {
+					if err := coord.UpdateIssueBody(spec.RepoIssue, desiredBody); err != nil {
 						return fmt.Errorf("updating issue #%d: %w", spec.RepoIssue, err)
 					}
 				}

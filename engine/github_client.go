@@ -75,6 +75,7 @@ type GitHubClient interface {
 	PostComment(issueNumber int, body string) error
 	CloseIssueByNumber(issueNumber int) error
 	GetIssueComments(issueNumber int) ([]GitHubComment, error)
+	CreateRelease(version, body string) error
 }
 
 type gitHubClient struct {
@@ -511,4 +512,46 @@ func (c *gitHubClient) GetIssueComments(issueNumber int) ([]GitHubComment, error
 	var comments []GitHubComment
 	_ = json.NewDecoder(resp.Body).Decode(&comments)
 	return comments, nil
+}
+
+// CreateRelease creates a release on the remote (Gitea or GitHub) for the
+// given version tag. The release endpoint differs only by baseURL:
+//   - Gitea:  {baseURL}/repos/{owner}/{repo}/releases  (baseURL = .../api/v1)
+//   - GitHub: {baseURL}/repos/{owner}/{repo}/releases  (baseURL = https://api.github.com)
+//
+// A non-2xx response is returned as an error so callers can decide whether
+// to treat release creation as fatal.
+func (c *gitHubClient) CreateRelease(version, body string) error {
+	postURL := c.repoURL("/releases")
+	payload := map[string]interface{}{
+		"tag_name":   version,
+		"name":       version,
+		"body":       body,
+		"draft":      false,
+		"prerelease": false,
+	}
+	jsonBody, err := json.Marshal(payload)
+	if err != nil {
+		return fmt.Errorf("marshaling release payload: %w", err)
+	}
+
+	fmt.Fprintf(os.Stderr, "[DEBUG] Repo/GitHub POST %s\n", postURL)
+
+	req, err := c.newRequest("POST", postURL, bytes.NewReader(jsonBody))
+	if err != nil {
+		return err
+	}
+	req.Header.Set("Content-Type", "application/json")
+
+	resp, err := c.client.Do(req)
+	if err != nil {
+		return fmt.Errorf("creating release: %w", err)
+	}
+	defer resp.Body.Close()
+
+	respBody, _ := io.ReadAll(resp.Body)
+	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
+		return fmt.Errorf("release creation failed (%d): %s", resp.StatusCode, string(respBody))
+	}
+	return nil
 }

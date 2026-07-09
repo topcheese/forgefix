@@ -520,6 +520,16 @@ func (c *IssueCoordinator) CloseIssueByNumber(issueNumber int) error {
 	return c.gh.CloseIssueByNumber(issueNumber)
 }
 
+// CreateRelease creates a release on the remote (Gitea/GitHub) for the
+// given version tag with the supplied body. It is non-fatal: callers should
+// log a warning and continue if it returns an error.
+func (c *IssueCoordinator) CreateRelease(version, body string) error {
+	if c.isInactive() {
+		return fmt.Errorf("coordinator inactive: placeholder or empty credentials")
+	}
+	return c.gh.CreateRelease(version, body)
+}
+
 func (c *IssueCoordinator) BatchCloseIssues(issueNumbers []int) []error {
 	errs := make([]error, len(issueNumbers))
 	if c.isInactive() {
@@ -877,7 +887,7 @@ func (c *IssueCoordinator) SyncSpecs(configDir string) error {
 					}
 					title = strings.TrimSpace(title[:cutAt])
 				}
-				issue, err := c.CreateIssueWithBody(title, spec.Body)
+				issue, err := c.CreateIssueWithBody(title, effectiveSpecBody(spec))
 				if err != nil {
 					fmt.Fprintf(os.Stderr, "error creating issue for spec %s: %v\n", spec.Title, err)
 					continue
@@ -928,7 +938,7 @@ func (c *IssueCoordinator) SyncSpecs(configDir string) error {
 							}
 							title = strings.TrimSpace(title[:cutAt])
 						}
-						issue, err := c.CreateIssueWithBody(title, spec.Body)
+						issue, err := c.CreateIssueWithBody(title, effectiveSpecBody(spec))
 						if err != nil {
 							fmt.Fprintf(os.Stderr, "error creating replacement issue for spec %s: %v\n", spec.Title, err)
 							continue

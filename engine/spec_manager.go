@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"net/url"
 	"os"
+	"regexp"
 	"strings"
 )
 
@@ -19,6 +20,80 @@ type SpecFile struct {
 	Version    string
 	RootCause  string
 	Resolution string
+}
+
+}
+
+// htmlCommentRE matches HTML comments spanning multiple lines.
+var htmlCommentRE = regexp.MustCompile(`(?s)<!--.*?-->`)
+
+// headingRE matches a markdown heading line (e.g. "## Objective").
+var headingRE = regexp.MustCompile(`(?m)^\s*#{1,6}\s.*$`)
+
+// isTemplateBody reports whether the spec body contains only template scaffolding:
+// markdown headings and HTML comments with no real prose. Such bodies should not
+// be posted verbatim to a remote issue because they carry no useful content.
+func isTemplateBody(body string) bool {
+	stripped := htmlCommentRE.ReplaceAllString(body, "")
+	stripped = headingRE.ReplaceAllString(stripped, "")
+	stripped = strings.TrimSpace(stripped)
+	return stripped == ""
+}
+
+// generateSpecBody builds a meaningful remote-issue body for a spec whose own
+// body is only template scaffolding. It derives content from the spec's
+// frontmatter so the resulting issue is not empty.
+func generateSpecBody(spec *SpecFile) string {
+	var b strings.Builder
+	if spec.Title != "" {
+		b.WriteString("# ")
+		b.WriteString(spec.Title)
+		b.WriteString("\n\n")
+	}
+	var meta []string
+	if spec.SpecID != "" {
+		meta = append(meta, fmt.Sprintf("**Spec ID:** %s", spec.SpecID))
+	}
+	if spec.Type != "" {
+		meta = append(meta, fmt.Sprintf("**Type:** %s", spec.Type))
+	}
+	if spec.Version != "" {
+		meta = append(meta, fmt.Sprintf("**Version:** %s", spec.Version))
+	}
+	if spec.Status != "" {
+		meta = append(meta, fmt.Sprintf("**Status:** %s", spec.Status))
+	}
+	if len(meta) > 0 {
+		b.WriteString(strings.Join(meta, "  \n"))
+		b.WriteString("\n\n")
+	}
+	if spec.RootCause != "" {
+		b.WriteString("**Root Cause:** ")
+		b.WriteString(spec.RootCause)
+		b.WriteString("\n\n")
+	}
+	if spec.Resolution != "" {
+		b.WriteString("**Resolution:** ")
+		b.WriteString(spec.Resolution)
+		b.WriteString("\n\n")
+	}
+	b.WriteString("_This spec is tracked in ForgeFix. Fill in the spec file body for full details._\n")
+	return b.String()
+}
+
+// effectiveSpecBody returns the body to post for a spec. If the spec's body is
+// only template scaffolding, a meaningful body is generated from its frontmatter.
+func effectiveSpecBody(spec *SpecFile) string {
+	if isTemplateBody(spec.Body) {
+		return generateSpecBody(spec)
+	}
+	return spec.Body
+}
+
+// normalizeWhitespace collapses all runs of whitespace (including newlines) to a
+// single space and trims the ends, so comparisons ignore formatting-only diffs.
+func normalizeWhitespace(s string) string {
+	return strings.Join(strings.Fields(s), " ")
 }
 
 // SpecManager handles reading and writing spec files.
