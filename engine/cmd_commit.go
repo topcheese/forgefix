@@ -32,11 +32,14 @@ func (d *CommandDispatcher) handleCommit(args []string) (CommandResult, error) {
 	}
 
 	if specID != "" {
+		if err := UpdateLedgerAfterCommit(ledgerDir, specID, commitHash); err != nil {
+			fmt.Fprintf(d.Stderr, "error: %v\n", err)
+			return CommandResult{ExitCode: 1}, nil
+		}
+
 		if err := SpawnBackgroundSync(ledgerDir, specID); err != nil {
 			fmt.Fprintf(d.Stderr, "warning: failed to spawn background sync: %v\n", err)
 		}
-
-		_ = UpdateLedgerAfterCommit(ledgerDir, specID, commitHash)
 
 		// Post the commit message as a comment on the linked remote issue
 		if entry, lErr := getSpecEntry(ledgerDir, specID); lErr == nil && entry.RepoIssueID > 0 {
@@ -141,21 +144,32 @@ func runCommit(wd, msg, flagSpecID, specType, specVersion string, d *CommandDisp
 	return commitHash, specID, commitMsg, nil
 }
 
-// UpdateLedgerAfterCommit records the commit in the ledger and advances status to
-// "test" — the spec is ready for human testing. Once tested, ff sync will
+// UpdateLedgerAfterCommit records the commit in the ledger, advances status to
+// "review" on both disk and ledger, and saves both. Once reviewed, ff sync will
 // prompt to advance further.
 func UpdateLedgerAfterCommit(configDir, specID, commitHash string) error {
 	ledger, err := LoadLedger(configDir)
 	if err != nil {
 		return err
 	}
-	if entry := ledger.GetSpecEntry(specID); entry != nil {
-		entry.LinkedCommits = append(entry.LinkedCommits, commitHash)
-		entry.Status = "test"
-		ledger.SetSpecEntry(specID, entry)
-		return SaveLedger(ledger, configDir)
+	entry := ledger.GetSpecEntry(specID)
+	if entry == nil {
+		return fmt.Errorf("spec %s not found in ledger", specID)
 	}
-	return nil
+	entry.LinkedCommits = append(entry.LinkedCommits, commitHash)
+	entry.Status = "review"
+	ledger.SetSpecEntry(specID, entry)
+
+	specDir := filepath.Join(configDir, "specs")
+	specFile, err := findSpecFileByID(specDir, specID)
+	if err != nil {
+		return fmt.Errorf("spec file not found on disk for %s: %w", specID, err)
+	}
+	if err := updateSpecFileStatus(specFile, "review"); err != nil {
+		return fmt.Errorf("updating spec file status: %w", err)
+	}
+
+	return SaveLedger(ledger, configDir)
 }
 
 // findGitRootWalk walks up from dir to find the .git directory.

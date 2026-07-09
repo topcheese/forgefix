@@ -774,12 +774,14 @@ func isResolvedStatus(status string) bool {
 }
 
 // specMetadataSyncer implements housekeeper.MetadataSyncer to update spec
-// files from "ship" to "closed" after a successful push.
+// files and the ledger from "ship" to "closed" after a successful push.
 type specMetadataSyncer struct {
 	configDir string
 }
 
 func (s *specMetadataSyncer) SyncMetadata(specID string) error {
+	var filePath string
+
 	specDir := filepath.Join(s.configDir, "specs")
 	if _, err := os.Stat(specDir); os.IsNotExist(err) {
 		specDir = filepath.Join(filepath.Dir(s.configDir), "specs")
@@ -792,44 +794,43 @@ func (s *specMetadataSyncer) SyncMetadata(specID string) error {
 		if entry.IsDir() || !strings.HasSuffix(entry.Name(), ".md") {
 			continue
 		}
-		filePath := filepath.Join(specDir, entry.Name())
-		data, err := os.ReadFile(filePath)
+		fp := filepath.Join(specDir, entry.Name())
+		data, err := os.ReadFile(fp)
 		if err != nil {
 			continue
 		}
-		content := string(data)
-		if !strings.HasPrefix(content, "---") {
+		if !strings.HasPrefix(string(data), "---") {
 			continue
 		}
-		parts := strings.SplitN(content, "---", 3)
+		parts := strings.SplitN(string(data), "---", 3)
 		if len(parts) < 3 {
 			continue
 		}
-		if !strings.Contains(parts[1], specID) {
-			continue
+		if strings.Contains(parts[1], specID) {
+			filePath = fp
+			break
 		}
-		// Found the matching spec file — update status to closed
-		updated := strings.Replace(
-			content,
-			`status: "ship"`,
-			`status: "closed"`,
-			1,
-		)
-		if updated == content {
-			// Try without quotes
-			updated = strings.Replace(
-				content,
-				"status: ship",
-				"status: closed",
-				1,
-			)
-		}
-		if updated != content {
-			return os.WriteFile(filePath, []byte(updated), 0644)
-		}
-		return nil
 	}
-	return fmt.Errorf("spec %s not found", specID)
+
+	if filePath == "" {
+		return fmt.Errorf("spec %s not found on disk", specID)
+	}
+
+	if err := updateSpecFileStatus(filePath, "closed"); err != nil {
+		return fmt.Errorf("updating spec file: %w", err)
+	}
+
+	ledger, err := LoadLedger(s.configDir)
+	if err != nil {
+		return fmt.Errorf("loading ledger: %w", err)
+	}
+	entry := ledger.GetSpecEntry(specID)
+	if entry == nil {
+		return fmt.Errorf("spec %s not found in ledger", specID)
+	}
+	entry.Status = "closed"
+	ledger.SetSpecEntry(specID, entry)
+	return SaveLedger(ledger, s.configDir)
 }
 
 // DrainHousekeepingQueue processes all pending housekeeping tasks using the
@@ -879,7 +880,7 @@ func DrainHousekeepingQueueFromConfig(configDir string) error {
 	return DrainHousekeepingQueue(configDir, coord)
 }
 
-// promoteReviewSpecs checks the ledger for specs in "test" status and prompts
+// promoteReviewSpecs checks the ledger for specs in "review" status and prompts
 // the user to confirm manual testing before advancing to "ship". Uses the
 // spec title (from the spec file) for the prompt, not the opaque spec ID.
 // Skips if stdin is not a terminal (non-interactive / AI mode / background sync).
@@ -895,27 +896,33 @@ func promoteReviewSpecs(configDir string) {
 
 	specDir := filepath.Join(filepath.Dir(configDir), "specs")
 
+	type candidate struct {
+		id       string
+		title    string
+		filePath string
+	}
+	var candidates []candidate
+
 	for specID, entry := range ledger.GetAllSpecEntries() {
-		if entry.Status != "test" {
+		if entry.Status != "review" {
 			continue
 		}
 
-		// Read the spec file to get the human-readable title
-		title := entry.SpecID // fallback if file can't be read
-		// Try known spec files — find by ID search
+		title := entry.SpecID
+		var fp string
 		if entries, readErr := os.ReadDir(specDir); readErr == nil {
 			for _, de := range entries {
 				if de.IsDir() || !strings.HasSuffix(de.Name(), ".md") {
 					continue
 				}
-				fp := filepath.Join(specDir, de.Name())
-				data, readErr := os.ReadFile(fp)
+				fpath := filepath.Join(specDir, de.Name())
+				data, readErr := os.ReadFile(fpath)
 				if readErr != nil {
 					continue
 				}
 				content := string(data)
 				if strings.Contains(content, fmt.Sprintf(`spec_id: "%s"`, specID)) {
-					// Extract title from first # heading
+					fp = fpath
 					for _, line := range strings.Split(content, "\n") {
 						if strings.HasPrefix(strings.TrimSpace(line), "# ") {
 							title = strings.TrimSpace(strings.TrimPrefix(line, "# "))
@@ -926,21 +933,44 @@ func promoteReviewSpecs(configDir string) {
 				}
 			}
 		}
+		candidates = append(candidates, candidate{id: specID, title: title, filePath: fp})
+	}
 
-		fmt.Fprintf(os.Stderr, "\n\"%s\" — Has this spec been reviewed and tested? [y/N]: ", title)
-		var response string
-		_, scanErr := fmt.Scanln(&response)
-		if scanErr != nil {
+	if len(candidates) == 0 {
+		return
+	}
+
+	fmt.Fprintf(os.Stderr, "\nThe following specs are ready to ship:\n")
+	for _, c := range candidates {
+		fmt.Fprintf(os.Stderr, "  - %s: %s\n", c.id, c.title)
+	}
+	fmt.Fprintf(os.Stderr, "\nPromote these to \"ship\"? [y/N]: ")
+	var response string
+	if _, scanErr := fmt.Scanln(&response); scanErr != nil {
+		return
+	}
+	if strings.ToLower(strings.TrimSpace(response)) != "y" {
+		return
+	}
+
+	for _, c := range candidates {
+		entry := ledger.GetSpecEntry(c.id)
+		if entry == nil {
 			continue
 		}
-		if strings.ToLower(strings.TrimSpace(response)) == "y" {
-			entry.Status = "ship"
-			ledger.SetSpecEntry(specID, entry)
-			fmt.Fprintf(os.Stderr, "✓ Advanced \"%s\" to ship\n", title)
+		entry.Status = "ship"
+		ledger.SetSpecEntry(c.id, entry)
+
+		if c.filePath != "" {
+			if err := updateSpecFileStatus(c.filePath, "ship"); err != nil {
+				fmt.Fprintf(os.Stderr, "warning: failed to update spec file %s: %v\n", c.filePath, err)
+			}
 		}
 	}
 
 	if err := SaveLedger(ledger, configDir); err != nil {
 		fmt.Fprintf(os.Stderr, "warning: failed to save ledger after promotion: %v\n", err)
 	}
+
+	fmt.Fprintf(os.Stderr, "✓ Promoted %d spec(s) to ship\n", len(candidates))
 }
