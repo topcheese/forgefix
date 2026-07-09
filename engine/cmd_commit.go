@@ -119,7 +119,13 @@ func runCommit(wd, msg, flagSpecID, specType, specVersion string, d *CommandDisp
 			}
 		}
 
-		commitMsg = fmt.Sprintf("feat: [%s] %s", specID, msg)
+		// Strip any existing [SPEC-XXXXX] prefix from the message to avoid doubling
+		re := regexp.MustCompile(`\[SPEC-\d+\]`)
+		cleaned := strings.TrimSpace(re.ReplaceAllString(msg, ""))
+		if cleaned == "" {
+			cleaned = msg
+		}
+		commitMsg = fmt.Sprintf("feat: [%s] %s", specID, cleaned)
 	} else {
 		if msg == "" {
 			fmt.Fprint(d.Stdout, "Commit message (or q to quit): ")

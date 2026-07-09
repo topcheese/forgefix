@@ -175,6 +175,14 @@
     "SPEC-1783572691": {
       "spec_id": "Fix Spec Status Sync Across Commit Sync And Ship Lifecycle",
       "repo_issue_id": 0,
+      "status": "review",
+      "linked_commits": [
+        "f9a0853"
+      ]
+    },
+    "SPEC-1783573136": {
+      "spec_id": "Ff Commit   Ai Should Be Fully Non Interactive Without   Spec",
+      "repo_issue_id": 0,
       "status": "draft",
       "linked_commits": []
     }
