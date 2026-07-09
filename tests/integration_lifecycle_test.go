@@ -171,6 +171,10 @@ func TestSpecLifecycle(t *testing.T) {
 			t.Fatal(err)
 		}
 		ledgerStr := string(ledgerData)
+		// Promote the ledger entry to "ship" to match the spec file. After
+		// `ff commit --spec` the ledger sits at "review" and after `ff sync`
+		// it stays "review", so handle both "review" and "draft" → "ship".
+		ledgerStr = strings.ReplaceAll(ledgerStr, `"status": "review"`, `"status": "ship"`)
 		ledgerStr = strings.ReplaceAll(ledgerStr, `"status": "draft"`, `"status": "ship"`)
 		if err := os.WriteFile(ledgerPath, []byte(ledgerStr), 0644); err != nil {
 			t.Fatal(err)
