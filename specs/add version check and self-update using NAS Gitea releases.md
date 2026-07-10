@@ -1,7 +1,7 @@
 ---
 spec_id: "SPEC-1783714113"
-status: review
-repo_issue: ""
+status: ship
+repo_issue: 523
 type: feature
 version: "0.9.0"
 root_cause: "No mechanism to check for or install newer ff releases. Users must manually git pull and rebuild."

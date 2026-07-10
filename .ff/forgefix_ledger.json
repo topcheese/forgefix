@@ -199,11 +199,9 @@
     },
     "SPEC-1783714113": {
       "spec_id": "Add Version Check And Self-update Using NAS Gitea Releases",
-      "repo_issue_id": 512,
-      "status": "review",
-      "linked_commits": [
-        "ef03aef"
-      ]
+      "repo_issue_id": 523,
+      "status": "ship",
+      "linked_commits": []
     },
     "SPEC-1783714300": {
       "spec_id": "Migrate Ledger Data To SQLite And Remove Cruft From JSON",
@@ -231,7 +229,7 @@
     },
     "SPEC-1783723663": {
       "spec_id": "Restore Type And Status Prefix In Remote Issue Titles",
-      "repo_issue_id": 0,
+      "repo_issue_id": 522,
       "status": "draft",
       "linked_commits": []
     }
