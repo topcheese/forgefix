@@ -187,6 +187,14 @@
         "3d6bc00"
       ]
     },
+    "SPEC-1783712062": {
+      "spec_id": "Add Sqlite Database Layer For Spec And Kanban Storage",
+      "repo_issue_id": 0,
+      "status": "review",
+      "linked_commits": [
+        "b034e26"
+      ]
+    },
     "SPEC-1783825678": {
       "spec_id": "SPEC-1783825678",
       "repo_issue_id": 57,

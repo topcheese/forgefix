@@ -1,9 +1,9 @@
 ---
-spec_id: "SPEC-1783709991"
+spec_id: "Title of Spec"
 status: review
 repo_issue: ""
 type: feature
-version: "v0.8.0"
+version: "v0.9.5"
 root_cause: ""
 resolution: ""
 ---
