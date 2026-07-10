@@ -1,13 +1,13 @@
 ---
-spec_id: "SPEC-1783643913"
-status: review
+spec_id: "SPEC-1783672781"
+status: draft
 repo_issue: ""
 type: feature
 version: "v0.8.0"
 root_cause: ""
 resolution: ""
 ---
-# Document Paperclip Integration And Agent Skills In Readme
+# Update Readme.Md With Complete Paperclip Integration Documentation And Agent Skills, Fix Housekeeping Background Cleanup
 
 ## Objective
 

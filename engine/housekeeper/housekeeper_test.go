@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"testing"
 	"time"
 )
@@ -497,6 +498,37 @@ func TestIssueCloserService_Execute_CloserError(t *testing.T) {
 	err := service.Execute(ctx, task)
 	if err == nil {
 		t.Fatal("expected error when closer fails")
+	}
+}
+
+func TestProcessDropsOnSpecNotFoundOnDisk(t *testing.T) {
+	tmpDir := t.TempDir()
+	q := NewHousekeepingQueue(tmpDir)
+
+	// SYNC_METADATA for a spec that was archived/deleted returns
+	// "spec <id> not found on disk". That is a permanent condition and the
+	// task must be dropped on the first attempt, not retried forever.
+	callCount := 0
+	registry := map[TaskType]IssueAction{
+		TaskTypeSyncMetadata: &mockAction{fn: func(ctx context.Context, task HousekeepingTask) error {
+			callCount++
+			return fmt.Errorf("spec %s not found on disk", task.SpecID)
+		}},
+	}
+
+	task := HousekeepingTask{Type: TaskTypeSyncMetadata, SpecID: "SPEC-GONE", Priority: PriorityMedium}
+	q.Enqueue(task)
+
+	ctx := context.Background()
+	if err := q.Process(ctx, registry); err != nil {
+		t.Fatalf("Process failed: %v", err)
+	}
+
+	if callCount != 1 {
+		t.Errorf("expected 1 attempt (dropped on missing spec), got %d", callCount)
+	}
+	if q.Len() != 0 {
+		t.Errorf("expected empty queue after dropping missing-spec task, got %d", q.Len())
 	}
 }
 

@@ -286,6 +286,20 @@ func (q *HousekeepingQueue) UpdateTask(id string, fn func(*HousekeepingTask)) er
 	return errors.New("task not found")
 }
 
+// droppableError reports whether an error indicates the task can never
+// succeed and must be dropped from the queue rather than retried. This covers
+// remote resources that were deleted (HTTP 404) and local spec files that have
+// been archived or removed from disk — retrying those forever only piles up
+// zombie FAILED tasks.
+func droppableError(err error) bool {
+	if err == nil {
+		return false
+	}
+	msg := err.Error()
+	return strings.Contains(msg, "resource not found") ||
+		strings.Contains(msg, "not found on disk")
+}
+
 func (q *HousekeepingQueue) Process(ctx context.Context, registry map[TaskType]IssueAction) error {
 	for {
 		task, ok := q.Dequeue()
@@ -295,6 +309,11 @@ func (q *HousekeepingQueue) Process(ctx context.Context, registry map[TaskType]I
 
 		if task.Attempts >= MaxAttempts {
 			task.Status = StatusFailed
+			giveUp := task.LastError
+			if giveUp == "" {
+				giveUp = "unknown error"
+			}
+			fmt.Fprintf(os.Stderr, "[HOUSEKEEPER] \u2717 %s spec %s gave up after %d attempts: %s\n", task.Type, task.SpecID, MaxAttempts, giveUp)
 			if err := q.Enqueue(task); err != nil {
 				return fmt.Errorf("re-queueing failed task after max attempts: %w", err)
 			}
@@ -305,23 +324,29 @@ func (q *HousekeepingQueue) Process(ctx context.Context, registry map[TaskType]I
 		if !exists {
 			task.Attempts++
 			task.LastError = fmt.Sprintf("no handler registered for task type: %s", task.Type)
+			fmt.Fprintf(os.Stderr, "[HOUSEKEEPER] \u2717 %s spec %s: %s\n", task.Type, task.SpecID, task.LastError)
 			if err := q.Enqueue(task); err != nil {
 				return fmt.Errorf("re-queueing task with missing handler: %w", err)
 			}
 			continue
 		}
 
+		fmt.Fprintf(os.Stderr, "[HOUSEKEEPER] \u25b6 %s spec %s (attempt %d/%d)\n", task.Type, task.SpecID, task.Attempts+1, MaxAttempts)
 		err := action.Execute(ctx, task)
 		if err != nil {
-			if strings.Contains(err.Error(), "resource not found") {
-				fmt.Fprintf(os.Stderr, "warning: %s for issue #%d returned 404, dropping from housekeeping queue\n", task.Type, task.RepoIssueID)
+			if droppableError(err) {
+				fmt.Fprintf(os.Stderr, "[HOUSEKEEPER] \u2717 %s spec %s dropped (permanent failure, not retrying): %v\n", task.Type, task.SpecID, err)
 				continue
 			}
 			task.Attempts++
 			task.LastError = err.Error()
+			fmt.Fprintf(os.Stderr, "[HOUSEKEEPER] \u2717 %s spec %s failed (attempt %d/%d): %v\n", task.Type, task.SpecID, task.Attempts, MaxAttempts, err)
 			if err := q.Enqueue(task); err != nil {
 				return fmt.Errorf("re-queueing failed task: %w", err)
 			}
+			continue
 		}
+
+		fmt.Fprintf(os.Stderr, "[HOUSEKEEPER] \u2713 %s spec %s complete\n", task.Type, task.SpecID)
 	}
 }

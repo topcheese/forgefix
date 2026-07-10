@@ -21,6 +21,9 @@ type CLIArgs struct {
 	SpecID          string
 	SpecType        string
 	SpecVersion     string
+	SpecObjective   string
+	SpecRequirements string
+	SpecAcceptance  string
 	All             bool
 	Delete          bool
 }
@@ -71,6 +74,21 @@ func ParseFlags(args []string) CLIArgs {
 			if i+1 < len(args) {
 				i++
 				flags.SpecVersion = args[i]
+			}
+		case "--objective", "-o":
+			if i+1 < len(args) {
+				i++
+				flags.SpecObjective = args[i]
+			}
+		case "--requirements", "--req":
+			if i+1 < len(args) {
+				i++
+				flags.SpecRequirements = args[i]
+			}
+		case "--acceptance", "-a":
+			if i+1 < len(args) {
+				i++
+				flags.SpecAcceptance = args[i]
 			}
 		case "--all":
 			flags.All = true

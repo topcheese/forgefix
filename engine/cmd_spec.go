@@ -41,7 +41,7 @@ func (d *CommandDispatcher) handleSpec(args []string) (CommandResult, error) {
 		return CommandResult{ExitCode: 1}, nil
 	}
 
-	if err := createSpec(d.ConfigDir, specName, d, flags.AIMode); err != nil {
+	if err := createSpec(d.ConfigDir, specName, d, flags); err != nil {
 		fmt.Fprintf(d.Stderr, "error: %v\n", err)
 		return CommandResult{ExitCode: 1}, nil
 	}
@@ -65,7 +65,7 @@ func SpecConfigDir(workDir string) string {
 }
 
 // createSpec creates a new spec file from the template.
-func createSpec(configDir, name string, d *CommandDispatcher, aiMode bool) error {
+func createSpec(configDir, name string, d *CommandDispatcher, flags CLIArgs) error {
 	templatePath := filepath.Join(configDir, "templates", "spec_template.md")
 	templateContent, err := os.ReadFile(templatePath)
 	if err != nil {
@@ -79,8 +79,7 @@ func createSpec(configDir, name string, d *CommandDispatcher, aiMode bool) error
 
 	origSpecID, origTitle, isDup := FindDuplicateSpec(configDir, title)
 	if isDup {
-		action := promptForDuplicateAction(title, origTitle, origSpecID, aiMode)
-		switch action {
+		action := promptForDuplicateAction(title, origTitle, origSpecID, flags.AIMode)
 		case "link":
 			fmt.Fprintf(d.Stdout, "Linking to existing spec %s (%s).\n", origSpecID, origTitle)
 			return nil
@@ -97,6 +96,26 @@ func createSpec(configDir, name string, d *CommandDispatcher, aiMode bool) error
 	content = strings.ReplaceAll(content, `spec_id: ""`, fmt.Sprintf(`spec_id: "%s"`, specID))
 	content = strings.ReplaceAll(content, "# [Title]", fmt.Sprintf("# %s", title))
 	content = strings.ReplaceAll(content, "created: YYYY-MM-DD", fmt.Sprintf("created: %s", now))
+
+	// Fill optional frontmatter fields when provided.
+	if flags.SpecType != "" {
+		content = strings.ReplaceAll(content, "type: feature", "type: "+flags.SpecType)
+	}
+	if flags.SpecVersion != "" {
+		content = strings.ReplaceAll(content, `version: "v0.8.0"`, fmt.Sprintf(`version: "%s"`, flags.SpecVersion))
+	}
+
+	// Fill body sections when provided so the spec is fully documented at
+	// creation time (no post-edit required).
+	if flags.SpecObjective != "" {
+		content = strings.Replace(content, "## Objective\n", "## Objective\n\n"+flags.SpecObjective+"\n", 1)
+	}
+	if flags.SpecRequirements != "" {
+		content = strings.Replace(content, "## Requirements\n", "## Requirements\n\n"+flags.SpecRequirements+"\n", 1)
+	}
+	if flags.SpecAcceptance != "" {
+		content = strings.Replace(content, "## Acceptance Criteria\n", "## Acceptance Criteria\n\n"+flags.SpecAcceptance+"\n", 1)
+	}
 
 	if isDup {
 		ref := fmt.Sprintf("\n\n> This spec has been identified as a duplicate of `%s`.", origSpecID)
@@ -146,7 +165,7 @@ func createSpec(configDir, name string, d *CommandDispatcher, aiMode bool) error
 		}
 	}
 
-	if aiMode {
+	if flags.AIMode {
 		return nil
 	}
 

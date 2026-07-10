@@ -3,11 +3,11 @@
   "entries": {
     "forgefix": {
       "pipeline_id": "forgefix",
-      "total_ran": 367,
-      "total_passed": 367,
+      "total_ran": 368,
+      "total_passed": 368,
       "total_failed": 0,
       "historical_floor": 368,
-      "last_update": "2026-07-09T17:38:12-07:00"
+      "last_update": "2026-07-09T22:56:55-07:00"
     }
   },
   "spec_mappings": {
@@ -116,12 +116,66 @@
       "status": "draft",
       "linked_commits": []
     },
-    "SPEC-1783643913": {
-      "spec_id": "Document Paperclip Integration And Agent Skills In Readme",
+    "SPEC-1783645711": {
+      "spec_id": "Make Background Housekeeping Drop Missing Specs And Report Progress",
+      "repo_issue_id": 490,
+      "status": "draft",
+      "linked_commits": []
+    },
+    "SPEC-1783664065": {
+      "spec_id": "Readme: Add Paperclip Integration And Agent Skills Docs",
+      "repo_issue_id": 0,
+      "status": "draft",
+      "linked_commits": []
+    },
+    "SPEC-1783664076": {
+      "spec_id": "Add Paperclip Integration And Agent Skills Docs To Readme",
+      "repo_issue_id": 0,
+      "status": "draft",
+      "linked_commits": []
+    },
+    "SPEC-1783669776": {
+      "spec_id": "Update Readme.Md With Complete Paperclip Integration And Agent Skills Documentation",
+      "repo_issue_id": 0,
+      "status": "draft",
+      "linked_commits": []
+    },
+    "SPEC-1783669783": {
+      "spec_id": "Implement Comprehensive Paperclip Integration Documentation And Agent Skills Features In Readme.Md",
+      "repo_issue_id": 0,
+      "status": "draft",
+      "linked_commits": []
+    },
+    "SPEC-1783672720": {
+      "spec_id": "Update Readme.Md With Paperclip Integration And Agent Skills, Fix Housekeeping Background Cleanup And Test Coverage",
+      "repo_issue_id": 0,
+      "status": "draft",
+      "linked_commits": []
+    },
+    "SPEC-1783672781": {
+      "spec_id": "Update Readme.Md With Complete Paperclip Integration Documentation And Agent Skills, Fix Housekeeping Background Cleanup",
+      "repo_issue_id": 0,
+      "status": "draft",
+      "linked_commits": []
+    },
+    "SPEC-1783672995": {
+      "spec_id": "Implement Comprehensive Paperclip Integration Documentation And Agent Skills In Readme.Md, Fix Housekeeping Background Cleanup With Proper Error Handling, Add Test Coverage",
+      "repo_issue_id": 0,
+      "status": "draft",
+      "linked_commits": []
+    },
+    "SPEC-1783707750": {
+      "spec_id": "Implement Interactive Kanban Board For Ff",
+      "repo_issue_id": 0,
+      "status": "draft",
+      "linked_commits": []
+    },
+    "SPEC-1783709991": {
+      "spec_id": "Properly Fill Spec Content At Creation Time And Sync To Remote",
       "repo_issue_id": 0,
       "status": "review",
       "linked_commits": [
-        "b090e72"
+        "7f0f144"
       ]
     },
     "SPEC-1783825678": {
