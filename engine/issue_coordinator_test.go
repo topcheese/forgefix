@@ -20,6 +20,7 @@ type mockTransport struct {
 	callCount      map[string]int
 	responseBody   map[string][]byte
 	responseStatus map[string]int
+	lastBody       map[string][]byte // captured request bodies keyed by method+url
 }
 
 func newMockTransport() *mockTransport {
@@ -28,11 +29,24 @@ func newMockTransport() *mockTransport {
 		callCount:      make(map[string]int),
 		responseBody:   make(map[string][]byte),
 		responseStatus: make(map[string]int),
+		lastBody:       make(map[string][]byte),
 	}
 }
 
 func (m *mockTransport) RoundTrip(req *http.Request) (*http.Response, error) {
 	key := req.Method + " " + req.URL.String()
+
+	// Capture request body for test assertions.
+	if req.Body != nil {
+		bodyBytes, _ := io.ReadAll(req.Body)
+		req.Body.Close()
+		m.mu.Lock()
+		m.lastBody[key] = bodyBytes
+		m.mu.Unlock()
+		// Replace the body for downstream consumers.
+		req.Body = io.NopCloser(bytes.NewReader(bodyBytes))
+	}
+
 	m.mu.Lock()
 	m.callCount[key]++
 	m.mu.Unlock()

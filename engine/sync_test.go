@@ -972,3 +972,47 @@ func TestProcessSyncQueue_DropsDeletedIssueOpAndCleansUpSpec(t *testing.T) {
 		t.Errorf("sync queue should be empty after processing, got %d ops", len(ops))
 	}
 }
+
+func TestSyncIssueBodyMatchesSpec(t *testing.T) {
+	tmpDir := t.TempDir()
+	os.MkdirAll(filepath.Join(tmpDir, "specs"), 0755)
+	bodyContent := "## Objective\n\nTest body content\n\n## Requirements\n\nMust work"
+	// Use issueNum=0 to force a POST (new issue creation) so we can verify the body.
+	writeSpecFile(t, tmpDir, "SPEC-BODY-MATCH", "draft", 0, bodyContent)
+
+	coord, transport := newMockCoordinator()
+	expectedBody := expectedSpecBody("SPEC-BODY-MATCH", bodyContent)
+	mockSyncEndpoints(transport, 42, expectedBody, "open")
+	base := testBaseURL + "/repos/test-owner/test-repo"
+	newIssue := GitHubIssue{ID: 999, Number: 999, Title: "test", Body: expectedBody, State: "open"}
+	transport.setResponse("POST", base+"/issues", 201, newIssue)
+
+	cfg := &Config{SpecStorage: "sqlite"}
+	err := syncSingleSpec(coord, tmpDir, "SPEC-BODY-MATCH", cfg)
+	if err != nil {
+		t.Fatalf("syncSingleSpec failed: %v", err)
+	}
+
+	postKey := "POST " + testBaseURL + "/repos/test-owner/test-repo/issues"
+	var lastBody []byte
+	var ok bool
+	transport.mu.Lock()
+	lastBody, ok = transport.lastBody[postKey]
+	transport.mu.Unlock()
+	if !ok {
+		t.Fatal("no POST /issues request was made")
+	}
+	var payload struct {
+		Title string `json:"title"`
+		Body  string `json:"body"`
+	}
+	if err := json.Unmarshal(lastBody, &payload); err != nil {
+		t.Fatalf("unmarshal POST body: %v", err)
+	}
+	if payload.Body != expectedBody {
+		t.Errorf("POST body = %q, want %q", payload.Body, expectedBody)
+	}
+	if !strings.Contains(payload.Body, bodyContent) {
+		t.Errorf("POST body should contain spec body content")
+	}
+}
