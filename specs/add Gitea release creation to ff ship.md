@@ -3,9 +3,9 @@ spec_id: "SPEC-1783612709"
 status: review
 repo_issue: ""
 type: feature
-version: "v0.8.0"
-root_cause: ""
-resolution: ""
+version: "0.9.0"
+root_cause: "ff ship pushes commits but never creates a git tag before calling the Gitea releases API — CreateRelease references a tag_name that doesn't exist yet, so the API call fails silently"
+resolution: "Implementation complete (CreateRelease, buildReleaseBody, coordinator call) but needs a git tag creation step before the API call. Fixed in commit XXXXXX once the tag issue is addressed."
 ---
 # Add Gitea Release Creation To Ff Ship
 
@@ -25,19 +25,17 @@ remote's release UI. Currently the push succeeds but no release artifact is crea
 
 ## Implementation
 
-- Add `func (c *IssueCoordinator) CreateRelease(version, body string) error`
-  that POSTs to `/api/v1/repos/{owner}/{repo}/releases`.
-- In `ShipController.Run()`, after `DrainHousekeepingQueueFromConfig`, call
-  `coord.CreateRelease(shipVersion, releaseBody)`.
-- Build `releaseBody` from the list of shipped spec IDs and titles.
-- Non-fatal: if the release API call fails, log a warning and continue.
-
-## Acceptance Criteria
-
-- `ff ship --ai` creates a release on Gitea visible at `/releases`.
-- Release tag matches the ship version (e.g., `v0.9.2`).
-- Release body lists shipped spec IDs.
-- Failure to create release does not block the ship.
+- `engine/github_client.go`: Added `CreateRelease(version, body string) error`
+  that POSTs to `/api/v1/repos/{owner}/{repo}/releases` with tag_name, name,
+  body, draft, and prerelease fields.
+- `engine/issue_coordinator.go:526`: `CreateRelease` delegates to the client.
+- `engine/ship_controller.go:96-97`: Calls `coord.CreateRelease` after
+  housekeeping drain, with body from `buildReleaseBody`.
+- `engine/ship_controller.go:126`: `buildReleaseBody` formats shipped specs.
+- **Known gap**: `CreateRelease` is called with a version tag
+  that doesn't exist as a git tag yet. `ff ship` must create
+  `git tag v0.9.x` before calling the API, or the release creation fails
+  because the tag reference is missing.
 
 ## Verification
 
