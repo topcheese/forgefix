@@ -1,7 +1,7 @@
 ---
 spec_id: "SPEC-1783722120"
-status: review
-repo_issue: ""
+status: ship
+repo_issue: 520
 type: refactor
 version: "0.9.0"
 root_cause: "ff archive moves closed spec files to specs/archive/archive_YYYYMMDD.md — file-based, unqueryable, creates stale files. DB already has a specs table; archiving should use it instead."

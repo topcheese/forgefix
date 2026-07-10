@@ -1,4 +1,5 @@
 {
+  "version": "0.0.0",
   "entries": {
     "forgefix": {
       "pipeline_id": "forgefix",
@@ -174,7 +175,7 @@
       "linked_commits": []
     },
     "SPEC-1783707750": {
-      "spec_id": "Implement Interactive Kanban Board For Ff [Dupe → #499]",
+      "spec_id": "Implement Interactive Kanban Board For Ff",
       "repo_issue_id": 517,
       "status": "draft",
       "linked_commits": []
@@ -182,11 +183,8 @@
     "SPEC-1783709991": {
       "spec_id": "Properly Fill Spec Content At Creation Time And Sync To Remote",
       "repo_issue_id": 519,
-      "status": "review",
-      "linked_commits": [
-        "bfd54d1",
-        "74c07f5"
-      ]
+      "status": "ship",
+      "linked_commits": []
     },
     "SPEC-1783710741": {
       "spec_id": "Auto-fill Resolution Field In Spec Frontmatter During Ff Sync",
@@ -213,7 +211,7 @@
       "linked_commits": []
     },
     "SPEC-1783715766": {
-      "spec_id": "Finalize SQLite Schemas And Plan DB Integration [Dupe → #505]",
+      "spec_id": "Finalize SQLite Schemas And Plan DB Integration",
       "repo_issue_id": 515,
       "status": "ship",
       "linked_commits": []
@@ -225,12 +223,10 @@
       "linked_commits": []
     },
     "SPEC-1783722120": {
-      "spec_id": "Migrate Spec Archiving From Filesystem To Sqlite",
-      "repo_issue_id": 0,
-      "status": "review",
-      "linked_commits": [
-        "1cb4a59"
-      ]
+      "spec_id": "Migrate Spec Archiving From Filesystem To SQLite",
+      "repo_issue_id": 520,
+      "status": "ship",
+      "linked_commits": []
     }
   }
 }
