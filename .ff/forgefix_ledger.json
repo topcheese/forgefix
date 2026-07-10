@@ -253,6 +253,14 @@
       "linked_commits": [
         "0852884"
       ]
+    },
+    "SPEC-1783716117": {
+      "spec_id": "Add Config Option For Spec Storage Backend Sqlite File Or Both",
+      "repo_issue_id": 0,
+      "status": "review",
+      "linked_commits": [
+        "2bdfbcc"
+      ]
     }
   }
 }
