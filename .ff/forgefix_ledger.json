@@ -178,6 +178,14 @@
         "7f0f144"
       ]
     },
+    "SPEC-1783710741": {
+      "spec_id": "Auto Fill Resolution Field In Spec Frontmatter During Ff Sync",
+      "repo_issue_id": 0,
+      "status": "review",
+      "linked_commits": [
+        "3d6bc00"
+      ]
+    },
     "SPEC-1783825678": {
       "spec_id": "SPEC-1783825678",
       "repo_issue_id": 57,
