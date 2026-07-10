@@ -1,7 +1,8 @@
 ---
 spec_id: "SPEC-1783825678"
-status: ship
+status: closed
 repo_issue: 57
+version: "0.9.8"
 ---
 
 # Fix ledger sync — reconcile spec file statuses with forgefix ledger

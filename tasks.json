@@ -1,5 +1,31 @@
 [
   {
+    "id": "task-1783713270843036000",
+    "type": "POST_RESOLUTION",
+    "spec_id": "SPEC-1783825678",
+    "repo_issue_id": 57,
+    "priority": 2,
+    "payload": "{\"spec_id\":\"SPEC-1783825678\",\"title\":\"Fix ledger sync — reconcile spec file statuses with forgefix ledger\",\"version\":\"0.9.8\",\"repo_issue\":57,\"spec_url\":\"http://192.168.1.18:3000/Jimmy/forgefix/src/branch/main/specs/fix-ledger-sync-reconcile-spec-file-statuses.md\"}",
+    "context": null,
+    "attempts": 3,
+    "last_error": "Post \"http://192.168.1.18:3000/api/v1/repos/Jimmy/forgefix/issues/57/comments\": dial tcp 192.168.1.18:3000: connect: no route to host",
+    "status": "FAILED",
+    "created_at": "2026-07-10T12:54:30.843037-07:00"
+  },
+  {
+    "id": "task-1783713270843314000",
+    "type": "CLOSE_ISSUE",
+    "spec_id": "SPEC-1783825678",
+    "repo_issue_id": 57,
+    "priority": 2,
+    "payload": "",
+    "context": null,
+    "attempts": 3,
+    "last_error": "closing issue #57: Patch \"http://192.168.1.18:3000/api/v1/repos/Jimmy/forgefix/issues/57\": dial tcp 192.168.1.18:3000: connect: no route to host",
+    "status": "FAILED",
+    "created_at": "2026-07-10T12:54:30.843315-07:00"
+  },
+  {
     "id": "task-1783607859470788000",
     "type": "SYNC_METADATA",
     "spec_id": "SPEC-1783162752",

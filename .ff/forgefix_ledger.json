@@ -1,5 +1,5 @@
 {
-  "version": "0.9.7",
+  "version": "0.9.8",
   "entries": {
     "forgefix": {
       "pipeline_id": "forgefix",
@@ -108,7 +108,8 @@
         "e77ab00",
         "b028f48",
         "323029f",
-        "b78a6f5"
+        "b78a6f5",
+        "9897478"
       ]
     },
     "SPEC-1783612710": {
@@ -116,6 +117,14 @@
       "repo_issue_id": 0,
       "status": "draft",
       "linked_commits": []
+    },
+    "SPEC-1783643913": {
+      "spec_id": "Document Paperclip Integration And Agent Skills In Readme",
+      "repo_issue_id": 0,
+      "status": "ship",
+      "linked_commits": [
+        "bdf8110"
+      ]
     },
     "SPEC-1783645711": {
       "spec_id": "Make Background Housekeeping Drop Missing Specs And Report Progress",
@@ -199,7 +208,7 @@
     "SPEC-1783825678": {
       "spec_id": "SPEC-1783825678",
       "repo_issue_id": 57,
-      "status": "in-progress",
+      "status": "closed",
       "linked_commits": [
         "5c673c7"
       ]

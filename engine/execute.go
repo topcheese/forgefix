@@ -698,6 +698,11 @@ func verifyCommitSpecBindings(configDir string) error {
 		specID := matches[1]
 		specEntry := ledger.GetSpecEntry(specID)
 		if specEntry == nil {
+			// Spec may have been archived (shipped and moved to specs/archive/).
+			// Check the archive directory before flagging as orphaned.
+			if isArchivedSpec(configDir, specID) {
+				continue
+			}
 			return fmt.Errorf("orphaned commit detected: specID %s not found in ledger (commit %s)", specID, commitHash[:8])
 		}
 
@@ -707,6 +712,31 @@ func verifyCommitSpecBindings(configDir string) error {
 	}
 
 	return nil
+}
+
+// isArchivedSpec reports whether specID appears in any archive file under
+// specs/archive/. This prevents archived (shipped) specs from appearing as
+// orphaned commits when their ledger entries have been cleaned up.
+func isArchivedSpec(configDir, specID string) bool {
+	archiveDir := filepath.Join(configDir, "specs", "archive")
+	entries, err := os.ReadDir(archiveDir)
+	if err != nil {
+		return false
+	}
+	for _, entry := range entries {
+		if entry.IsDir() || !strings.HasSuffix(entry.Name(), ".md") {
+			continue
+		}
+		path := filepath.Join(archiveDir, entry.Name())
+		data, err := os.ReadFile(path)
+		if err != nil {
+			continue
+		}
+		if strings.Contains(string(data), specID) {
+			return true
+		}
+	}
+	return false
 }
 
 func findGitRoot(dir string) string {
