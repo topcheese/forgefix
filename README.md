@@ -11,7 +11,9 @@
 ## Why ForgeFix?
 
 - **Traceability built in.** Every commit is auto-tagged with its spec ID (`feat: [SPEC-1741712345] implement the thing`). The local ledger maps specs to commits and remote issues.
-- **No database, no server.** A lightweight JSON ledger (`.forgefix_ledger.json`) tracks everything. Check it into your repo for portable history.
+- **No database, no server.** A lightweight JSON ledger (`.ff/forgefix_ledger.json`) tracks everything. Check it into your repo for portable history.
+- **Paperclip integration.** Optional Paperclip AI integration for agent-team orchestration, goal alignment, and cost controls (see [Paperclip Integration](#paperclip-integration)).
+- **Bundled agent skills.** Two ready-to-use agent skills ship with the repo: a full `forgefix-git-workflow` and a condensed `forgefix-git-workflow-agent` variant (see [Agent Skills](#agent-skills)).
 - **Strict Shipping Gate.** `ff ship` rejects the release if any spec is still `backlog`, `in-progress`, or `review` — only `ship`-status specs pass.
 - **Multi-language test runner.** ForgeFix auto-detects your project (Go, Rust, Python, Node, Flutter, and 12+ more) and runs tests with a real-time TUI dashboard.
 - **AI-native.** `--ai` flag emits structured JSON for headless / AI-supervised pipelines.
@@ -68,7 +70,7 @@ A spec progresses through these statuses:
 | -------------- | ----------- |
 | `draft`        | Newly created, not yet actionable |
 | `backlog`      | Ready to work on |
-| `in-progress`  | Work has started (auto-set on first commit) |
+| `in-progress`  | Work has started (set via `ff backlog` → advance, or manually) |
 | `review`       | Ready for feedback |
 | `ship`         | Approved — passes the Shipping Gate |
 | `closed`       | Shipped (auto-set after `ff ship` succeeds) |
@@ -100,7 +102,7 @@ ff spec --delete SPEC-1741712345
 
 ### `ff commit [message]`
 
-Stages all changes and creates a commit with the message formatted as `feat: [SPEC-XXX] <message>`. Records the commit hash in the ledger and advances the spec status to `in-progress`.
+Stages all changes and creates a commit with the message formatted as `feat: [SPEC-XXX] <message>`. Records the commit hash in the ledger and advances the spec status to `review`.
 
 **Spec selection (interactive):** If you omit `-s`, ForgeFix shows a categorized menu (Feature / Bug / Refactor / All) to pick the spec.
 
@@ -161,7 +163,7 @@ Prints the ForgeFix version.
 
 ```bash
 ff version
-# → ForgeFix 0.8.0
+# → ForgeFix 0.9.0
 ```
 
 ### `ff help`
@@ -289,7 +291,7 @@ ForgeFix stores spec state in `.ff/forgefix_ledger.json` — a plain JSON file t
 
 ```json
 {
-  "version": "0.8.0",
+  "version": "0.9.0",
   "entries": {
     "SPEC-1741712345": {
       "spec_id": "SPEC-1741712345",
@@ -445,6 +447,123 @@ go build -o ff .
 
 ---
 
+## Paperclip Integration
+
+ForgeFix now includes **optional integration with Paperclip AI**, an autonomous agent orchestration platform. This integration is completely optional and does not affect ForgeFix's core functionality.
+
+### Why Integrate with Paperclip?
+
+ForgeFix and Paperclip complement each other:
+
+| ForgeFix | Paperclip |
+|----------|-----------|
+| Issue tracking and sync with GitHub | Agent team orchestration |
+| Test pipeline execution | Business goal alignment |
+| Spec definitions | Agent roles and responsibilities |
+| Ledger and audit trail | Full conversation tracing |
+| Cost tracking (test time) | Per-agent budget control |
+
+### Key Features
+
+1. **Unified Workflow**: Map ForgeFix specs to Paperclip goals
+2. **Agent-Assisted Testing**: Use Paperclip agents to run ForgeFix tests
+3. **Business-Context**: Align technical specs with business objectives
+4. **Cost-Aware**: Track development costs alongside test costs
+5. **Governance**: Board-level control over agent teams and development pipeline
+
+### Usage
+
+```bash
+# Basic ForgeFix (no Paperclip)
+ff
+ff spec my-feature
+ff sync
+
+# With Paperclip integration
+ff paperclip status
+ff paperclip setup
+ff --paperclip
+```
+
+### CLI Commands
+
+| Command | Description |
+|---------|-------------|
+| `ff paperclip` | Interactive Paperclip integration setup and management |
+| `ff --paperclip` | Run ForgeFix with Paperclip integration enabled |
+| `ff paperclip sync` | Manually trigger ForgeFix-Paperclip sync |
+| `ff paperclip status` | Check integration status and connectivity |
+
+### Configuration
+
+Paperclip integration is enabled in your `<project>_ff.yaml`:
+
+```yaml
+# <project>_ff.yaml
+paperclip:
+  enabled: false             # Enable Paperclip AI integration
+  auto_setup: true
+  sync_direction: bi-directional
+  team_id: "my-forgefix-team"
+  api_endpoint: "https://api.paperclip.ing"
+```
+
+### Data Flow
+
+```
+Paperclip Goals → ForgeFix Specs → Tests → Results
+```
+
+## Agent Skills
+
+ForgeFix includes the following agent skills for different use cases:
+
+### `forgefix-git-workflow`
+
+A comprehensive guide for using ForgeFix in development workflows, replacing raw git operations with the spec-driven lifecycle: `ff spec → ff commit → ff sync → ff ship → ff archive`.
+
+**Key Features:**
+- Auto-detect spec from working tree
+- No raw `git` commands (all through `ff` passthrough)
+- AI mode support for headless operations
+- Full lifecycle documentation
+- Integration with Paperclip for agent orchestration
+
+### `forgefix-git-workflow-agent`
+
+A short, agent-focused variant for quick reference, containing only essential commands and lifecycle information without branching strategy or extensive reference sections.
+
+**Key Features:**
+- ~100 lines focused on essential commands
+- Lifecycle and auto-detect information
+- Auto-promote and verification checklist
+- Red flags and critical warnings
+- No branching strategy or worktree details
+
+Both skills coexist in the repository:
+- Full version: `skills/forgefix-git-workflow.md`
+- Agent variant: `skills/forgefix-git-workflow-agent.md`
+
+### Integration Examples
+
+```bash
+# Basic ForgeFix workflow
+ff spec --ai "my-feature"
+implement code
+ff commit --ai "implement feature"
+ff sync --ai
+ff ship --ai
+ff archive --ai
+
+# With Paperclip for agent teams
+ff --paperclip
+ff spec --ai "agent-task"
+ff commit --ai "agent development"
+ff sync --ai
+```
+
+Each agent skill is copied to the global skill directory (`~/.agents/skills/forgefix-git-workflow/SKILL.md`) for easy access, while the agent variant remains repo-only for optional use.
+
 ## FAQ
 
 **Q: Does ForgeFix require Gitea or GitHub?**  
@@ -461,3 +580,15 @@ The ledger still tracks it. Use `ff spec --delete <id>` for clean removal from b
 
 **Q: Can I run ForgeFix in CI?**  
 Yes. Run `ff --ai` for JSON output suitable for CI pipelines. The exit code reflects test suite success.
+
+**Q: What is Paperclip integration?**  
+Paperclip is an optional integration that adds agent team orchestration, goal alignment, and cost control to ForgeFix. It maps ForgeFix specs to Paperclip business goals and allows Paperclip agents to run ForgeFix tests.
+
+**Q: Is Paperclip integration required?**  
+No. Paperclip integration is completely optional and does not affect ForgeFix's core functionality. Enable it in `<project>_ff.yaml` if needed.
+
+**Q: What happens when Paperclip is enabled?**  
+ForgeFix will detect Paperclip availability and offer to configure integration when first run. The integration enables bidirectional sync between ForgeFix specs and Paperclip goals, with agent orchestration and cost tracking.
+
+**Q: How do I use Paperclip with ForgeFix?**  
+Use `ff --paperclip` to run ForgeFix with integration enabled, `ff paperclip` for setup and management commands, and `ff --ai` for headless AI mode that works with Paperclip.
