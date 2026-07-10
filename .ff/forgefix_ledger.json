@@ -185,7 +185,8 @@
       "repo_issue_id": 519,
       "status": "review",
       "linked_commits": [
-        "bfd54d1"
+        "bfd54d1",
+        "74c07f5"
       ]
     },
     "SPEC-1783710741": {

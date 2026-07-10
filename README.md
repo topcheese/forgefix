@@ -13,7 +13,7 @@
 - **Traceability built in.** Every commit is auto-tagged with its spec ID (`feat: [SPEC-1741712345] implement the thing`). The local ledger maps specs to commits and remote issues.
 - **No database, no server.** A lightweight JSON ledger (`.ff/forgefix_ledger.json`) tracks everything. Check it into your repo for portable history.
 - **Paperclip integration.** Optional Paperclip AI integration for agent-team orchestration, goal alignment, and cost controls (see [Paperclip Integration](#paperclip-integration)).
-- **Forget skills, remember one thing: ForgeFix.** Agents waste context juggling skill files — CORS rules, deployment checklists, commit conventions. ForgeFix tracks everything: spec→commit→issue→ship. One command, one paper trail. No skill file needed. See [ForgeFix for AI Agents](#forgefix-for-ai-agents).
+- **Forget skills, remember one thing: ForgeFix.** AI agents will often forget their skills and you have to remind them. With ForgeFix they only have to remember one thing — ForgeFix. ForgeFix tracks all of the gritty details that agents often forget and repeat. It's the meat AND potatoes, just the right stuff to fatten your pocketbook. See [ForgeFix for AI Agents](#forgefix-for-ai-agents).
 - **Strict Shipping Gate.** `ff ship` rejects the release if any spec is still `backlog`, `in-progress`, or `review` — only `ship`-status specs pass.
 - **Multi-language test runner.** ForgeFix auto-detects your project (Go, Rust, Python, Node, Flutter, and 12+ more) and runs tests with a real-time TUI dashboard.
 - **AI-native.** `--ai` flag emits structured JSON for headless / AI-supervised pipelines.
@@ -435,10 +435,8 @@ ForgeFix handles the gritty details agents always forget:
   release. Agents don't need to know the release API.
 - **Self-update.** `ff version --update` downloads the latest binary from the
   NAS Gitea releases. The agent doesn't need to know the download URL.
-- **SQLite storage.** Specs and pipeline stats are moving to `.ff/forgefix.db`.
-  The agent never manages files directly.
-- **Storage backend.** `spec_storage` config (file/sqlite/both) lets the agent
-  choose without touching infrastructure.
+- **SQLite archive.** Completed specs are archived to `.ff/forgefix.db` for
+  querying — the JSON ledger remains the source of truth.
 
 The `forgefix-git-workflow` skill in `skills/` exists as a reference, but the
 agent doesn't need to load it. `ff` is the only tool an agent needs.
