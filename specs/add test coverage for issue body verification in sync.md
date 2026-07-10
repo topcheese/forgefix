@@ -1,7 +1,7 @@
 ---
 spec_id: "SPEC-1783612711"
-status: review
-repo_issue: ""
+status: ship
+repo_issue: 511
 type: feature
 version: "v0.8.0"
 root_cause: ""

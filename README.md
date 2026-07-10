@@ -13,7 +13,7 @@
 - **Traceability built in.** Every commit is auto-tagged with its spec ID (`feat: [SPEC-1741712345] implement the thing`). The local ledger maps specs to commits and remote issues.
 - **No database, no server.** A lightweight JSON ledger (`.ff/forgefix_ledger.json`) tracks everything. Check it into your repo for portable history.
 - **Paperclip integration.** Optional Paperclip AI integration for agent-team orchestration, goal alignment, and cost controls (see [Paperclip Integration](#paperclip-integration)).
-- **Bundled agent skills.** Two ready-to-use agent skills ship with the repo: a full `forgefix-git-workflow` and a condensed `forgefix-git-workflow-agent` variant (see [Agent Skills](#agent-skills)).
+- **Forget skills, remember one thing: ForgeFix.** Agents waste context juggling skill files — CORS rules, deployment checklists, commit conventions. ForgeFix tracks everything: spec→commit→issue→ship. One command, one paper trail. No skill file needed. See [ForgeFix for AI Agents](#forgefix-for-ai-agents).
 - **Strict Shipping Gate.** `ff ship` rejects the release if any spec is still `backlog`, `in-progress`, or `review` — only `ship`-status specs pass.
 - **Multi-language test runner.** ForgeFix auto-detects your project (Go, Rust, Python, Node, Flutter, and 12+ more) and runs tests with a real-time TUI dashboard.
 - **AI-native.** `--ai` flag emits structured JSON for headless / AI-supervised pipelines.
@@ -398,6 +398,50 @@ In AI mode:
 - Test results include structured pass/fail with error traces
 - The spec editor is skipped (spec is created silently)
 - Duplicate detection defaults to linking rather than prompting
+
+---
+
+## ForgeFix for AI Agents
+
+**Skills are dead. Long live ForgeFix.**
+
+AI agents waste context juggling skill files — CORS rules, deployment checklists,
+commit conventions, framework-specific workflows. Every new project means another
+skill to load, another file to remember. ForgeFix replaces all of it.
+
+With ForgeFix, an agent only needs to remember one thing:
+
+```
+ff spec --ai <title>     → define the work
+ff commit --ai <msg>     → bind commits to specs (auto-detect)
+ff sync --ai             → sync to remote, promote to ship
+ff ship --ai             → push, close, release
+ff archive --ai          → archive completed specs
+```
+
+That's it. The spec file is the skill. The `[SPEC-XXX]` tag in every commit
+message is the paper trail. The Shipping Gate is the checklist. No separate
+skill document to load, no conventions to memorize — they're encoded in the
+specs and enforced by the gate.
+
+ForgeFix handles the gritty details agents always forget:
+- **Commit conventions.** `ff commit --ai` auto-formats
+  `feat: [SPEC-XXX] <message>` — agents never memorize conventional commits.
+- **Status tracking.** Draft → Review → Ship → Closed — the spec file tracks
+  it, the ledger persists it, `ff sync` advances it.
+- **Remote sync.** `ff sync` creates/updates remote issues with the spec body.
+  Agents don't need to know the API endpoints.
+- **Release creation.** `ff ship --ai` tags, pushes, and creates a Gitea/GitHub
+  release. Agents don't need to know the release API.
+- **Self-update.** `ff version --update` downloads the latest binary from the
+  NAS Gitea releases. The agent doesn't need to know the download URL.
+- **SQLite storage.** Specs and pipeline stats are moving to `.ff/forgefix.db`.
+  The agent never manages files directly.
+- **Storage backend.** `spec_storage` config (file/sqlite/both) lets the agent
+  choose without touching infrastructure.
+
+The `forgefix-git-workflow` skill in `skills/` exists as a reference, but the
+agent doesn't need to load it. `ff` is the only tool an agent needs.
 
 ---
 

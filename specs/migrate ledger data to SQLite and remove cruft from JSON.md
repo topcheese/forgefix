@@ -1,7 +1,7 @@
 ---
 spec_id: "SPEC-1783714300"
 status: ship
-repo_issue: ""
+repo_issue: 518
 type: refactor
 version: "0.9.0"
 root_cause: "forgefix_ledger.json stores version, pipeline stats, and spec_mappings in a single JSON file — hard to query, no referential integrity, migrations are manual"

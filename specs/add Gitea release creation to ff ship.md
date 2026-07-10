@@ -1,7 +1,7 @@
 ---
 spec_id: "SPEC-1783612709"
 status: ship
-repo_issue: ""
+repo_issue: 508
 type: feature
 version: "0.9.0"
 root_cause: "ff ship pushes commits but never creates a git tag before calling the Gitea releases API — CreateRelease references a tag_name that doesn't exist yet, so the API call fails silently"

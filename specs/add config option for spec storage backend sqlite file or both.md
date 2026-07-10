@@ -1,7 +1,7 @@
 ---
 spec_id: "SPEC-1783716117"
 status: ship
-repo_issue: ""
+repo_issue: 510
 type: feature
 version: "0.9.0"
 root_cause: "Spec storage is hardcoded to the JSON ledger file with no option to switch to SQLite, making the DB migration impossible without a config toggle"

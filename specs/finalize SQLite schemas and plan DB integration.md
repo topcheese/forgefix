@@ -1,7 +1,7 @@
 ---
 spec_id: "SPEC-1783715766"
 status: ship
-repo_issue: ""
+repo_issue: 515
 type: refactor
 version: "0.9.0"
 root_cause: "Database schema was created as a starting point but hasn't been reviewed or finalized. Tables need to be validated against actual usage before we start migrating features off the JSON ledger."

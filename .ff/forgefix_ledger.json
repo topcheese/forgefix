@@ -1,4 +1,5 @@
 {
+  "version": "0.0.0",
   "entries": {
     "forgefix": {
       "pipeline_id": "forgefix",
@@ -67,17 +68,13 @@
       "spec_id": "Backlog Command",
       "repo_issue_id": 485,
       "status": "ship",
-      "linked_commits": [
-        "943b436"
-      ],
-      "type": "feature"
+      "linked_commits": []
     },
     "SPEC-1783573136": {
       "spec_id": "Ff Commit   Ai Should Be Fully Non Interactive Without   Spec",
       "repo_issue_id": 486,
       "status": "draft",
-      "linked_commits": [],
-      "type": "feature"
+      "linked_commits": []
     },
     "SPEC-1783576585": {
       "spec_id": "Promote",
@@ -89,15 +86,13 @@
       "spec_id": "Update Forgefix Skill With All Lifecycle And Command Changes",
       "repo_issue_id": 488,
       "status": "ship",
-      "linked_commits": [],
-      "type": "feature"
+      "linked_commits": []
     },
     "SPEC-1783612199": {
       "spec_id": "Create Agent Focused Forgefix Skill Variant",
       "repo_issue_id": 489,
       "status": "ship",
-      "linked_commits": [],
-      "type": "feature"
+      "linked_commits": []
     },
     "SPEC-1783612708": {
       "spec_id": "Add Test Coverage For Issue Body Verification In Sync",
@@ -107,33 +102,21 @@
     },
     "SPEC-1783612709": {
       "spec_id": "Add Gitea Release Creation To Ff Ship",
-      "repo_issue_id": 0,
+      "repo_issue_id": 508,
       "status": "ship",
-      "linked_commits": [
-        "e77ab00",
-        "b028f48",
-        "323029f",
-        "b78a6f5",
-        "9897478",
-        "fda8897"
-      ],
-      "type": "feature"
+      "linked_commits": []
     },
     "SPEC-1783612710": {
       "spec_id": "Fix Issue Body Syncing To Post Complete Spec Content",
-      "repo_issue_id": 0,
+      "repo_issue_id": 516,
       "status": "draft",
-      "linked_commits": [],
-      "type": "feature"
+      "linked_commits": []
     },
     "SPEC-1783612711": {
       "spec_id": "Add Test Coverage For Issue Body Verification In Sync",
-      "repo_issue_id": 0,
-      "status": "review",
-      "linked_commits": [
-        "88f759c"
-      ],
-      "type": "feature"
+      "repo_issue_id": 511,
+      "status": "ship",
+      "linked_commits": []
     },
     "SPEC-1783643913": {
       "spec_id": "Document Paperclip Integration And Agent Skills In Readme",
@@ -147,15 +130,13 @@
       "spec_id": "Make Background Housekeeping Drop Missing Specs And Report Progress",
       "repo_issue_id": 490,
       "status": "draft",
-      "linked_commits": [],
-      "type": "feature"
+      "linked_commits": []
     },
     "SPEC-1783664065": {
       "spec_id": "Readme: Add Paperclip Integration And Agent Skills Docs",
       "repo_issue_id": 492,
       "status": "draft",
-      "linked_commits": [],
-      "type": "feature"
+      "linked_commits": []
     },
     "SPEC-1783664076": {
       "spec_id": "Add Paperclip Integration And Agent Skills Docs To Readme",
@@ -167,112 +148,81 @@
       "spec_id": "Update Readme.Md With Complete Paperclip Integration And Agent Skills Documentation",
       "repo_issue_id": 493,
       "status": "draft",
-      "linked_commits": [],
-      "type": "feature"
+      "linked_commits": []
     },
     "SPEC-1783669783": {
       "spec_id": "Implement Comprehensive Paperclip Integration Documentation And Agent Skills Features In Readme.Md",
       "repo_issue_id": 494,
       "status": "draft",
-      "linked_commits": [],
-      "type": "feature"
+      "linked_commits": []
     },
     "SPEC-1783672720": {
       "spec_id": "Update Readme.Md With Paperclip Integration And Agent Skills, Fix Housekeeping Background Cleanup And Test Coverage",
       "repo_issue_id": 495,
       "status": "draft",
-      "linked_commits": [],
-      "type": "feature"
+      "linked_commits": []
     },
     "SPEC-1783672781": {
       "spec_id": "Update Readme.Md With Complete Paperclip Integration Documentation And Agent Skills, Fix Housekeeping Background Cleanup",
       "repo_issue_id": 496,
       "status": "draft",
-      "linked_commits": [],
-      "type": "feature"
+      "linked_commits": []
     },
     "SPEC-1783672995": {
       "spec_id": "Implement Comprehensive Paperclip Integration Documentation And Agent Skills In Readme.Md, Fix Housekeeping Background Cleanup With Proper Error Handling, Add Test Coverage",
-      "repo_issue_id": 0,
+      "repo_issue_id": 507,
       "status": "draft",
-      "linked_commits": [],
-      "type": "feature"
+      "linked_commits": []
     },
     "SPEC-1783707750": {
-      "spec_id": "Implement Interactive Kanban Board For Ff",
-      "repo_issue_id": 0,
+      "spec_id": "Implement Interactive Kanban Board For Ff [Dupe → #499]",
+      "repo_issue_id": 517,
       "status": "draft",
-      "linked_commits": [],
-      "type": "feature"
+      "linked_commits": []
     },
     "SPEC-1783709991": {
       "spec_id": "Properly Fill Spec Content At Creation Time And Sync To Remote",
-      "repo_issue_id": 0,
-      "status": "ship",
+      "repo_issue_id": 519,
+      "status": "review",
       "linked_commits": [
-        "7f0f144",
-        "bb5f830"
-      ],
-      "type": "feature"
+        "bfd54d1"
+      ]
     },
     "SPEC-1783710741": {
       "spec_id": "Auto-fill Resolution Field In Spec Frontmatter During Ff Sync",
-      "repo_issue_id": 0,
+      "repo_issue_id": 513,
       "status": "ship",
-      "linked_commits": [
-        "3d6bc00"
-      ],
-      "type": "feature"
+      "linked_commits": []
     },
     "SPEC-1783712062": {
       "spec_id": "Add Sqlite Database Layer For Spec And Kanban Storage",
-      "repo_issue_id": 0,
+      "repo_issue_id": 509,
       "status": "ship",
-      "linked_commits": [
-        "b034e26",
-        "bb2a334"
-      ],
-      "type": "feature"
+      "linked_commits": []
     },
     "SPEC-1783714113": {
       "spec_id": "Add Version Check And Self-update Using NAS Gitea Releases",
-      "repo_issue_id": 0,
+      "repo_issue_id": 512,
       "status": "ship",
-      "linked_commits": [
-        "dd00843"
-      ],
-      "type": "feature"
+      "linked_commits": []
     },
     "SPEC-1783714300": {
       "spec_id": "Migrate Ledger Data To SQLite And Remove Cruft From JSON",
-      "repo_issue_id": 0,
+      "repo_issue_id": 518,
       "status": "ship",
-      "linked_commits": [
-        "beaacf0",
-        "5f50e88"
-      ],
-      "type": "refactor"
+      "linked_commits": []
     },
     "SPEC-1783715766": {
-      "spec_id": "Finalize SQLite Schemas And Plan DB Integration",
-      "repo_issue_id": 0,
+      "spec_id": "Finalize SQLite Schemas And Plan DB Integration [Dupe → #505]",
+      "repo_issue_id": 515,
       "status": "ship",
-      "linked_commits": [
-        "0852884",
-        "4235895"
-      ],
-      "type": "refactor"
+      "linked_commits": []
     },
     "SPEC-1783716117": {
       "spec_id": "Add Config Option For Spec Storage Backend: SQLite, File, Or Both",
-      "repo_issue_id": 0,
+      "repo_issue_id": 510,
       "status": "ship",
-      "linked_commits": [
-        "2bdfbcc",
-        "023dca2",
-        "dd1690d"
-      ],
-      "type": "feature"
+      "linked_commits": []
     }
   }
 }

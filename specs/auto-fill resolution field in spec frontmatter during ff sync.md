@@ -1,7 +1,7 @@
 ---
 spec_id: "SPEC-1783710741"
 status: ship
-repo_issue: ""
+repo_issue: 513
 type: feature
 version: "v0.8.0"
 root_cause: "resolution frontmatter field is never auto-populated after implementation commits are made"
