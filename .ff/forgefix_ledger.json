@@ -67,8 +67,10 @@
     "SPEC-1783569007": {
       "spec_id": "Backlog Command",
       "repo_issue_id": 485,
-      "status": "draft",
-      "linked_commits": []
+      "status": "review",
+      "linked_commits": [
+        "943b436"
+      ]
     },
     "SPEC-1783573136": {
       "spec_id": "Ff Commit   Ai Should Be Fully Non Interactive Without   Spec",
@@ -220,14 +222,6 @@
       "status": "review",
       "linked_commits": [
         "beaacf0"
-      ]
-    },
-    "SPEC-1783825678": {
-      "spec_id": "SPEC-1783825678",
-      "repo_issue_id": 57,
-      "status": "closed",
-      "linked_commits": [
-        "5c673c7"
       ]
     }
   }
