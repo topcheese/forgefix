@@ -5,7 +5,7 @@ repo_issue: ""
 type: feature
 version: "0.9.0"
 root_cause: "ff ship pushes commits but never creates a git tag before calling the Gitea releases API — CreateRelease references a tag_name that doesn't exist yet, so the API call fails silently"
-resolution: "Implementation complete (CreateRelease, buildReleaseBody, coordinator call) but needs a git tag creation step before the API call. Fixed in commit XXXXXX once the tag issue is addressed."
+resolution: "Added git tag creation and push before CreateRelease in ship_controller.go. Tag format is v<version> (e.g. v0.9.8). Pushed tag ensures the Gitea API can reference it for the release."
 ---
 # Add Gitea Release Creation To Ff Ship
 
@@ -32,10 +32,8 @@ remote's release UI. Currently the push succeeds but no release artifact is crea
 - `engine/ship_controller.go:96-97`: Calls `coord.CreateRelease` after
   housekeeping drain, with body from `buildReleaseBody`.
 - `engine/ship_controller.go:126`: `buildReleaseBody` formats shipped specs.
-- **Known gap**: `CreateRelease` is called with a version tag
-  that doesn't exist as a git tag yet. `ff ship` must create
-  `git tag v0.9.x` before calling the API, or the release creation fails
-  because the tag reference is missing.
+- `git tag -a v<version> -m "..."` created and pushed before `CreateRelease`
+  so the Gitea API can reference the existing tag.
 
 ## Verification
 

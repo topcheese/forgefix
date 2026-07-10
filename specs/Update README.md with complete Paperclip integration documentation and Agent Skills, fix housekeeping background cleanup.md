@@ -1,7 +1,7 @@
 ---
 spec_id: "SPEC-1783672781"
 status: draft
-repo_issue: ""
+repo_issue: 496
 type: feature
 version: "v0.8.0"
 root_cause: ""

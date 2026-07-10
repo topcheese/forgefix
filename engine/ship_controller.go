@@ -88,9 +88,18 @@ func (sc *ShipController) Run() {
 		fmt.Println("Housekeeping complete.")
 	}
 
-	// Create a release on the remote (Gitea/GitHub) for the shipped version.
-	// Non-fatal: a failure to create the release must not block the ship.
+	// Create a git tag for the version and push it, then create a release on the
+	// remote (Gitea/GitHub). Non-fatal: failure must not block the ship.
 	if len(shipSpecs) > 0 {
+		tagName := fmt.Sprintf("v%s", shipVersion)
+		if out, err := execGit(sc.configDir, "tag", "-a", tagName, "-m", fmt.Sprintf("ForgeFix release %s", tagName)); err != nil {
+			fmt.Fprintf(os.Stderr, "Warning: failed to create git tag %s: %v\n%s\n", tagName, err, out)
+		} else if out, err := execGit(sc.configDir, "push", "origin", tagName); err != nil {
+			fmt.Fprintf(os.Stderr, "Warning: failed to push tag %s: %v\n%s\n", tagName, err, out)
+		} else {
+			fmt.Printf("Created and pushed tag %s.\n", tagName)
+		}
+
 		coord := sc.buildCoordinator()
 		if coord != nil {
 			releaseBody := sc.buildReleaseBody(shipSpecs, shipVersion)
