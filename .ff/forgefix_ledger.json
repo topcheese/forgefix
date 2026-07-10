@@ -245,6 +245,14 @@
         "beaacf0"
       ],
       "type": "refactor"
+    },
+    "SPEC-1783715766": {
+      "spec_id": "Finalize Sqlite Schemas And Plan Db Integration",
+      "repo_issue_id": 0,
+      "status": "review",
+      "linked_commits": [
+        "0852884"
+      ]
     }
   }
 }
