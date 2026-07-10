@@ -313,6 +313,16 @@ func loadConfigFromPath(path string) (*LoadedConfig, error) {
 		config.Pipelines[i].TokenPatterns = lang.TokenPatterns
 	}
 
+	// Validate spec_storage value.
+	if config.SpecStorage != "" {
+		switch config.SpecStorage {
+		case "file", "sqlite", "both":
+			// valid
+		default:
+			return nil, fmt.Errorf("invalid spec_storage %q: must be \"file\", \"sqlite\", or \"both\"", config.SpecStorage)
+		}
+	}
+
 	return &LoadedConfig{
 		Config:    &config,
 		ConfigDir: configDir,

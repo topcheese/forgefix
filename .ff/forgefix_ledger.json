@@ -260,7 +260,8 @@
       "repo_issue_id": 0,
       "status": "review",
       "linked_commits": [
-        "2bdfbcc"
+        "2bdfbcc",
+        "023dca2"
       ]
     }
   }

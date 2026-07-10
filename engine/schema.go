@@ -49,6 +49,7 @@ type Config struct {
 	GitPassthrough       *bool               `yaml:"git_passthrough,omitempty"`
 	GitHub               *GitHubConfig       `yaml:"github,omitempty"`
 	SyncSchedule         *SyncScheduleConfig `yaml:"sync_schedule,omitempty"`
+	SpecStorage          string              `yaml:"spec_storage,omitempty"`
 }
 
 type CommandConfig struct {
