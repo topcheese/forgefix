@@ -140,11 +140,9 @@ func (le *LedgerEngine) SaveToFile(path string) error {
 		le.specMappings = make(map[string]*SpecEntry)
 	}
 	data, err := json.MarshalIndent(struct {
-		Version      string                  `json:"version"`
 		Entries      map[string]*LedgerEntry `json:"entries"`
 		SpecMappings map[string]*SpecEntry   `json:"spec_mappings"`
 	}{
-		Version:      le.Version,
 		Entries:      le.entries,
 		SpecMappings: le.specMappings,
 	}, "", "  ")
@@ -160,7 +158,7 @@ func (le *LedgerEngine) SaveToFile(path string) error {
 
 func (le *LedgerEngine) LoadFromJSON(data []byte) error {
 	var wrapper struct {
-		Version      string                  `json:"version"`
+		Version      string                  `json:"version,omitempty"`
 		Entries      map[string]*LedgerEntry `json:"entries"`
 		SpecMappings map[string]*SpecEntry   `json:"spec_mappings"`
 	}

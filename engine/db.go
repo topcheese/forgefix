@@ -45,6 +45,11 @@ func OpenDB(configDir string) (*DB, error) {
 		conn.Close()
 		return nil, fmt.Errorf("running migrations: %w", err)
 	}
+	// Non-fatal: import existing JSON ledger data into the DB if it hasn't
+	// been imported yet. Failures are logged but don't block startup.
+	if err := db.ImportLedger(); err != nil {
+		fmt.Fprintf(os.Stderr, "warning: ledger import: %v\n", err)
+	}
 	return db, nil
 }
 
@@ -212,6 +217,43 @@ func (db *DB) GetLinkedCommits(specID string) ([]string, error) {
 		result = append(result, h)
 	}
 	return result, rows.Err()
+}
+
+// ImportLedger reads the current JSON ledger and writes all spec mappings and
+// pipeline entries into the DB. Idempotent — existing rows are overwritten.
+func (db *DB) ImportLedger() error {
+	ledger, err := LoadLedger(db.configDir)
+	if err != nil {
+		return fmt.Errorf("loading ledger: %w", err)
+	}
+
+	// Import project version — skip if still at the engine default (no real ledger loaded).
+	if ledger.Version != "" && ledger.Version != "0.0.0" {
+		if err := db.SetProjectVersion(ledger.Version); err != nil {
+			return fmt.Errorf("setting project version: %w", err)
+		}
+	}
+
+	// Import pipeline stats
+	for id, entry := range ledger.GetAllEntries() {
+		if err := db.UpsertPipelineStats(id, entry.TotalRan, entry.TotalPassed, entry.TotalFailed, entry.HistoricalFloor); err != nil {
+			return fmt.Errorf("importing pipeline %s: %w", id, err)
+		}
+	}
+
+	// Import spec mappings
+	for specID, entry := range ledger.GetAllSpecEntries() {
+		if err := db.UpsertSpec(specID, entry.SpecID, entry.Status, entry.Type, "", entry.RepoIssueID, "", "", ""); err != nil {
+			return fmt.Errorf("importing spec %s: %w", specID, err)
+		}
+		for _, hash := range entry.LinkedCommits {
+			if err := db.AddLinkedCommit(specID, hash); err != nil {
+				return fmt.Errorf("importing linked commit %s for %s: %w", hash, specID, err)
+			}
+		}
+	}
+
+	return nil
 }
 
 // ---------------------------------------------------------------------------

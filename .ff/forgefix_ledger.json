@@ -1,5 +1,4 @@
 {
-  "version": "0.9.8",
   "entries": {
     "forgefix": {
       "pipeline_id": "forgefix",
@@ -242,7 +241,8 @@
       "repo_issue_id": 0,
       "status": "review",
       "linked_commits": [
-        "beaacf0"
+        "beaacf0",
+        "5f50e88"
       ],
       "type": "refactor"
     },
