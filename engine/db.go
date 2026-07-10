@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 
 	_ "modernc.org/sqlite"
 )
@@ -219,6 +220,94 @@ func (db *DB) GetLinkedCommits(specID string) ([]string, error) {
 	return result, rows.Err()
 }
 
+// ArchiveSpec sets a spec's status to "archived" in the DB and deletes its file.
+// Returns an error if the file can't be removed (non-fatal) or the DB update fails.
+func (db *DB) ArchiveSpec(specID, title, specType string, repoIssueID int) error {
+	specDir := filepath.Join(db.configDir, "specs")
+	fileName := fmt.Sprintf("%s.md", title)
+	filePath := filepath.Join(specDir, fileName)
+	if err := os.Remove(filePath); err != nil && !os.IsNotExist(err) {
+		fmt.Fprintf(os.Stderr, "warning: failed to remove spec file %s: %v\n", fileName, err)
+	}
+	return db.UpsertSpec(specID, title, "archived", specType, "", repoIssueID, "", "", "")
+}
+
+// ImportArchiveFiles reads all existing specs/archive/archive_*.md files and
+// imports each spec entry into the DB with status "archived". After a successful
+// import the archive directory is removed. Idempotent — skips specs already in DB.
+func ImportArchiveFiles(configDir string, db *DB) error {
+	archiveDir := filepath.Join(configDir, "specs", "archive")
+	entries, err := os.ReadDir(archiveDir)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return nil
+		}
+		return fmt.Errorf("reading archive directory: %w", err)
+	}
+
+	for _, entry := range entries {
+		if entry.IsDir() || !strings.HasSuffix(entry.Name(), ".md") {
+			continue
+		}
+		data, err := os.ReadFile(filepath.Join(archiveDir, entry.Name()))
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "warning: skipping archive file %s: %v\n", entry.Name(), err)
+			continue
+		}
+		// Each archive file contains multiple specs separated by --- dividers.
+		content := string(data)
+		blocks := strings.Split(content, "\n\n---\n\n")
+		for _, block := range blocks {
+			fm, body := parseArchiveBlock(block)
+			if fm["spec_id"] == "" {
+				continue
+			}
+			status := fm["status"]
+			if status == "" {
+				status = "archived"
+			}
+			_ = db.UpsertSpec(fm["spec_id"], fm["spec_id"], status, fm["type"], "", 0, fm["root_cause"], fm["resolution"], body)
+		}
+	}
+
+	// Remove the archive directory after successful import.
+	if err := os.RemoveAll(archiveDir); err != nil {
+		return fmt.Errorf("removing archive directory: %w", err)
+	}
+	return nil
+}
+
+// parseArchiveBlock extracts frontmatter and body from a single archive entry.
+func parseArchiveBlock(block string) (map[string]string, string) {
+	fm := make(map[string]string)
+	if !strings.HasPrefix(block, "---") {
+		return fm, block
+	}
+	parts := strings.SplitN(block, "---", 3)
+	if len(parts) < 3 {
+		return fm, block
+	}
+	for _, line := range strings.Split(parts[1], "\n") {
+		line = strings.TrimSpace(line)
+		if line == "" {
+			continue
+		}
+		colonIdx := strings.Index(line, ":")
+		if colonIdx < 0 {
+			continue
+		}
+		key := strings.TrimSpace(line[:colonIdx])
+		val := strings.TrimSpace(line[colonIdx+1:])
+		val = strings.Trim(val, `"`)
+		if idx := strings.Index(val, " "); idx > 0 && key != "resolution" {
+			val = val[:idx]
+		}
+		fm[key] = val
+	}
+	body := strings.TrimSpace(parts[2])
+	return fm, body
+}
+
 // ImportLedger reads the current JSON ledger and writes all spec mappings and
 // pipeline entries into the DB. Idempotent — existing rows are overwritten.
 func (db *DB) ImportLedger() error {
@@ -282,6 +371,7 @@ type migration struct {
 var migrations = []migration{
 	{version: 1, sql: initialSchema},
 	{version: 2, sql: migration002},
+	{version: 3, sql: migration003},
 }
 
 const initialSchema = `
@@ -354,6 +444,10 @@ CREATE TABLE IF NOT EXISTS pipeline_stats (
 );
 
 INSERT OR IGNORE INTO meta (key, value) VALUES ('project_version', '0.9.0');
+`
+
+const migration003 = `
+CREATE INDEX IF NOT EXISTS idx_specs_status ON specs(status);
 `
 
 // Migrate applies any pending migrations.

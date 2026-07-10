@@ -104,12 +104,12 @@ func TestCommandDispatcher_ArchiveOnMissingSpecsDir(t *testing.T) {
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
-	// A missing specs/ dir is an error condition in ArchiveResolvedSpecs
-	if result.ExitCode != 1 {
-		t.Errorf("expected ExitCode 1 for missing specs dir, got %d", result.ExitCode)
+	// No specs dir is fine — archive just has nothing to archive.
+	if result.ExitCode != 0 {
+		t.Errorf("expected ExitCode 0 for missing specs dir (nothing to archive), got %d; stderr: %s", result.ExitCode, stderr.String())
 	}
-	if !strings.Contains(stderr.String(), "reading specs directory") {
-		t.Errorf("expected stderr to mention missing specs dir, got: %s", stderr.String())
+	if !strings.Contains(stdout.String(), "No resolved specs to archive") {
+		t.Errorf("expected stdout to mention no specs, got: %s", stdout.String())
 	}
 }
 

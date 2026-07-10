@@ -1,5 +1,4 @@
 {
-  "version": "0.0.0",
   "entries": {
     "forgefix": {
       "pipeline_id": "forgefix",
@@ -224,6 +223,14 @@
       "repo_issue_id": 510,
       "status": "ship",
       "linked_commits": []
+    },
+    "SPEC-1783722120": {
+      "spec_id": "Migrate Spec Archiving From Filesystem To Sqlite",
+      "repo_issue_id": 0,
+      "status": "review",
+      "linked_commits": [
+        "1cb4a59"
+      ]
     }
   }
 }

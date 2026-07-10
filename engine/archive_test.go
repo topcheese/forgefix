@@ -3,7 +3,6 @@ package engine
 import (
 	"os"
 	"path/filepath"
-	"strings"
 	"testing"
 )
 
@@ -17,8 +16,24 @@ func writeArchiveSpecFile(t *testing.T, dir, specID, status string) {
 		"---\n" +
 		"# " + specID + "\n\n" +
 		"## Goal\n\nTest spec for " + status + " archiving.\n"
-	path := filepath.Join(dir, specID+".md")
+	path := filepath.Join(dir, "specs", specID+".md")
 	if err := os.WriteFile(path, []byte(content), 0644); err != nil {
+		t.Fatal(err)
+	}
+}
+
+func addToLedger(t *testing.T, configDir, specID, status string) {
+	t.Helper()
+	ledger, err := LoadLedger(configDir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	ledger.SetSpecEntry(specID, &SpecEntry{
+		SpecID:      specID,
+		Status:      status,
+		RepoIssueID: 0,
+	})
+	if err := SaveLedger(ledger, configDir); err != nil {
 		t.Fatal(err)
 	}
 }
@@ -29,114 +44,67 @@ func TestArchiveResolvedSpecs_ArchivesClosedSpecs(t *testing.T) {
 	if err := os.MkdirAll(specsDir, 0755); err != nil {
 		t.Fatal(err)
 	}
+	writeArchiveSpecFile(t, configDir, "SPEC-ARCHIVE-CLOSED", "closed")
+	addToLedger(t, configDir, "SPEC-ARCHIVE-CLOSED", "closed")
 
-	ledger := NewLedgerEngine()
-	ledger.WorkflowConfig = DefaultWorkflowConfig()
-
-	for _, entry := range []struct {
-		specID string
-		status string
-	}{
-		{"SPEC-100", "closed"},
-		{"SPEC-200", "ship"},
-		{"SPEC-300", "closed"},
-		{"SPEC-400", "draft"},
-	} {
-		writeArchiveSpecFile(t, specsDir, entry.specID, entry.status)
-		ledger.SetSpecEntry(entry.specID, &SpecEntry{
-			SpecID: entry.specID,
-			Status: entry.status,
-		})
-	}
-	if err := SaveLedger(ledger, configDir); err != nil {
-		t.Fatal(err)
-	}
-
-	archiveName, count, err := ArchiveResolvedSpecs(configDir)
+	_, count, err := ArchiveResolvedSpecs(configDir)
 	if err != nil {
-		t.Fatalf("ArchiveResolvedSpecs failed: %v", err)
+		t.Fatalf("ArchiveResolvedSpecs: %v", err)
+	}
+	if count != 1 {
+		t.Errorf("expected 1 archived spec, got %d", count)
 	}
 
-	if count != 2 {
-		t.Fatalf("expected 2 archived specs (closed), got %d", count)
+	// Spec file should be deleted
+	if _, err := os.Stat(filepath.Join(specsDir, "SPEC-ARCHIVE-CLOSED.md")); !os.IsNotExist(err) {
+		t.Error("spec file should have been deleted")
 	}
 
-	archivePath := filepath.Join(specsDir, "archive", archiveName)
-	if _, err := os.Stat(archivePath); os.IsNotExist(err) {
-		t.Fatal("archive file was not created")
-	}
-
-	data, err := os.ReadFile(archivePath)
+	// Ledger entry should be removed
+	ledger, err := LoadLedger(configDir)
 	if err != nil {
 		t.Fatal(err)
 	}
-	content := string(data)
-	if !strings.Contains(content, "SPEC-100") {
-		t.Error("archive should contain SPEC-100")
-	}
-	if !strings.Contains(content, "SPEC-300") {
-		t.Error("archive should contain SPEC-300")
-	}
-	if strings.Contains(content, "SPEC-200") {
-		t.Error("archive should not contain ship status SPEC-200")
-	}
-	if strings.Contains(content, "SPEC-400") {
-		t.Error("archive should not contain draft status SPEC-400")
+	if entry := ledger.GetSpecEntry("SPEC-ARCHIVE-CLOSED"); entry != nil {
+		t.Error("ledger entry should have been removed")
 	}
 
-	if _, err := os.Stat(filepath.Join(specsDir, "SPEC-100.md")); !os.IsNotExist(err) {
-		t.Error("SPEC-100.md should have been removed after archiving")
-	}
-	if _, err := os.Stat(filepath.Join(specsDir, "SPEC-300.md")); !os.IsNotExist(err) {
-		t.Error("SPEC-300.md should have been removed after archiving")
-	}
-
-	reloaded, err := LoadLedger(configDir)
+	// DB should have the spec with status archived
+	db, err := OpenDB(configDir)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if entry := reloaded.GetSpecEntry("SPEC-100"); entry != nil {
-		t.Error("SPEC-100 should have been removed from ledger after archiving")
+	defer db.Close()
+	var status string
+	err = db.Conn().QueryRow("SELECT status FROM specs WHERE spec_id = ?", "SPEC-ARCHIVE-CLOSED").Scan(&status)
+	if err != nil {
+		t.Fatalf("querying archived spec: %v", err)
 	}
-	if entry := reloaded.GetSpecEntry("SPEC-300"); entry != nil {
-		t.Error("SPEC-300 should have been removed from ledger after archiving")
-	}
-	if entry := reloaded.GetSpecEntry("SPEC-200"); entry == nil || entry.Status != "ship" {
-		t.Error("SPEC-200 should remain in ledger with status ship (not archived)")
-	}
-	if entry := reloaded.GetSpecEntry("SPEC-400"); entry == nil || entry.Status != "draft" {
-		t.Error("SPEC-400 should remain in ledger with status draft (not archived)")
+	if status != "archived" {
+		t.Errorf("expected status 'archived', got %q", status)
 	}
 }
 
-func TestArchiveResolvedSpecs_NoClosedSpecs(t *testing.T) {
+func TestArchiveResolvedSpecs_DoesNotArchiveDraft(t *testing.T) {
 	configDir := t.TempDir()
 	specsDir := filepath.Join(configDir, "specs")
 	if err := os.MkdirAll(specsDir, 0755); err != nil {
 		t.Fatal(err)
 	}
+	writeArchiveSpecFile(t, configDir, "SPEC-ARCHIVE-DRAFT", "draft")
+	addToLedger(t, configDir, "SPEC-ARCHIVE-DRAFT", "draft")
 
-	for _, entry := range []struct {
-		specID string
-		status string
-	}{
-		{"SPEC-100", "ship"},
-		{"SPEC-200", "draft"},
-		{"SPEC-300", "review"},
-	} {
-		writeArchiveSpecFile(t, specsDir, entry.specID, entry.status)
-	}
-
-	archiveName, count, err := ArchiveResolvedSpecs(configDir)
+	_, count, err := ArchiveResolvedSpecs(configDir)
 	if err != nil {
-		t.Fatalf("ArchiveResolvedSpecs failed: %v", err)
+		t.Fatalf("ArchiveResolvedSpecs: %v", err)
+	}
+	if count != 0 {
+		t.Errorf("expected 0 archived specs for draft, got %d", count)
 	}
 
-	if count != 0 {
-		t.Fatalf("expected 0 archived specs, got %d", count)
-	}
-	if archiveName != "" {
-		t.Errorf("expected empty archive name, got %s", archiveName)
+	// File should still exist
+	if _, err := os.Stat(filepath.Join(specsDir, "SPEC-ARCHIVE-DRAFT.md")); os.IsNotExist(err) {
+		t.Error("draft spec file should not have been deleted")
 	}
 }
 
@@ -147,57 +115,39 @@ func TestArchiveResolvedSpecs_ArchivesOrphanedLedgerEntries(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	// Only create one file on disk; leave the other as an orphaned ledger entry
-	writeArchiveSpecFile(t, specsDir, "SPEC-100", "closed")
+	// Ledger has a closed spec with no file
+	addToLedger(t, configDir, "SPEC-ORPHAN", "closed")
 
-	ledger := NewLedgerEngine()
-	ledger.WorkflowConfig = DefaultWorkflowConfig()
-	ledger.SetSpecEntry("SPEC-100", &SpecEntry{SpecID: "SPEC-100", Status: "closed"})
-	ledger.SetSpecEntry("SPEC-200", &SpecEntry{
-		SpecID:        "SPEC-200",
-		Status:        "closed",
-		RepoIssueID:   42,
-		Type:          "bug",
-		LinkedCommits: []string{"abc123"},
-	})
-	if err := SaveLedger(ledger, configDir); err != nil {
-		t.Fatal(err)
-	}
-
-	archiveName, count, err := ArchiveResolvedSpecs(configDir)
+	_, count, err := ArchiveResolvedSpecs(configDir)
 	if err != nil {
-		t.Fatalf("ArchiveResolvedSpecs failed: %v", err)
+		t.Fatalf("ArchiveResolvedSpecs: %v", err)
+	}
+	if count != 1 {
+		t.Errorf("expected 1 archived orphan, got %d", count)
 	}
 
-	if count != 2 {
-		t.Fatalf("expected 2 archived specs (1 file + 1 orphaned ledger), got %d", count)
-	}
-
-	archivePath := filepath.Join(specsDir, "archive", archiveName)
-	data, err := os.ReadFile(archivePath)
+	// Ledger entry should be removed
+	ledger, err := LoadLedger(configDir)
 	if err != nil {
 		t.Fatal(err)
 	}
-	content := string(data)
-	if !strings.Contains(content, "SPEC-100") {
-		t.Error("archive should contain SPEC-100 from file")
-	}
-	if !strings.Contains(content, "SPEC-200") {
-		t.Error("archive should contain orphaned SPEC-200 from ledger")
-	}
-	if !strings.Contains(content, "Spec file was missing at time of archive") {
-		t.Error("archive should note that SPEC-200 was reconstructed from ledger")
+	if entry := ledger.GetSpecEntry("SPEC-ORPHAN"); entry != nil {
+		t.Error("orphan ledger entry should have been removed")
 	}
 
-	reloaded, err := LoadLedger(configDir)
+	// DB should have it
+	db, err := OpenDB(configDir)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if entry := reloaded.GetSpecEntry("SPEC-100"); entry != nil {
-		t.Error("SPEC-100 should have been removed from ledger after archiving")
+	defer db.Close()
+	var status string
+	err = db.Conn().QueryRow("SELECT status FROM specs WHERE spec_id = ?", "SPEC-ORPHAN").Scan(&status)
+	if err != nil {
+		t.Fatalf("querying archived orphan: %v", err)
 	}
-	if entry := reloaded.GetSpecEntry("SPEC-200"); entry != nil {
-		t.Error("SPEC-200 should have been removed from ledger after archiving")
+	if status != "archived" {
+		t.Errorf("expected status 'archived', got %q", status)
 	}
 }
 
@@ -208,36 +158,38 @@ func TestArchiveResolvedSpecs_MixedResolvedAndClosed(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	for _, entry := range []struct {
-		specID string
-		status string
-	}{
-		{"SPEC-100", "resolved"},
-		{"SPEC-200", "closed"},
-		{"SPEC-300", "ship"},
-	} {
-		writeArchiveSpecFile(t, specsDir, entry.specID, entry.status)
-	}
+	writeArchiveSpecFile(t, configDir, "SPEC-MIX-A", "closed")
+	writeArchiveSpecFile(t, configDir, "SPEC-MIX-B", "resolved")
+	writeArchiveSpecFile(t, configDir, "SPEC-MIX-C", "draft")
+	addToLedger(t, configDir, "SPEC-MIX-A", "closed")
+	addToLedger(t, configDir, "SPEC-MIX-B", "resolved")
+	addToLedger(t, configDir, "SPEC-MIX-C", "draft")
 
-	archiveName, count, err := ArchiveResolvedSpecs(configDir)
+	_, count, err := ArchiveResolvedSpecs(configDir)
 	if err != nil {
-		t.Fatalf("ArchiveResolvedSpecs failed: %v", err)
+		t.Fatalf("ArchiveResolvedSpecs: %v", err)
 	}
-
 	if count != 2 {
-		t.Fatalf("expected 2 archived specs (resolved + closed), got %d", count)
+		t.Errorf("expected 2 archived specs (closed + resolved), got %d", count)
 	}
 
-	archivePath := filepath.Join(specsDir, "archive", archiveName)
-	data, err := os.ReadFile(archivePath)
+	// Draft file should still exist
+	if _, err := os.Stat(filepath.Join(specsDir, "SPEC-MIX-C.md")); os.IsNotExist(err) {
+		t.Error("draft spec file should not have been deleted")
+	}
+
+	// DB should have 2 archived specs
+	db, err := OpenDB(configDir)
 	if err != nil {
 		t.Fatal(err)
 	}
-	content := string(data)
-	if !strings.Contains(content, "SPEC-100") {
-		t.Error("archive should contain resolved SPEC-100")
+	defer db.Close()
+	var archivedCount int
+	err = db.Conn().QueryRow("SELECT COUNT(*) FROM specs WHERE status = 'archived'").Scan(&archivedCount)
+	if err != nil {
+		t.Fatalf("querying archived count: %v", err)
 	}
-	if !strings.Contains(content, "SPEC-200") {
-		t.Error("archive should contain closed SPEC-200")
+	if archivedCount != 2 {
+		t.Errorf("expected 2 archived specs in DB, got %d", archivedCount)
 	}
 }
