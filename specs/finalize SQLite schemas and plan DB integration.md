@@ -49,8 +49,8 @@ CREATE TABLE specs (
     updated_at    TEXT NOT NULL DEFAULT (datetime('now'))
 );
 ```
-Questions: should `linked_commits` be a separate table? Does `body` duplicate
-the spec file on disk?
+Questions: should `linked_commits` be a separate table? Yes.  Does `body` duplicate
+the spec file on disk? Yes.
 
 ### `kanban_*` tables
 Created for the kanban feature (not yet used).

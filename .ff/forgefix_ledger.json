@@ -251,7 +251,8 @@
       "repo_issue_id": 0,
       "status": "review",
       "linked_commits": [
-        "0852884"
+        "0852884",
+        "4235895"
       ]
     },
     "SPEC-1783716117": {
