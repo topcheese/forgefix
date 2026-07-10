@@ -176,7 +176,8 @@
       "repo_issue_id": 0,
       "status": "review",
       "linked_commits": [
-        "7f0f144"
+        "7f0f144",
+        "bb5f830"
       ]
     },
     "SPEC-1783710741": {

@@ -14,12 +14,19 @@ import (
 func (d *CommandDispatcher) handleSpec(args []string) (CommandResult, error) {
 	flags := ParseFlags(args)
 
-	specName := ""
+	var positional []string
 	for _, arg := range args {
 		if !strings.HasPrefix(arg, "-") {
-			specName = arg
-			break
+			positional = append(positional, arg)
 		}
+	}
+	specName := ""
+	specBody := ""
+	if len(positional) > 0 {
+		specName = positional[0]
+	}
+	if len(positional) > 1 {
+		specBody = positional[1]
 	}
 
 	if flags.Delete {
@@ -41,7 +48,7 @@ func (d *CommandDispatcher) handleSpec(args []string) (CommandResult, error) {
 		return CommandResult{ExitCode: 1}, nil
 	}
 
-	if err := createSpec(d.ConfigDir, specName, d, flags); err != nil {
+	if err := createSpec(d.ConfigDir, specName, specBody, d, flags); err != nil {
 		fmt.Fprintf(d.Stderr, "error: %v\n", err)
 		return CommandResult{ExitCode: 1}, nil
 	}
@@ -65,7 +72,7 @@ func SpecConfigDir(workDir string) string {
 }
 
 // createSpec creates a new spec file from the template.
-func createSpec(configDir, name string, d *CommandDispatcher, flags CLIArgs) error {
+func createSpec(configDir, name, bodyContent string, d *CommandDispatcher, flags CLIArgs) error {
 	templatePath := filepath.Join(configDir, "templates", "spec_template.md")
 	templateContent, err := os.ReadFile(templatePath)
 	if err != nil {
@@ -93,30 +100,38 @@ func createSpec(configDir, name string, d *CommandDispatcher, flags CLIArgs) err
 		}
 	}
 
-	content := string(templateContent)
-	content = strings.ReplaceAll(content, `spec_id: ""`, fmt.Sprintf(`spec_id: "%s"`, specID))
-	content = strings.ReplaceAll(content, "# [Title]", fmt.Sprintf("# %s", title))
-	content = strings.ReplaceAll(content, "created: YYYY-MM-DD", fmt.Sprintf("created: %s", now))
-
-	// Fill optional frontmatter fields when provided.
+	// Build frontmatter by replacing placeholders in the template.
+	tpl := string(templateContent)
+	tpl = strings.ReplaceAll(tpl, `spec_id: ""`, fmt.Sprintf(`spec_id: "%s"`, specID))
+	tpl = strings.ReplaceAll(tpl, "created: YYYY-MM-DD", fmt.Sprintf("created: %s", now))
 	if flags.SpecType != "" {
-		content = strings.ReplaceAll(content, "type: feature", "type: "+flags.SpecType)
+		tpl = strings.ReplaceAll(tpl, "type: feature", "type: "+flags.SpecType)
 	}
 	if flags.SpecVersion != "" {
-		content = strings.ReplaceAll(content, `version: "v0.8.0"`, fmt.Sprintf(`version: "%s"`, flags.SpecVersion))
+		tpl = strings.ReplaceAll(tpl, `version: "v0.8.0"`, fmt.Sprintf(`version: "%s"`, flags.SpecVersion))
 	}
 
-	// Fill body sections when provided so the spec is fully documented at
-	// creation time (no post-edit required).
-	if flags.SpecObjective != "" {
-		content = strings.Replace(content, "## Objective\n", "## Objective\n\n"+flags.SpecObjective+"\n", 1)
+	// Split template into frontmatter and body.
+	parts := strings.SplitN(tpl, "---", 3)
+	if len(parts) < 3 {
+		return fmt.Errorf("malformed template: expected frontmatter delimiters")
 	}
-	if flags.SpecRequirements != "" {
-		content = strings.Replace(content, "## Requirements\n", "## Requirements\n\n"+flags.SpecRequirements+"\n", 1)
+	frontmatter := parts[1]
+
+	// Determine the body content.
+	body := strings.TrimSpace(bodyContent)
+	if body == "" && !flags.AIMode {
+		body = promptForSpecBody(title)
 	}
-	if flags.SpecAcceptance != "" {
-		content = strings.Replace(content, "## Acceptance Criteria\n", "## Acceptance Criteria\n\n"+flags.SpecAcceptance+"\n", 1)
+	if body == "" {
+		if flags.AIMode {
+			return fmt.Errorf("spec body is required in --ai mode: ff spec --ai <title> <body>")
+		}
+		return fmt.Errorf("spec body cannot be empty")
 	}
+
+	// Assemble the final spec file.
+	content := fmt.Sprintf("---%s---\n%s\n", frontmatter, body)
 
 	if isDup {
 		ref := fmt.Sprintf("\n\n> This spec has been identified as a duplicate of `%s`.", origSpecID)
@@ -277,4 +292,48 @@ func promptForDuplicateAction(newTitle, existingTitle, existingSpecID string, ai
 			fmt.Printf("Invalid choice. Enter 1, 2, or 3: ")
 		}
 	}
+}
+
+// promptForSpecBody prompts the user interactively for the spec body.
+// First asks to paste the full body; if Enter is pressed, prompts section
+// by section for Objective, Requirements, Implementation, Acceptance
+// Criteria, and Verification.
+func promptForSpecBody(title string) string {
+	reader := bufio.NewReader(os.Stdin)
+	fmt.Fprint(os.Stderr, "Paste full spec body (or press Enter for section-by-section): ")
+	fullBody, _ := reader.ReadString('\n')
+	fullBody = strings.TrimSpace(fullBody)
+	if fullBody != "" {
+		return fmt.Sprintf("# %s\n\n%s", title, fullBody)
+	}
+
+	var sections []string
+	type prompt struct {
+		heading string
+		label   string
+	}
+	prompts := []prompt{
+		{"Objective", "Objective"},
+		{"Requirements", "Requirements"},
+		{"Implementation", "Implementation"},
+		{"Acceptance Criteria", "Acceptance Criteria"},
+		{"Verification", "Verification"},
+	}
+
+	for _, p := range prompts {
+		fmt.Fprintf(os.Stderr, "%s (or press Enter to skip): ", p.label)
+		text, _ := reader.ReadString('\n')
+		text = strings.TrimSpace(text)
+		if text != "" {
+			sections = append(sections, fmt.Sprintf("## %s\n\n%s", p.heading, text))
+		} else {
+			sections = append(sections, fmt.Sprintf("## %s\n", p.heading))
+		}
+	}
+
+	body := fmt.Sprintf("# %s\n\n", title)
+	if len(sections) > 0 {
+		body += strings.Join(sections, "\n\n") + "\n"
+	}
+	return strings.TrimSpace(body)
 }
