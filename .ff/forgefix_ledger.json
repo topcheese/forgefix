@@ -202,7 +202,8 @@
       "repo_issue_id": 0,
       "status": "review",
       "linked_commits": [
-        "b034e26"
+        "b034e26",
+        "bb2a334"
       ]
     },
     "SPEC-1783825678": {
