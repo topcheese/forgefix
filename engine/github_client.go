@@ -53,6 +53,22 @@ type RepoLabel struct {
 	Color string `json:"color"`
 }
 
+// Release represents a Gitea/GitHub release with its assets.
+type Release struct {
+	ID        int            `json:"id"`
+	TagName   string         `json:"tag_name"`
+	Name      string         `json:"name"`
+	Body      string         `json:"body"`
+	Assets    []ReleaseAsset `json:"assets"`
+}
+
+// ReleaseAsset represents a downloadable file attached to a release.
+type ReleaseAsset struct {
+	ID   int    `json:"id"`
+	Name string `json:"name"`
+	URL  string `json:"browser_download_url"`
+}
+
 type HTTPDoer interface {
 	Do(req *http.Request) (*http.Response, error)
 }
@@ -76,6 +92,8 @@ type GitHubClient interface {
 	CloseIssueByNumber(issueNumber int) error
 	GetIssueComments(issueNumber int) ([]GitHubComment, error)
 	CreateRelease(version, body string) error
+	LatestRelease() (*Release, error)
+	DownloadReleaseAsset(assetID int) ([]byte, error)
 }
 
 type gitHubClient struct {
@@ -554,4 +572,47 @@ func (c *gitHubClient) CreateRelease(version, body string) error {
 		return fmt.Errorf("release creation failed (%d): %s", resp.StatusCode, string(respBody))
 	}
 	return nil
+}
+
+// LatestRelease fetches the most recent release from the remote.
+func (c *gitHubClient) LatestRelease() (*Release, error) {
+	getURL := c.repoURL("/releases/latest")
+	fmt.Fprintf(os.Stderr, "[DEBUG] Repo/GitHub GET %s\n", getURL)
+	req, err := c.newRequest("GET", getURL, nil)
+	if err != nil {
+		return nil, err
+	}
+	resp, err := c.client.Do(req)
+	if err != nil {
+		return nil, fmt.Errorf("fetching latest release: %w", err)
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("latest release fetch failed: %d", resp.StatusCode)
+	}
+	var release Release
+	if err := json.NewDecoder(resp.Body).Decode(&release); err != nil {
+		return nil, fmt.Errorf("decoding release: %w", err)
+	}
+	return &release, nil
+}
+
+// DownloadReleaseAsset downloads a release asset by its ID.
+func (c *gitHubClient) DownloadReleaseAsset(assetID int) ([]byte, error) {
+	getURL := c.repoURL(fmt.Sprintf("/releases/assets/%d", assetID))
+	req, err := c.newRequest("GET", getURL, nil)
+	if err != nil {
+		return nil, err
+	}
+	// Gitea/GitHub requires the Accept header for asset downloads.
+	req.Header.Set("Accept", "application/octet-stream")
+	resp, err := c.client.Do(req)
+	if err != nil {
+		return nil, fmt.Errorf("downloading asset %d: %w", assetID, err)
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("asset download failed: %d", resp.StatusCode)
+	}
+	return io.ReadAll(resp.Body)
 }

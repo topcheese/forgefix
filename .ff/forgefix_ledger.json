@@ -1,5 +1,4 @@
 {
-  "version": "0.0.0",
   "entries": {
     "forgefix": {
       "pipeline_id": "forgefix",
@@ -201,8 +200,10 @@
     "SPEC-1783714113": {
       "spec_id": "Add Version Check And Self-update Using NAS Gitea Releases",
       "repo_issue_id": 512,
-      "status": "ship",
-      "linked_commits": []
+      "status": "review",
+      "linked_commits": [
+        "ef03aef"
+      ]
     },
     "SPEC-1783714300": {
       "spec_id": "Migrate Ledger Data To SQLite And Remove Cruft From JSON",
@@ -226,6 +227,12 @@
       "spec_id": "Migrate Spec Archiving From Filesystem To SQLite",
       "repo_issue_id": 520,
       "status": "ship",
+      "linked_commits": []
+    },
+    "SPEC-1783723663": {
+      "spec_id": "Restore Type And Status Prefix In Remote Issue Titles",
+      "repo_issue_id": 0,
+      "status": "draft",
       "linked_commits": []
     }
   }

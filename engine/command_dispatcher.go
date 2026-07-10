@@ -1,7 +1,12 @@
 package engine
 
 import (
+	"fmt"
 	"io"
+	"os"
+	"path/filepath"
+	"runtime"
+	"strings"
 )
 
 // CommandResult represents the outcome of executing a command.
@@ -94,8 +99,101 @@ func (d *CommandDispatcher) handleHelp() CommandResult {
 	return CommandResult{ExitCode: 0}
 }
 
-// handleVersion prints version information to the configured stdout writer.
+// handleVersion prints version information to the configured stdout writer
+// and checks for a newer release on the NAS Gitea when configured.
 func (d *CommandDispatcher) handleVersion() CommandResult {
 	PrintVersion(d.Stdout)
+	checkAndPromptUpdate(d.ConfigDir, d.Stdout, d.Stderr, false)
 	return CommandResult{ExitCode: 0}
+}
+
+// checkAndPromptUpdate queries the configured Gitea for the latest release.
+// If a newer version exists it prints the info and prompts the user to update.
+// In aiMode the prompt is skipped — only the latest version is printed.
+func checkAndPromptUpdate(configDir string, stdout, stderr io.Writer, aiMode bool) {
+	loaded, err := LoadPipelineConfig(configDir)
+	if err != nil {
+		return
+	}
+	if loaded.Config.GitHub == nil || loaded.Config.GitHub.Token == "" {
+		return
+	}
+	coord := NewCoordinatorFromConfig(loaded.Config, configDir, aiMode)
+	if coord == nil {
+		return
+	}
+	release, err := coord.LatestRelease()
+	if err != nil {
+		return
+	}
+	if release.TagName == "" {
+		return
+	}
+	// Strip leading "v" for comparison
+	latest := strings.TrimPrefix(release.TagName, "v")
+	current := Version
+	if latest <= current {
+		return
+	}
+	fmt.Fprintf(stdout, "New version available: %s (current: %s)\n", release.TagName, current)
+	if aiMode {
+		return
+	}
+	fmt.Fprint(stdout, "Update now? [y/N]: ")
+	var response string
+	fmt.Scanln(&response)
+	if strings.ToLower(strings.TrimSpace(response)) != "y" {
+		return
+	}
+	runUpdate(configDir, coord, latest, stdout, stderr)
+}
+
+// runUpdate downloads the latest release binary and installs it.
+func runUpdate(configDir string, coord *IssueCoordinator, version string, stdout, stderr io.Writer) {
+	release, err := coord.LatestRelease()
+	if err != nil {
+		fmt.Fprintf(stderr, "Update failed: %v\n", err)
+		return
+	}
+	// Find asset matching current platform
+	assetName := fmt.Sprintf("forgefix-%s", runtime.GOOS)
+	var asset *ReleaseAsset
+	for i, a := range release.Assets {
+		if strings.Contains(a.Name, assetName) {
+			asset = &release.Assets[i]
+			break
+		}
+	}
+	if asset == nil {
+		fmt.Fprintf(stderr, "Update failed: no asset found for %s\n", assetName)
+		return
+	}
+	data, err := coord.DownloadReleaseAsset(asset.ID)
+	if err != nil {
+		fmt.Fprintf(stderr, "Update failed: %v\n", err)
+		return
+	}
+	// Write to a temp file, make executable, replace current binary
+	tmpPath := filepath.Join(os.TempDir(), "ff-update")
+	if err := os.WriteFile(tmpPath, data, 0755); err != nil {
+		fmt.Fprintf(stderr, "Update failed: writing temp file: %v\n", err)
+		return
+	}
+	exe, err := os.Executable()
+	if err != nil {
+		fmt.Fprintf(stderr, "Update failed: finding executable: %v\n", err)
+		return
+	}
+	backupPath := exe + ".bak"
+	os.Rename(exe, backupPath) // ignore error if backup fails
+	if err := os.Rename(tmpPath, exe); err != nil {
+		os.Rename(backupPath, exe) // restore backup
+		fmt.Fprintf(stderr, "Update failed: replacing binary: %v\n", err)
+		return
+	}
+	fmt.Fprintf(stdout, "Updated to version %s.\n", version)
+	// Propagate to all PATH locations
+	bm := NewBinaryManager()
+	bm.EnsureDev(configDir)
+	bm.InstallGlobal()
 }

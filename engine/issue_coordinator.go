@@ -530,6 +530,22 @@ func (c *IssueCoordinator) CreateRelease(version, body string) error {
 	return c.gh.CreateRelease(version, body)
 }
 
+// LatestRelease returns the most recent release from the remote.
+func (c *IssueCoordinator) LatestRelease() (*Release, error) {
+	if c.isInactive() {
+		return nil, fmt.Errorf("coordinator inactive: placeholder or empty credentials")
+	}
+	return c.gh.LatestRelease()
+}
+
+// DownloadReleaseAsset downloads a release asset by its ID.
+func (c *IssueCoordinator) DownloadReleaseAsset(assetID int) ([]byte, error) {
+	if c.isInactive() {
+		return nil, fmt.Errorf("coordinator inactive: placeholder or empty credentials")
+	}
+	return c.gh.DownloadReleaseAsset(assetID)
+}
+
 func (c *IssueCoordinator) BatchCloseIssues(issueNumbers []int) []error {
 	errs := make([]error, len(issueNumbers))
 	if c.isInactive() {
