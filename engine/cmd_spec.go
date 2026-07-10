@@ -80,6 +80,7 @@ func createSpec(configDir, name string, d *CommandDispatcher, flags CLIArgs) err
 	origSpecID, origTitle, isDup := FindDuplicateSpec(configDir, title)
 	if isDup {
 		action := promptForDuplicateAction(title, origTitle, origSpecID, flags.AIMode)
+		switch action {
 		case "link":
 			fmt.Fprintf(d.Stdout, "Linking to existing spec %s (%s).\n", origSpecID, origTitle)
 			return nil
