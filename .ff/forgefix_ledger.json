@@ -206,6 +206,14 @@
         "bb2a334"
       ]
     },
+    "SPEC-1783714113": {
+      "spec_id": "Add Version Check And Self Update Using Nas Gitea Releases",
+      "repo_issue_id": 0,
+      "status": "review",
+      "linked_commits": [
+        "dd00843"
+      ]
+    },
     "SPEC-1783825678": {
       "spec_id": "SPEC-1783825678",
       "repo_issue_id": 57,
