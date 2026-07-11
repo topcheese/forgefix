@@ -1,6 +1,6 @@
 ---
 spec_id: "SPEC-1783645711"
-status: review
+status: closed
 repo_issue: 490
 type: feature
 version: "0.9.0"
