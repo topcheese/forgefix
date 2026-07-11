@@ -5,7 +5,7 @@ repo_issue: 516
 type: feature
 version: "0.9.0"
 root_cause: "effectiveSpecBody was used for issue creation but not for body updates — the comparison and UpdateIssueBody calls used raw spec.Body instead, causing inconsistent posting for template-only bodies"
-resolution: "Fixed in engine/issue_coordinator.go:981-982 — comparison and update now use effectiveSpecBody(spec) to match what was actually posted at creation time."
+resolution: "Fixed in df6dd64 (engine/issue_coordinator.go:981-982 — comparison and update use effectiveSpecBody). Test added in 2e91545 (TestSyncIssueBodyUpdatesOnEffectiveBodyChange)."
 ---
 # Fix Issue Body Syncing To Post Complete Spec Content
 
