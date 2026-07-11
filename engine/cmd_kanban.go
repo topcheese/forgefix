@@ -184,7 +184,7 @@ func (d *CommandDispatcher) kanbanList(db *DB) (CommandResult, error) {
 					extra = fmt.Sprintf(" [tests: %d/%d pass, %d fail]", s.TotalPassed, s.TotalRan, s.TotalFailed)
 				}
 			}
-			fmt.Fprintf(d.Stdout, "  %s%s:\n", col.Title, extra)
+			fmt.Fprintf(d.Stdout, "%s%s:\n", col.Title, extra)
 			for _, card := range col.Cards {
 				statusInfo := ""
 				if strings.HasPrefix(card.Title, "SPEC-") || strings.HasPrefix(card.Title, "SPEC ") {
@@ -195,7 +195,7 @@ func (d *CommandDispatcher) kanbanList(db *DB) (CommandResult, error) {
 						}
 					}
 				}
-				fmt.Fprintf(d.Stdout, "    - [%s] %s%s (%s)\n", card.Status, card.Title, statusInfo, card.ID)
+				fmt.Fprintf(d.Stdout, "  - [%s] %s%s (%s)\n", card.Status, card.Title, statusInfo, card.ID)
 			}
 		}
 	}
