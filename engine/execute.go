@@ -698,9 +698,8 @@ func verifyCommitSpecBindings(configDir string) error {
 		specID := matches[1]
 		specEntry := ledger.GetSpecEntry(specID)
 		if specEntry == nil {
-			// Spec may have been archived (shipped and moved to specs/archive/).
-			// Check the archive directory before flagging as orphaned.
-			if isArchivedSpec(configDir, specID) {
+			// Spec was removed from the ledger — check archive directory and DB.
+			if isArchivedSpec(configDir, specID) || isSpecInDB(configDir, specID) {
 				continue
 			}
 			return fmt.Errorf("orphaned commit detected: specID %s not found in ledger (commit %s)", specID, commitHash[:8])
@@ -712,6 +711,19 @@ func verifyCommitSpecBindings(configDir string) error {
 	}
 
 	return nil
+}
+
+// isSpecInDB checks whether the spec ID exists in the SQLite database.
+// Used as a fallback when the spec is not in the ledger but was archived to DB.
+func isSpecInDB(configDir, specID string) bool {
+	db, err := OpenDB(configDir)
+	if err != nil {
+		return false
+	}
+	defer db.Close()
+	var count int
+	err = db.Conn().QueryRow("SELECT COUNT(*) FROM specs WHERE spec_id = ?", specID).Scan(&count)
+	return err == nil && count > 0
 }
 
 // isArchivedSpec reports whether specID appears in any archive file under
