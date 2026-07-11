@@ -175,8 +175,10 @@
     "SPEC-1783672995": {
       "spec_id": "Implement Comprehensive Paperclip Integration Documentation And Agent Skills In Readme.Md, Fix Housekeeping Background Cleanup With Proper Error Handling, Add Test Coverage",
       "repo_issue_id": 507,
-      "status": "draft",
-      "linked_commits": []
+      "status": "review",
+      "linked_commits": [
+        "cd6f761"
+      ]
     },
     "SPEC-1783707750": {
       "spec_id": "Implement Interactive Kanban Board For Ff",
