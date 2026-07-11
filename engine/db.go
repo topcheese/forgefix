@@ -311,10 +311,12 @@ func parseArchiveBlock(block string) (map[string]string, string) {
 	return fm, body
 }
 
-// CountArchivedSpecs returns the number of specs in the DB with status "archived".
+// CountArchivedSpecs returns the number of specs in the DB that have been
+// archived (status = 'archived', 'closed', or 'resolved'). These are specs
+// that were imported from old archive files OR archived by `ff archive`.
 func (db *DB) CountArchivedSpecs() (int, error) {
 	var count int
-	err := db.Conn().QueryRow("SELECT COUNT(*) FROM specs WHERE status = 'archived'").Scan(&count)
+	err := db.Conn().QueryRow("SELECT COUNT(*) FROM specs WHERE status IN ('archived', 'closed', 'resolved')").Scan(&count)
 	if err != nil {
 		return 0, err
 	}
