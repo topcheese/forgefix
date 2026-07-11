@@ -1,12 +1,13 @@
 ---
 spec_id: "SPEC-1783788768"
-status: draft
+status: review
 repo_issue: 526
 type: feature
 version: "0.9.0"
 root_cause: "Spec commits are tracked in the JSON ledger but not in the spec file itself. The resolution field uses bare hashes with no linkable reference."
-resolution: ""
----
+resolution: "Implemented in 0adf749. linked_commits field added to template, parsed in SpecFile, written by UpdateLedgerAfterCommit via UpdateSpecFileLinkedCommits helper."
+linked_commits: ["d7adac0"]
+linked_commits: ["d7adac0"]
 # Add Commit Tracking Field To Spec Frontmatter
 
 ## Objective
