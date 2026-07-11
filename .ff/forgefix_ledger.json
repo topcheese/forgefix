@@ -155,8 +155,10 @@
     "SPEC-1783669783": {
       "spec_id": "Implement Comprehensive Paperclip Integration Documentation And Agent Skills Features In Readme.Md",
       "repo_issue_id": 494,
-      "status": "draft",
-      "linked_commits": []
+      "status": "review",
+      "linked_commits": [
+        "1bab7fb"
+      ]
     },
     "SPEC-1783672720": {
       "spec_id": "Update Readme.Md With Paperclip Integration And Agent Skills, Fix Housekeeping Background Cleanup And Test Coverage",
