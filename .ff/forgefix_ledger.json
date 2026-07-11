@@ -131,7 +131,8 @@
       "spec_id": "Fix Kanban Ui Alignment When Terminal Has Non Standard Tab Stops",
       "repo_issue_id": 0,
       "status": "draft",
-      "linked_commits": []
+      "linked_commits": [],
+      "type": "feature"
     },
     "SPEC-1783784714": {
       "spec_id": "Fix Ff V Update Downloads No Asset Found Error",
@@ -139,17 +140,14 @@
       "status": "review",
       "linked_commits": [
         "008e26a"
-      ]
+      ],
+      "type": "feature"
     },
     "SPEC-1783785602": {
       "spec_id": "Use Current Project Version In Spec Template Instead Of Hardcoded V0.8.0",
-      "repo_issue_id": 0,
+      "repo_issue_id": 529,
       "status": "review",
-      "linked_commits": [
-        "bf27d70",
-        "ff9645d",
-        "6ebb117"
-      ]
+      "linked_commits": []
     },
     "SPEC-1783786100": {
       "spec_id": "Test Version",
@@ -171,22 +169,31 @@
     },
     "SPEC-1783788768": {
       "spec_id": "Add Commit Tracking Field To Spec Frontmatter",
-      "repo_issue_id": 0,
+      "repo_issue_id": 526,
       "status": "draft",
-      "linked_commits": []
+      "linked_commits": [],
+      "type": "feature"
     },
     "SPEC-1783790935": {
-      "spec_id": "Add Build Tags For Windows Cross Compilation Support",
-      "repo_issue_id": 0,
+      "spec_id": "Add Build Tags For Windows Cross-compilation Support",
+      "repo_issue_id": 527,
       "status": "draft",
-      "linked_commits": []
+      "linked_commits": [],
+      "type": "bug"
     },
     "SPEC-1783791504": {
-      "spec_id": "Fix Release Body Doubled Spec Ids And Add Clickable Links",
+      "spec_id": "Fix Release Body Doubled Spec IDs And Add Clickable Links",
+      "repo_issue_id": 528,
+      "status": "review",
+      "linked_commits": [],
+      "type": "bug"
+    },
+    "SPEC-1783794206": {
+      "spec_id": "Test Linked Commits2",
       "repo_issue_id": 0,
       "status": "review",
       "linked_commits": [
-        "08d001b"
+        "e1ff01d"
       ]
     }
   }

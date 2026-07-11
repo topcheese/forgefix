@@ -9,17 +9,18 @@ import (
 )
 
 // SpecFile represents a parsed spec file from the specs/ directory.
-type SpecFile struct {
-	SpecID     string
-	Title      string
-	Body       string
-	RepoIssue  int
-	Status     string
-	FilePath   string
-	Type       string
-	Version    string
-	RootCause  string
-	Resolution string
+	type SpecFile struct {
+	SpecID        string
+	Title         string
+	Body          string
+	RepoIssue     int
+	Status        string
+	FilePath      string
+	Type          string
+	Version       string
+	RootCause     string
+	Resolution    string
+	LinkedCommits []string
 }
 
 // htmlCommentRE matches HTML comments spanning multiple lines.
@@ -172,6 +173,22 @@ func (m *specManager) ParseSpecFile(filePath string) (*SpecFile, error) {
 		} else if strings.HasPrefix(line, "resolution:") {
 			spec.Resolution = strings.TrimSpace(strings.TrimPrefix(line, "resolution:"))
 			spec.Resolution = strings.Trim(spec.Resolution, `"`)
+		} else if strings.HasPrefix(line, "linked_commits:") {
+			// Parse YAML list: [hash1, hash2] or []
+			val := strings.TrimSpace(strings.TrimPrefix(line, "linked_commits:"))
+			val = strings.Trim(val, `"`)
+			if strings.HasPrefix(val, "[") && strings.HasSuffix(val, "]") {
+				inner := val[1 : len(val)-1]
+				if inner != "" {
+					for _, part := range strings.Split(inner, ",") {
+						h := strings.TrimSpace(part)
+						h = strings.Trim(h, `"' `)
+						if h != "" {
+							spec.LinkedCommits = append(spec.LinkedCommits, h)
+						}
+					}
+				}
+			}
 		}
 	}
 

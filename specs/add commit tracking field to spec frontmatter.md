@@ -1,7 +1,7 @@
 ---
 spec_id: "SPEC-1783788768"
 status: draft
-repo_issue: ""
+repo_issue: 526
 type: feature
 version: "0.9.0"
 root_cause: "Spec commits are tracked in the JSON ledger but not in the spec file itself. The resolution field uses bare hashes with no linkable reference."

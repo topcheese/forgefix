@@ -204,3 +204,70 @@ func UpdateSpecFileStatus(filePath, status string) error {
 	}
 	return os.WriteFile(filePath, []byte(strings.Join(lines, "\n")), 0644)
 }
+
+// UpdateSpecFileLinkedCommits appends a commit hash to the spec file's
+// linked_commits frontmatter field. If the field doesn't exist it is created.
+func UpdateSpecFileLinkedCommits(filePath string, newHash string) error {
+	data, err := os.ReadFile(filePath)
+	if err != nil {
+		return err
+	}
+	content := string(data)
+	lines := strings.Split(content, "\n")
+	inFrontmatter := false
+	found := false
+	for i, line := range lines {
+		trimmed := strings.TrimSpace(line)
+		if trimmed == "---" && !inFrontmatter {
+			inFrontmatter = true
+			continue
+		}
+		if trimmed == "---" && inFrontmatter {
+			break
+		}
+		if inFrontmatter && strings.HasPrefix(trimmed, "linked_commits:") {
+			// Parse existing YAML list: [hash1, hash2] or []
+			start := strings.Index(trimmed, "[")
+			end := strings.LastIndex(trimmed, "]")
+			if start >= 0 && end > start {
+				existing := trimmed[start+1 : end]
+				if existing != "" {
+					parts := strings.Split(existing, ",")
+					for _, p := range parts {
+						h := strings.TrimSpace(p)
+						h = strings.Trim(h, `"'`)
+						if h == newHash {
+							return nil // already present
+						}
+					}
+				}
+				var sb strings.Builder
+				sb.WriteString("linked_commits: [")
+				if existing != "" {
+					sb.WriteString(existing)
+					sb.WriteString(", ")
+				}
+				sb.WriteString(fmt.Sprintf(`"%s"`, newHash))
+				sb.WriteString("]")
+				lines[i] = sb.String()
+				found = true
+			}
+			break
+		}
+	}
+	if !found {
+		// Field doesn't exist — add it before the closing ---
+		for i, line := range lines {
+			if strings.TrimSpace(line) == "---" && i > 0 {
+				lines[i] = fmt.Sprintf(`linked_commits: ["%s"]`, newHash)
+				lines = append(lines[:i+1], append([]string{lines[i]}, lines[i+1:]...)...)
+				found = true
+				break
+			}
+		}
+	}
+	if !found {
+		return fmt.Errorf("could not find frontmatter to add linked_commits")
+	}
+	return os.WriteFile(filePath, []byte(strings.Join(lines, "\n")), 0644)
+}

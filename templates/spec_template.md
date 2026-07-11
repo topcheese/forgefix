@@ -3,9 +3,10 @@ spec_id: ""
 status: draft
 repo_issue: ""
 type: feature
-version: "0.9.5"
+version: "v0.8.0"
 root_cause: ""
 resolution: ""
+linked_commits: []
 ---
 # [Title]
 
@@ -18,8 +19,3 @@ resolution: ""
 ## Acceptance Criteria
 
 ## Verification
-
-<!--
-Available types: feature, bug, chore, docs, refactor, ops
-Available versions: v0.8.0 (current), v0.9.0
--->

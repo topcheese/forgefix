@@ -198,6 +198,9 @@ func UpdateLedgerAfterCommit(configDir, specID, commitHash string) error {
 	if err := UpdateSpecFileStatus(specFile, "review"); err != nil {
 		return fmt.Errorf("updating spec file status: %w", err)
 	}
+	if err := UpdateSpecFileLinkedCommits(specFile, commitHash); err != nil {
+		return fmt.Errorf("updating spec file linked commits: %w", err)
+	}
 
 	return SaveLedger(ledger, configDir)
 }

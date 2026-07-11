@@ -1,7 +1,7 @@
 ---
 spec_id: "SPEC-1783790935"
 status: draft
-repo_issue: ""
+repo_issue: 527
 type: bug
 version: "0.9.0"
 root_cause: "engine files use syscall.SIGWINCH, Setpgid, Kill, Setsid which are Unix-only — GOOS=windows cross-compile fails"

@@ -1,7 +1,7 @@
 ---
 spec_id: "SPEC-1783785602"
 status: review
-repo_issue: ""
+repo_issue: 529
 type: bug
 version: "0.9.0"
 root_cause: "templates/spec_template.md hardcodes version: v0.8.0 regardless of the actual compiled binary version; ff -v shows stale compile-time Version constant"
