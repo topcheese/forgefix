@@ -224,10 +224,13 @@ func (db *DB) GetLinkedCommits(specID string) ([]string, error) {
 // Returns an error if the file can't be removed (non-fatal) or the DB update fails.
 func (db *DB) ArchiveSpec(specID, title, specType string, repoIssueID int) error {
 	specDir := filepath.Join(db.configDir, "specs")
-	fileName := fmt.Sprintf("%s.md", title)
-	filePath := filepath.Join(specDir, fileName)
-	if err := os.Remove(filePath); err != nil && !os.IsNotExist(err) {
-		fmt.Fprintf(os.Stderr, "warning: failed to remove spec file %s: %v\n", fileName, err)
+	// Use findSpecFileByID to locate the file by spec_id, not by title —
+	// the title in the ledger may not match the actual filename on disk.
+	filePath, err := findSpecFileByID(specDir, specID)
+	if err == nil {
+		if err := os.Remove(filePath); err != nil {
+			fmt.Fprintf(os.Stderr, "warning: failed to remove spec file %s: %v\n", filepath.Base(filePath), err)
+		}
 	}
 	return db.UpsertSpec(specID, title, "archived", specType, "", repoIssueID, "", "", "")
 }
@@ -306,6 +309,16 @@ func parseArchiveBlock(block string) (map[string]string, string) {
 	}
 	body := strings.TrimSpace(parts[2])
 	return fm, body
+}
+
+// CountArchivedSpecs returns the number of specs in the DB with status "archived".
+func (db *DB) CountArchivedSpecs() (int, error) {
+	var count int
+	err := db.Conn().QueryRow("SELECT COUNT(*) FROM specs WHERE status = 'archived'").Scan(&count)
+	if err != nil {
+		return 0, err
+	}
+	return count, nil
 }
 
 // ImportLedger reads the current JSON ledger and writes all spec mappings and

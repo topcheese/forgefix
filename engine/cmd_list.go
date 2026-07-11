@@ -58,7 +58,17 @@ func (d *CommandDispatcher) handleListSpecs(args []string) (CommandResult, error
 	}
 
 	w.Flush()
-	fmt.Fprintf(d.Stdout, "\nActive specs: %d\nArchived specs: %d\n", activeCount, archivedCount)
+
+	// Query the DB for specs archived to SQLite (their ledger entries were removed).
+	dbArchived := 0
+	if db, err := OpenDB(d.ConfigDir); err == nil {
+		if c, err := db.CountArchivedSpecs(); err == nil {
+			dbArchived = c
+		}
+		db.Close()
+	}
+
+	fmt.Fprintf(d.Stdout, "\nActive specs: %d\nArchived specs: %d\n", activeCount, archivedCount+dbArchived)
 
 	return CommandResult{ExitCode: 0}, nil
 }

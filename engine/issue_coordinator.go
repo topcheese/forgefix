@@ -864,6 +864,8 @@ func (c *IssueCoordinator) SyncSpecs(configDir string) error {
 		c.ensureCategoryLabelsExist(ledger.WorkflowConfig)
 	}
 
+	var syncedCount int
+
 	for _, entry := range entries {
 		if entry.IsDir() || !strings.HasSuffix(entry.Name(), ".md") {
 			continue
@@ -879,6 +881,7 @@ func (c *IssueCoordinator) SyncSpecs(configDir string) error {
 			fmt.Fprintf(os.Stderr, "warning: failed to parse spec %s: %v\n", entry.Name(), err)
 			continue
 		}
+		syncedCount++
 
 		fmt.Printf("Syncing spec: %s (ID: %s)\n", spec.Title, spec.SpecID)
 
@@ -1069,6 +1072,7 @@ func (c *IssueCoordinator) SyncSpecs(configDir string) error {
 		c.performReconciliation(configDir, ledger, entries)
 	}
 
+	fmt.Printf("Spec sync completed. %d spec(s) synced.\n", syncedCount)
 	return nil
 }
 
