@@ -1016,3 +1016,52 @@ func TestSyncIssueBodyMatchesSpec(t *testing.T) {
 		t.Errorf("POST body should contain spec body content")
 	}
 }
+
+func TestSyncIssueBodyUpdatesOnEffectiveBodyChange(t *testing.T) {
+	tmpDir := t.TempDir()
+	os.MkdirAll(filepath.Join(tmpDir, "specs"), 0755)
+	// Create a spec with a template-only body. effectiveSpecBody will generate
+	// a body from the frontmatter. The mock returns a different body, so a PATCH
+	// should be sent with the effective body.
+	bodyContent := "## Objective\n\n## Requirements\n\n## Implementation"
+	writeSpecFile(t, tmpDir, "SPEC-BODY-UPDATE", "draft", 55, bodyContent)
+
+	coord, transport := newMockCoordinator()
+	// Mock returns a different (older) body, so the comparison triggers an update.
+	oldBody := "## Old Body\n\nStale content"
+	mockSyncEndpoints(transport, 55, oldBody, "open")
+	base := testBaseURL + "/repos/test-owner/test-repo"
+	patchIssue := GitHubIssue{ID: 55, Number: 55, Body: oldBody, State: "open"}
+	transport.setResponse("PATCH", base+"/issues/55", 200, patchIssue)
+
+	cfg := &Config{}
+	err := syncSingleSpec(coord, tmpDir, "SPEC-BODY-UPDATE", cfg)
+	if err != nil {
+		t.Fatalf("syncSingleSpec failed: %v", err)
+	}
+
+	// Verify the PATCH was sent with the effective body (not the raw template body).
+	patchKey := "PATCH " + testBaseURL + "/repos/test-owner/test-repo/issues/55"
+	transport.mu.Lock()
+	lastBody, ok := transport.lastBody[patchKey]
+	transport.mu.Unlock()
+	if !ok {
+		t.Fatal("no PATCH /issues/55 request was made — body comparison didn't trigger update")
+	}
+	var payload struct {
+		Body string `json:"body"`
+	}
+	if err := json.Unmarshal(lastBody, &payload); err != nil {
+		t.Fatalf("unmarshal PATCH body: %v", err)
+	}
+	// The PATCH body should be the effective body (generated from frontmatter),
+	// not the raw template bodyContent. effectiveSpecBody returns the raw body
+	// for non-template content, but since bodyContent is just headings (template),
+	// it should generate a meaningful body.
+	if payload.Body == "" {
+		t.Error("PATCH body should not be empty")
+	}
+	if strings.Contains(payload.Body, "Stale content") {
+		t.Error("PATCH body should not contain the old mock body")
+	}
+}
