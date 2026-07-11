@@ -99,9 +99,11 @@ func (d *CommandDispatcher) handleHelp() CommandResult {
 	return CommandResult{ExitCode: 0}
 }
 
-// handleVersion prints version information to the configured stdout writer.
+// handleVersion prints version information to the configured stdout writer
+// and checks for a newer release on the NAS Gitea when configured.
 func (d *CommandDispatcher) handleVersion() CommandResult {
 	PrintVersion(d.Stdout)
+	checkAndPromptUpdate(d.ConfigDir, d.Stdout, d.Stderr, false)
 	return CommandResult{ExitCode: 0}
 }
 

@@ -130,7 +130,7 @@ func NewGitHubClient(owner, repo, token, baseURL string, opts ...GitHubClientOpt
 	}
 	httpClient := &http.Client{
 		Transport: transport,
-		Timeout:   30 * time.Second,
+		Timeout:   5 * time.Second,
 	}
 
 	g := &gitHubClient{
