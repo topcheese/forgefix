@@ -91,7 +91,8 @@ type GitHubClient interface {
 	PostComment(issueNumber int, body string) error
 	CloseIssueByNumber(issueNumber int) error
 	GetIssueComments(issueNumber int) ([]GitHubComment, error)
-	CreateRelease(version, body string) error
+	CreateRelease(version, body string) (int, error)
+	UploadReleaseAsset(releaseID int, name string, data []byte) error
 	LatestRelease() (*Release, error)
 	DownloadReleaseAsset(assetID int) ([]byte, error)
 }
@@ -539,7 +540,7 @@ func (c *gitHubClient) GetIssueComments(issueNumber int) ([]GitHubComment, error
 //
 // A non-2xx response is returned as an error so callers can decide whether
 // to treat release creation as fatal.
-func (c *gitHubClient) CreateRelease(version, body string) error {
+func (c *gitHubClient) CreateRelease(version, body string) (int, error) {
 	postURL := c.repoURL("/releases")
 	payload := map[string]interface{}{
 		"tag_name":   version,
@@ -550,28 +551,34 @@ func (c *gitHubClient) CreateRelease(version, body string) error {
 	}
 	jsonBody, err := json.Marshal(payload)
 	if err != nil {
-		return fmt.Errorf("marshaling release payload: %w", err)
+		return 0, fmt.Errorf("marshaling release payload: %w", err)
 	}
 
 	fmt.Fprintf(os.Stderr, "[DEBUG] Repo/GitHub POST %s\n", postURL)
 
 	req, err := c.newRequest("POST", postURL, bytes.NewReader(jsonBody))
 	if err != nil {
-		return err
+		return 0, err
 	}
 	req.Header.Set("Content-Type", "application/json")
 
 	resp, err := c.client.Do(req)
 	if err != nil {
-		return fmt.Errorf("creating release: %w", err)
+		return 0, fmt.Errorf("creating release: %w", err)
 	}
 	defer resp.Body.Close()
 
 	respBody, _ := io.ReadAll(resp.Body)
 	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
-		return fmt.Errorf("release creation failed (%d): %s", resp.StatusCode, string(respBody))
+		return 0, fmt.Errorf("release creation failed (%d): %s", resp.StatusCode, string(respBody))
 	}
-	return nil
+	var created struct {
+		ID int `json:"id"`
+	}
+	if err := json.Unmarshal(respBody, &created); err != nil {
+		return 0, fmt.Errorf("parsing release response: %w", err)
+	}
+	return created.ID, nil
 }
 
 // LatestRelease fetches the most recent release from the remote.
@@ -595,6 +602,32 @@ func (c *gitHubClient) LatestRelease() (*Release, error) {
 		return nil, fmt.Errorf("decoding release: %w", err)
 	}
 	return &release, nil
+}
+
+// UploadReleaseAsset uploads a file as an asset to a release.
+func (c *gitHubClient) UploadReleaseAsset(releaseID int, name string, data []byte) error {
+	postURL := c.repoURL(fmt.Sprintf("/releases/%d/assets", releaseID))
+	// Gitea expects the filename as a query parameter.
+	postURL += "?name=" + url.QueryEscape(name)
+	fmt.Fprintf(os.Stderr, "[DEBUG] Repo/GitHub POST %s\n", postURL)
+
+	req, err := c.newRequest("POST", postURL, bytes.NewReader(data))
+	if err != nil {
+		return err
+	}
+	req.Header.Set("Content-Type", "application/octet-stream")
+
+	resp, err := c.client.Do(req)
+	if err != nil {
+		return fmt.Errorf("uploading asset %s: %w", name, err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
+		respBody, _ := io.ReadAll(resp.Body)
+		return fmt.Errorf("asset upload failed (%d): %s", resp.StatusCode, string(respBody))
+	}
+	return nil
 }
 
 // DownloadReleaseAsset downloads a release asset by its ID.

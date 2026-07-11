@@ -4,6 +4,8 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
+	"os/exec"
+	"runtime"
 	"strings"
 
 	"ForgeFix/engine/housekeeper"
@@ -103,10 +105,12 @@ func (sc *ShipController) Run() {
 		coord := sc.buildCoordinator()
 		if coord != nil {
 			releaseBody := sc.buildReleaseBody(shipSpecs, shipVersion)
-			if err := coord.CreateRelease(shipVersion, releaseBody); err != nil {
+			releaseID, err := coord.CreateRelease(shipVersion, releaseBody)
+			if err != nil {
 				fmt.Fprintf(os.Stderr, "Warning: failed to create release %s: %v\n", shipVersion, err)
 			} else {
 				fmt.Printf("Created release %s on remote.\n", shipVersion)
+				sc.uploadPlatformBinaries(coord, releaseID, shipVersion)
 			}
 		}
 	}
@@ -144,6 +148,48 @@ func (sc *ShipController) buildReleaseBody(shipSpecs []string, shipVersion strin
 		sb.WriteString(fmt.Sprintf("- `%s` %s\n", id, title))
 	}
 	return sb.String()
+}
+
+// uploadPlatformBinaries builds the ff binary for multiple platforms and uploads
+// each as a release asset. Non-fatal — failures are warnings, not blockers.
+func (sc *ShipController) uploadPlatformBinaries(coord *IssueCoordinator, releaseID int, shipVersion string) {
+	type target struct {
+		goos   string
+		goarch string
+		suffix string
+	}
+	targets := []target{
+		{runtime.GOOS, runtime.GOARCH, ""},
+		{"linux", "amd64", "-linux-amd64"},
+		{"darwin", "amd64", "-darwin-amd64"},
+		{"darwin", "arm64", "-darwin-arm64"},
+		{"windows", "amd64", "-windows-amd64.exe"},
+	}
+
+	for _, t := range targets {
+		assetName := "ff" + t.suffix
+		buildCmd := exec.Command("go", "build", "-o", assetName, ".")
+		buildCmd.Env = append(os.Environ(), "GOOS="+t.goos, "GOARCH="+t.goarch)
+		buildCmd.Dir = sc.configDir
+		out, err := buildCmd.CombinedOutput()
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "Warning: build failed for %s/%s: %v\n%s\n", t.goos, t.goarch, err, out)
+			continue
+		}
+
+		data, err := os.ReadFile(assetName)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "Warning: reading built binary %s: %v\n", assetName, err)
+			continue
+		}
+
+		if err := coord.UploadReleaseAsset(releaseID, assetName, data); err != nil {
+			fmt.Fprintf(os.Stderr, "Warning: upload failed for %s: %v\n", assetName, err)
+		} else {
+			fmt.Printf("Uploaded %s (%d KB)\n", assetName, len(data)/1024)
+		}
+		os.Remove(assetName)
+	}
 }
 
 // handleAuditPath processes the audit-log-based ship path: finding resolved

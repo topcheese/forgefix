@@ -155,17 +155,18 @@ func runUpdate(configDir string, coord *IssueCoordinator, version string, stdout
 		fmt.Fprintf(stderr, "Update failed: %v\n", err)
 		return
 	}
-	// Find asset matching current platform
-	assetName := fmt.Sprintf("forgefix-%s", runtime.GOOS)
+	// Find asset matching current platform. Assets are named "ff", "ff-linux-amd64",
+	// "ff-darwin-amd64", "ff-darwin-arm64", "ff-windows-amd64.exe".
+	platformSuffix := fmt.Sprintf("%s-%s", runtime.GOOS, runtime.GOARCH)
 	var asset *ReleaseAsset
 	for i, a := range release.Assets {
-		if strings.Contains(a.Name, assetName) {
+		if strings.Contains(a.Name, platformSuffix) || a.Name == "ff" {
 			asset = &release.Assets[i]
 			break
 		}
 	}
 	if asset == nil {
-		fmt.Fprintf(stderr, "Update failed: no asset found for %s\n", assetName)
+		fmt.Fprintf(stderr, "Update failed: no asset found for %s/%s\n", runtime.GOOS, runtime.GOARCH)
 		return
 	}
 	data, err := coord.DownloadReleaseAsset(asset.ID)

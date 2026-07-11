@@ -523,11 +523,19 @@ func (c *IssueCoordinator) CloseIssueByNumber(issueNumber int) error {
 // CreateRelease creates a release on the remote (Gitea/GitHub) for the
 // given version tag with the supplied body. It is non-fatal: callers should
 // log a warning and continue if it returns an error.
-func (c *IssueCoordinator) CreateRelease(version, body string) error {
+func (c *IssueCoordinator) CreateRelease(version, body string) (int, error) {
+	if c.isInactive() {
+		return 0, fmt.Errorf("coordinator inactive: placeholder or empty credentials")
+	}
+	return c.gh.CreateRelease(version, body)
+}
+
+// UploadReleaseAsset uploads a binary file as an asset to a release.
+func (c *IssueCoordinator) UploadReleaseAsset(releaseID int, name string, data []byte) error {
 	if c.isInactive() {
 		return fmt.Errorf("coordinator inactive: placeholder or empty credentials")
 	}
-	return c.gh.CreateRelease(version, body)
+	return c.gh.UploadReleaseAsset(releaseID, name, data)
 }
 
 // LatestRelease returns the most recent release from the remote.
