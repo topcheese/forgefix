@@ -8,7 +8,6 @@ import (
 	"io"
 	"os/exec"
 	"sync"
-	"syscall"
 	"time"
 )
 
@@ -51,7 +50,7 @@ func (r *Runner) Start() error {
 	}
 
 	cmd := exec.Command("bash", "-c", cmdStr)
-	cmd.SysProcAttr = &syscall.SysProcAttr{Setpgid: true}
+	setProcessGroup(cmd)
 	if r.workDir != "" {
 		cmd.Dir = r.workDir
 	}
@@ -96,7 +95,7 @@ func (r *Runner) monitorTestTimeouts(cmd *exec.Cmd) {
 					r.dashboard.UpdatePipelineMetrics(r.config.ID, "fail", tt.Name, TestTimeoutSecs*1000, r.config.TokenPatterns.TokenFail, tt.Name)
 					r.dashboard.TriggerDetonation()
 					if cmd.Process != nil {
-						syscall.Kill(-cmd.Process.Pid, syscall.SIGKILL)
+						killProcessGroup(cmd.Process.Pid)
 					}
 				})
 				return
@@ -205,7 +204,7 @@ func (r *Runner) Kill() {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 	if r.cmd != nil && r.cmd.Process != nil {
-		syscall.Kill(-r.cmd.Process.Pid, syscall.SIGKILL)
+		killProcessGroup(r.cmd.Process.Pid)
 	}
 }
 

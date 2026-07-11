@@ -132,7 +132,7 @@ func ExecuteSuite(config *Config, configDir string, aiMode bool, watchMode bool)
 	}
 
 	sigChan := make(chan os.Signal, 1)
-	signal.Notify(sigChan, syscall.SIGINT, syscall.SIGTERM, syscall.SIGWINCH)
+	signal.Notify(sigChan, syscall.SIGINT, syscall.SIGTERM, sigWINCH)
 
 	done := make(chan struct{})
 	go func() {
@@ -207,7 +207,7 @@ mainLoop:
 
 		case sig := <-sigChan:
 			switch sig {
-			case syscall.SIGWINCH:
+			case sigWINCH:
 				if ui != nil {
 					dashboard.markDirty()
 				}

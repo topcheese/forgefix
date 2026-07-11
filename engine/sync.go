@@ -6,11 +6,8 @@ import (
 	"errors"
 	"fmt"
 	"os"
-	"os/exec"
 	"path/filepath"
-	"runtime"
 	"strings"
-	"syscall"
 	"time"
 
 	"ForgeFix/engine/housekeeper"
@@ -665,34 +662,6 @@ func syncSingleSpec(coord *IssueCoordinator, configDir, specID string, cfg *Conf
 	return nil
 }
 
-func SpawnBackgroundSync(configDir, specID string) error {
-	exe, err := os.Executable()
-	if err != nil {
-		return fmt.Errorf("finding executable: %w", err)
-	}
-
-	args := []string{"sync"}
-	if specID != "" {
-		args = append(args, "--spec", specID)
-	}
-
-	cmd := exec.Command(exe, args...)
-	cmd.Dir = configDir
-
-	if runtime.GOOS != "windows" {
-		cmd.SysProcAttr = &syscall.SysProcAttr{
-			Setsid: true,
-		}
-	}
-
-	if err := cmd.Start(); err != nil {
-		return fmt.Errorf("starting background sync: %w", err)
-	}
-
-	return cmd.Process.Release()
-}
-
-// clearRepoIssueForSpec finds a spec file by SpecID and clears its repo_issue
 // field to 0, both in the spec file and in the ledger. This prevents future
 // sync operations from being enqueued for a deleted remote issue.
 func clearRepoIssueForSpec(configDir, specID string, coord *IssueCoordinator) {
