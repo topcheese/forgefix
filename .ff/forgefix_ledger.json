@@ -199,8 +199,10 @@
     "SPEC-1783784714": {
       "spec_id": "Fix Ff V Update Downloads No Asset Found Error",
       "repo_issue_id": 0,
-      "status": "draft",
-      "linked_commits": []
+      "status": "review",
+      "linked_commits": [
+        "008e26a"
+      ]
     },
     "SPEC-1783785602": {
       "spec_id": "Use Current Project Version In Spec Template Instead Of Hardcoded V0.8.0",

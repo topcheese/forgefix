@@ -162,9 +162,18 @@ func runUpdate(configDir string, coord *IssueCoordinator, version string, stdout
 	platformSuffix := fmt.Sprintf("%s-%s", runtime.GOOS, runtime.GOARCH)
 	var asset *ReleaseAsset
 	for i, a := range release.Assets {
-		if strings.Contains(a.Name, platformSuffix) || a.Name == "ff" {
+		if strings.HasSuffix(a.Name, platformSuffix) {
 			asset = &release.Assets[i]
 			break
+		}
+	}
+	if asset == nil {
+		// Fall back to exact match for the platform-agnostic "ff" binary.
+		for i, a := range release.Assets {
+			if a.Name == "ff" {
+				asset = &release.Assets[i]
+				break
+			}
 		}
 	}
 	if asset == nil {
