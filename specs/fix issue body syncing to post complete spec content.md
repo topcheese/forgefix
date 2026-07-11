@@ -1,11 +1,11 @@
 ---
 spec_id: "SPEC-1783612710"
-status: draft
+status: review
 repo_issue: 516
 type: feature
-version: "v0.8.0"
-root_cause: ""
-resolution: ""
+version: "0.9.0"
+root_cause: "effectiveSpecBody was used for issue creation but not for body updates — the comparison and UpdateIssueBody calls used raw spec.Body instead, causing inconsistent posting for template-only bodies"
+resolution: "Fixed in engine/issue_coordinator.go:981-982 — comparison and update now use effectiveSpecBody(spec) to match what was actually posted at creation time."
 ---
 # Fix Issue Body Syncing To Post Complete Spec Content
 
@@ -27,13 +27,17 @@ titles (triple spaces). Fix the body quality validation and title formatting.
 
 ## Implementation
 
-- In `syncSingleSpec` or `SyncSpecs`, before calling `CreateIssueWithBody`,
-  check if `spec.Body` is essentially empty (only template text). If so,
-  generate a body from the spec's frontmatter fields (objective, requirements).
-- In `ff spec --ai`, sanitize the spec title to avoid garbled spacing from
-  `--` or other special character sequences.
-- In the body comparison at `issue_coordinator.go:956`, normalize whitespace
-  before comparing `remoteIssue.Body` to `spec.Body`.
+- `spec_manager.go`: Added `isTemplateBody()` to detect template-only bodies
+  and `effectiveSpecBody(spec)` to return a meaningful body (from frontmatter
+  fields) when the body is empty template text. `effectiveSpecBody` was already
+  used for issue creation (`CreateIssueWithBody` calls).
+- `cmd_spec.go:242`: Added `sanitizeSpecTitle(name)` to handle `--` in spec
+  names — replaces dashes with spaces and collapses multiple spaces.
+- `issue_coordinator.go:981-982`: **Fixed gap** — the body comparison and
+  `UpdateIssueBody` call used raw `spec.Body` instead of
+  `effectiveSpecBody(spec)`. Changed to use `postedBody := effectiveSpecBody(spec)`
+  so the comparison and update match what was actually posted at creation time.
+  Previously, template-only bodies would cause a mismatch on every sync.
 
 ## Acceptance Criteria
 

@@ -978,8 +978,9 @@ func (c *IssueCoordinator) SyncSpecs(configDir string) error {
 			}
 
 			if remoteIssue != nil {
-				if remoteIssue.Body != spec.Body {
-					err := c.UpdateIssueBody(spec.RepoIssue, spec.Body)
+				postedBody := effectiveSpecBody(spec)
+				if remoteIssue.Body != postedBody {
+					err := c.UpdateIssueBody(spec.RepoIssue, postedBody)
 					if err != nil {
 						fmt.Fprintf(os.Stderr, "error updating issue #%d: %v\n", spec.RepoIssue, err)
 						continue
