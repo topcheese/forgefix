@@ -573,8 +573,10 @@ func TestSyncSpecsIdempotent_ResolvedSpecGetsClosedByTitle(t *testing.T) {
 	if commentCount > 0 {
 		t.Error("expected 0 direct resolution comment calls (now uses housekeeping queue)")
 	}
-	if patchCount > 0 {
-		t.Error("expected 0 direct close calls (now uses housekeeping queue)")
+	// Allow 1 PATCH for the title sync (prefixed type/status format).
+	// Additional PATCH calls indicate a direct close, which should be queued instead.
+	if patchCount > 1 {
+		t.Errorf("expected at most 1 PATCH (title sync), got %d (direct close not allowed)", patchCount)
 	}
 
 	// Verify tasks were enqueued in the housekeeping queue

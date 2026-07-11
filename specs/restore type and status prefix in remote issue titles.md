@@ -1,11 +1,11 @@
 ---
 spec_id: "SPEC-1783723663"
-status: draft
+status: review
 repo_issue: 522
 type: bug
 version: "0.9.0"
 root_cause: "During a refactor, the [type][status] prefix was stripped from remote issue titles created by SyncSpecs. Issues now show only the plain spec title with no type/status context."
-resolution: ""
+resolution: "Implemented in issue_coordinator.go: prefixedTitle() helper, used in creation and rebind paths; title sync on status change during SyncSpecs."
 ---
 # Restore Type And Status Prefix In Remote Issue Titles
 

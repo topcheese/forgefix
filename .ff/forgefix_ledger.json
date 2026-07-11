@@ -186,8 +186,10 @@
     "SPEC-1783723663": {
       "spec_id": "Restore Type And Status Prefix In Remote Issue Titles",
       "repo_issue_id": 522,
-      "status": "draft",
-      "linked_commits": [],
+      "status": "review",
+      "linked_commits": [
+        "3228653"
+      ],
       "type": "bug"
     },
     "SPEC-1783784686": {
@@ -227,6 +229,12 @@
     },
     "SPEC-1783786157": {
       "spec_id": "Verify Fix",
+      "repo_issue_id": 0,
+      "status": "draft",
+      "linked_commits": []
+    },
+    "SPEC-1783788768": {
+      "spec_id": "Add Commit Tracking Field To Spec Frontmatter",
       "repo_issue_id": 0,
       "status": "draft",
       "linked_commits": []

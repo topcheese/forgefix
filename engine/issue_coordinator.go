@@ -900,7 +900,7 @@ func (c *IssueCoordinator) SyncSpecs(configDir string) error {
 				fmt.Printf("Found existing remote issue #%d for spec: %s (skipping POST)\n", existing.Number, spec.Title)
 			} else {
 				c.markSpecAsDuplicateIfNeeded(spec)
-				title := spec.Title
+				title := prefixedTitle(spec)
 				if !IsValidIssueTitle(title) {
 					title = fmt.Sprintf("feat/spec: %s", title)
 				}
@@ -951,7 +951,7 @@ func (c *IssueCoordinator) SyncSpecs(configDir string) error {
 						fmt.Printf("Found existing remote issue #%d for spec: %s (rebinding)\n", existing.Number, spec.Title)
 					} else {
 						c.markSpecAsDuplicateIfNeeded(spec)
-						title := spec.Title
+						title := prefixedTitle(spec)
 						if !IsValidIssueTitle(title) {
 							title = fmt.Sprintf("feat/spec: %s", title)
 						}
@@ -999,6 +999,16 @@ func (c *IssueCoordinator) SyncSpecs(configDir string) error {
 					fmt.Printf("Updated issue #%d for spec: %s\n", spec.RepoIssue, spec.Title)
 				} else {
 					fmt.Printf("Issue #%d for spec %s is up to date\n", spec.RepoIssue, spec.Title)
+				}
+
+				// Sync the issue title with the prefixed format when status changes.
+				expectedTitle := prefixedTitle(spec)
+				if remoteIssue.Title != expectedTitle {
+					if err := c.UpdateIssueTitle(spec.RepoIssue, expectedTitle); err != nil {
+						fmt.Fprintf(os.Stderr, "warning: failed to update issue title for #%d: %v\n", spec.RepoIssue, err)
+					} else {
+						fmt.Printf("Updated issue #%d title to %q\n", spec.RepoIssue, expectedTitle)
+					}
 				}
 
 				if isResolvedStatus(spec.Status) && remoteIssue.State == "open" {
@@ -1082,6 +1092,16 @@ func (c *IssueCoordinator) SyncSpecs(configDir string) error {
 
 	fmt.Printf("Spec sync completed. %d spec(s) synced.\n", syncedCount)
 	return nil
+}
+
+// prefixedTitle returns the issue title with [type][status] prefix.
+// Example: "[feature][review] My Spec Title"
+func prefixedTitle(spec *SpecFile) string {
+	t := spec.Type
+	if t == "" {
+		t = "feature"
+	}
+	return fmt.Sprintf("[%s][%s] %s", t, spec.Status, spec.Title)
 }
 
 func (c *IssueCoordinator) performReconciliation(configDir string, ledger *LedgerEngine, entries []os.DirEntry) {
