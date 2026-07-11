@@ -347,6 +347,66 @@ func (db *DB) DeleteCard(cardID string) error {
 	return err
 }
 
+// statusColumn maps a spec status to the kanban column title it belongs in.
+var statusColumn = map[string]string{
+	"draft":       "To Do",
+	"backlog":     "To Do",
+	"in-progress": "In Progress",
+	"review":      "Review",
+	"ship":        "Done",
+	"closed":      "Done",
+}
+
+// SyncCards moves cards to the column matching their spec's ledger status.
+// Cards whose title doesn't reference a spec ID are left untouched.
+func (db *DB) SyncCards(configDir string) error {
+	ledger, err := LoadLedger(configDir)
+	if err != nil {
+		return err
+	}
+	rows, err := db.conn.Query("SELECT id, title, column_id FROM kanban_cards")
+	if err != nil {
+		return err
+	}
+	defer rows.Close()
+	for rows.Next() {
+		var id, title, colID string
+		if err := rows.Scan(&id, &title, &colID); err != nil {
+			continue
+		}
+		// Extract spec ID from card title (e.g. "SPEC-1783707750 implement kanban")
+		specID := extractSpecID(title)
+		if specID == "" {
+			// Also try non-bracketed format (plain "SPEC-XXXXXXXXX" at start of title)
+			if strings.HasPrefix(strings.ToUpper(title), "SPEC-") {
+				parts := strings.Fields(title)
+				if len(parts) > 0 && len(parts[0]) > 5 {
+					specID = strings.ToUpper(parts[0])
+				}
+			}
+		}
+		if specID == "" {
+			continue
+		}
+		entry := ledger.GetSpecEntry(specID)
+		if entry == nil {
+			continue
+		}
+		targetCol, ok := statusColumn[entry.Status]
+		if !ok {
+			continue
+		}
+		// Find the column ID that matches the target title
+		var targetColID string
+		err := db.conn.QueryRow("SELECT id FROM kanban_columns WHERE board_id = (SELECT id FROM kanban_boards LIMIT 1) AND title = ?", targetCol).Scan(&targetColID)
+		if err != nil || targetColID == "" || targetColID == colID {
+			continue
+		}
+		db.MoveCard(id, targetColID)
+	}
+	return nil
+}
+
 // ListBoards returns all boards.
 func (db *DB) ListBoards() ([]KanbanBoard, error) {
 	rows, err := db.conn.Query("SELECT id, name, created_at, updated_at FROM kanban_boards ORDER BY created_at")

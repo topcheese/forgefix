@@ -154,6 +154,11 @@ func (d *CommandDispatcher) kanbanCard(db *DB, args []string) (CommandResult, er
 }
 
 func (d *CommandDispatcher) kanbanList(db *DB) (CommandResult, error) {
+	// Auto-sync cards to match spec statuses before displaying.
+	if err := db.SyncCards(d.ConfigDir); err != nil {
+		fmt.Fprintf(d.Stderr, "warning: card sync failed: %v\n", err)
+	}
+
 	boards, err := db.ListBoards()
 	if err != nil {
 		fmt.Fprintf(d.Stderr, "error: %v\n", err)
