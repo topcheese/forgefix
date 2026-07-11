@@ -2,10 +2,13 @@ package engine
 
 import (
 	"fmt"
+	"os"
 	"strings"
+	"time"
+
+	"golang.org/x/term"
 )
 
-// handleKanban routes --kanban subcommands.
 func (d *CommandDispatcher) handleKanban(args []string) (CommandResult, error) {
 	db, err := OpenDB(d.ConfigDir)
 	if err != nil {
@@ -13,11 +16,9 @@ func (d *CommandDispatcher) handleKanban(args []string) (CommandResult, error) {
 		return CommandResult{ExitCode: 1}, nil
 	}
 	defer db.Close()
-
 	if len(args) == 0 {
 		return d.kanbanList(db)
 	}
-
 	cmd := args[0]
 	switch cmd {
 	case "init":
@@ -28,9 +29,11 @@ func (d *CommandDispatcher) handleKanban(args []string) (CommandResult, error) {
 		return d.kanbanCard(db, args[1:])
 	case "ls", "list":
 		return d.kanbanList(db)
+	case "ui", "watch":
+		return d.kanbanWatch(db)
 	default:
 		fmt.Fprintf(d.Stderr, "error: unknown kanban command %q\n", cmd)
-		fmt.Fprintln(d.Stderr, "Usage: ff --kanban <init|column|card|ls>")
+		fmt.Fprintln(d.Stderr, "Usage: ff --kanban <init|column|card|ls|ui>")
 		return CommandResult{ExitCode: 1}, nil
 	}
 }
@@ -154,11 +157,9 @@ func (d *CommandDispatcher) kanbanCard(db *DB, args []string) (CommandResult, er
 }
 
 func (d *CommandDispatcher) kanbanList(db *DB) (CommandResult, error) {
-	// Auto-sync cards to match spec statuses before displaying.
 	if err := db.SyncCards(d.ConfigDir); err != nil {
 		fmt.Fprintf(d.Stderr, "warning: card sync failed: %v\n", err)
 	}
-
 	boards, err := db.ListBoards()
 	if err != nil {
 		fmt.Fprintf(d.Stderr, "error: %v\n", err)
@@ -199,4 +200,52 @@ func (d *CommandDispatcher) kanbanList(db *DB) (CommandResult, error) {
 		}
 	}
 	return CommandResult{ExitCode: 0}, nil
+}
+
+func (d *CommandDispatcher) kanbanWatch(db *DB) (CommandResult, error) {
+	oldState, err := term.MakeRaw(int(os.Stdin.Fd()))
+	if err != nil {
+		return d.kanbanList(db)
+	}
+	defer term.Restore(int(os.Stdin.Fd()), oldState)
+	fmt.Fprint(d.Stdout, "\033[?25l")
+	defer fmt.Fprint(d.Stdout, "\033[?25h")
+
+	keyCh := make(chan byte, 1)
+	go func() {
+		b := make([]byte, 1)
+		for {
+			if _, err := os.Stdin.Read(b); err != nil {
+				return
+			}
+			keyCh <- b[0]
+		}
+	}()
+
+	tick := time.NewTicker(2 * time.Second)
+	defer tick.Stop()
+
+	db.SyncCards(d.ConfigDir)
+
+	render := func() {
+		fmt.Fprint(d.Stdout, "\033[H\033[2J")
+		db.SyncCards(d.ConfigDir)
+		d.kanbanList(db)
+	}
+
+	render()
+
+	for {
+		select {
+		case key := <-keyCh:
+			if key == 'q' || key == 'Q' {
+				return CommandResult{ExitCode: 0}, nil
+			}
+			if key == 'r' || key == 'R' {
+				render()
+			}
+		case <-tick.C:
+			render()
+		}
+	}
 }
