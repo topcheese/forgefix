@@ -175,9 +175,16 @@ func (d *CommandDispatcher) kanbanList(db *DB) (CommandResult, error) {
 			continue
 		}
 		for _, col := range board.Columns {
-			fmt.Fprintf(d.Stdout, "  %s:\n", col.Title)
+			extra := ""
+			if col.Title == "In Progress" {
+				stats, err := db.GetAllPipelineStats()
+				if err == nil && len(stats) > 0 {
+					s := stats[0]
+					extra = fmt.Sprintf(" [tests: %d/%d pass, %d fail]", s.TotalPassed, s.TotalRan, s.TotalFailed)
+				}
+			}
+			fmt.Fprintf(d.Stdout, "  %s%s:\n", col.Title, extra)
 			for _, card := range col.Cards {
-				// If the card title looks like a spec ID, show its ledger status.
 				statusInfo := ""
 				if strings.HasPrefix(card.Title, "SPEC-") || strings.HasPrefix(card.Title, "SPEC ") {
 					specID := strings.Fields(card.Title)[0]
