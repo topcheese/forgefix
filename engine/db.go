@@ -6,6 +6,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"time"
 
 	_ "modernc.org/sqlite"
 )
@@ -233,6 +234,161 @@ func (db *DB) ArchiveSpec(specID, title, specType string, repoIssueID int) error
 		}
 	}
 	return db.UpsertSpec(specID, title, "archived", specType, "", repoIssueID, "", "", "")
+}
+
+// ---------------------------------------------------------------------------
+// Kanban helpers
+// ---------------------------------------------------------------------------
+
+// KanbanBoard represents a board with its columns and cards.
+type KanbanBoard struct {
+	ID        string         `json:"id"`
+	Name      string         `json:"name"`
+	Columns   []KanbanColumn `json:"columns"`
+	CreatedAt string         `json:"created_at"`
+	UpdatedAt string         `json:"updated_at"`
+}
+
+// KanbanColumn represents a column within a board.
+type KanbanColumn struct {
+	ID        string       `json:"id"`
+	BoardID   string       `json:"board_id"`
+	Title     string       `json:"title"`
+	Position  int          `json:"position"`
+	Cards     []KanbanCard `json:"cards"`
+	CreatedAt string       `json:"created_at"`
+	UpdatedAt string       `json:"updated_at"`
+}
+
+// KanbanCard represents a single card in a column.
+type KanbanCard struct {
+	ID        string `json:"id"`
+	ColumnID  string `json:"column_id"`
+	CardType  string `json:"card_type"`
+	Title     string `json:"title"`
+	Status    string `json:"status"`
+	CreatedAt string `json:"created_at"`
+	UpdatedAt string `json:"updated_at"`
+}
+
+// InitDefaultBoard creates a board with standard columns if none exists.
+// Returns the board ID.
+func (db *DB) InitDefaultBoard() (string, error) {
+	// Check if any board exists
+	var count int
+	if err := db.conn.QueryRow("SELECT COUNT(*) FROM kanban_boards").Scan(&count); err != nil {
+		return "", err
+	}
+	if count > 0 {
+		var id string
+		if err := db.conn.QueryRow("SELECT id FROM kanban_boards LIMIT 1").Scan(&id); err != nil {
+			return "", err
+		}
+		return id, nil
+	}
+
+	boardID := "default"
+	if _, err := db.conn.Exec("INSERT INTO kanban_boards (id, name) VALUES (?, ?)", boardID, "Default Board"); err != nil {
+		return "", err
+	}
+
+	columns := []struct {
+		id    string
+		title string
+		pos   int
+	}{
+		{"todo", "To Do", 0},
+		{"in-progress", "In Progress", 1},
+		{"review", "Review", 2},
+		{"done", "Done", 3},
+	}
+	for _, c := range columns {
+		if _, err := db.conn.Exec(
+			"INSERT INTO kanban_columns (id, board_id, title, position) VALUES (?, ?, ?, ?)",
+			boardID+"-"+c.id, boardID, c.title, c.pos,
+		); err != nil {
+			return "", err
+		}
+	}
+	return boardID, nil
+}
+
+// CreateColumn adds a new column to a board.
+func (db *DB) CreateColumn(boardID, title string) error {
+	var maxPos int
+	db.conn.QueryRow("SELECT COALESCE(MAX(position), -1) FROM kanban_columns WHERE board_id = ?", boardID).Scan(&maxPos)
+	id := fmt.Sprintf("%s-col-%d", boardID, maxPos+1)
+	_, err := db.conn.Exec(
+		"INSERT INTO kanban_columns (id, board_id, title, position) VALUES (?, ?, ?, ?)",
+		id, boardID, title, maxPos+1,
+	)
+	return err
+}
+
+// CreateCard adds a card to a column. Returns the card ID.
+func (db *DB) CreateCard(columnID, cardType, title string) (string, error) {
+	id := fmt.Sprintf("card-%d", time.Now().UnixMilli())
+	_, err := db.conn.Exec(
+		"INSERT INTO kanban_cards (id, column_id, card_type, title) VALUES (?, ?, ?, ?)",
+		id, columnID, cardType, title,
+	)
+	return id, err
+}
+
+// ListBoards returns all boards.
+func (db *DB) ListBoards() ([]KanbanBoard, error) {
+	rows, err := db.conn.Query("SELECT id, name, created_at, updated_at FROM kanban_boards ORDER BY created_at")
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var boards []KanbanBoard
+	for rows.Next() {
+		var b KanbanBoard
+		if err := rows.Scan(&b.ID, &b.Name, &b.CreatedAt, &b.UpdatedAt); err != nil {
+			return nil, err
+		}
+		boards = append(boards, b)
+	}
+	return boards, rows.Err()
+}
+
+// ListBoard retrieves a board with all its columns and cards.
+func (db *DB) ListBoard(boardID string) (*KanbanBoard, error) {
+	b := &KanbanBoard{}
+	if err := db.conn.QueryRow("SELECT id, name, created_at, updated_at FROM kanban_boards WHERE id = ?", boardID).
+		Scan(&b.ID, &b.Name, &b.CreatedAt, &b.UpdatedAt); err != nil {
+		return nil, err
+	}
+
+	colRows, err := db.conn.Query(
+		"SELECT id, board_id, title, position, created_at, updated_at FROM kanban_columns WHERE board_id = ? ORDER BY position", boardID)
+	if err != nil {
+		return nil, err
+	}
+	defer colRows.Close()
+	for colRows.Next() {
+		var c KanbanColumn
+		if err := colRows.Scan(&c.ID, &c.BoardID, &c.Title, &c.Position, &c.CreatedAt, &c.UpdatedAt); err != nil {
+			return nil, err
+		}
+		cardRows, err := db.conn.Query(
+			"SELECT id, column_id, card_type, title, status, created_at, updated_at FROM kanban_cards WHERE column_id = ? ORDER BY created_at", c.ID)
+		if err != nil {
+			return nil, err
+		}
+		for cardRows.Next() {
+			var card KanbanCard
+			if err := cardRows.Scan(&card.ID, &card.ColumnID, &card.CardType, &card.Title, &card.Status, &card.CreatedAt, &card.UpdatedAt); err != nil {
+				cardRows.Close()
+				return nil, err
+			}
+			c.Cards = append(c.Cards, card)
+		}
+		cardRows.Close()
+		b.Columns = append(b.Columns, c)
+	}
+	return b, nil
 }
 
 // ImportArchiveFiles reads all existing specs/archive/archive_*.md files and
