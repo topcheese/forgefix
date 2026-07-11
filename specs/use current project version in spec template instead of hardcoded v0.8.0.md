@@ -4,8 +4,8 @@ status: review
 repo_issue: ""
 type: bug
 version: "0.9.0"
-root_cause: "templates/spec_template.md hardcodes version: v0.8.0 regardless of the actual compiled binary version"
-resolution: "Step 1 (02efbf8): createSpec always fills version from engine.Version. Step 2 (dcdd0d7): WriteVersion now updates templates/spec_template.md after writing to the ledger."
+root_cause: "templates/spec_template.md hardcodes version: v0.8.0 regardless of the actual compiled binary version; ff -v shows stale compile-time Version constant"
+resolution: "Step 1 (02efbf8): createSpec always fills version from engine.Version. Step 2 (dcdd0d7): WriteVersion updates spec template on ship. Step 3 (4d44e49): ff -v reads project version from DB meta, falls back to compile-time Version."
 ---
 # Use Current Project Version In Spec Template Instead Of Hardcoded V0.8.0
 
