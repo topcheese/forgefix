@@ -61,6 +61,11 @@ func (vm *VersionManager) WriteVersion(version string) error {
 		content := strings.ReplaceAll(string(data), `version: "v0.8.0"`, fmt.Sprintf(`version: "%s"`, version))
 		os.WriteFile(templatePath, []byte(content), 0644)
 	}
+	// Update the DB meta table so ff -v and other tools see the current version.
+	if db, err := OpenDB(vm.configDir); err == nil {
+		db.SetProjectVersion(version)
+		db.Close()
+	}
 	return nil
 }
 
