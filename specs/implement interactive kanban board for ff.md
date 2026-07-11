@@ -1,10 +1,10 @@
 ---
 spec_id: "SPEC-1783707750"
-status: draft
+status: review
 repo_issue: 517
 type: feature
-version: "v0.8.0"
-root_cause: ""
+version: "0.9.0"
+root_cause: "No tracking UI exists for spec workflow — users must check the ledger or spec files manually to see what's in progress, review, or done"
 resolution: ""
 ---
 # Implement Interactive Kanban Board For Ff
@@ -30,17 +30,19 @@ when spec statuses change.
 
 ## Implementation
 
-- New package: `engine/kanban/` (or `engine/kanban_board.go`).
-- Data model: `KanbanBoard` → `KanbanColumn` → `KanbanCard` with Spec/PR/Commit
-  type discrimination.
-- CLI integration: `ff --kanban` routes to `handleKanban` in a new
-  `engine/cmd_kanban.go`.
-- Parsing: reuse existing `ParseFlags` pattern.
-- Persistence: read/write `.ff/kanban.json` on every mutation.
+### Completed
+- **DB schema** (migration 001, `engine/db.go`): Tables `kanban_boards`,
+  `kanban_columns`, and `kanban_cards` with foreign keys and cascade deletes.
+
+### Not yet implemented
+- CLI command `ff --kanban` (new `engine/cmd_kanban.go`).
+- Data model types and business logic (`engine/kanban/` or inline).
+- Persistence uses the existing SQLite DB tables (`kanban_*` in
+  `.ff/forgefix.db`) — the original `.ff/kanban.json` approach is superseded.
 - Sync: on load and every refresh, diff spec files and git state against cards.
-- UI: ship with simple text renderer first; Bubble Tea variant as opt-in.
-- Card → spec linking: when a card moves to Done, update the spec status from
-  `review` to `ship`.
+- UI: simple text renderer first; Bubble Tea variant as opt-in (`--kanban-ui`).
+- Card → spec linking: when a card moves to Done, update spec status via
+  `UpdateLedgerAfterCommit`.—>
 
 ## Acceptance Criteria
 
