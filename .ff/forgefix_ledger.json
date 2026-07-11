@@ -85,44 +85,11 @@
       ],
       "type": "feature"
     },
-    "SPEC-1783643913": {
-      "spec_id": "Document Paperclip Integration And Agent Skills In Readme",
-      "repo_issue_id": 0,
-      "status": "ship",
-      "linked_commits": [
-        "bdf8110"
-      ]
-    },
-    "SPEC-1783645711": {
-      "spec_id": "Make Background Housekeeping Drop Missing Specs And Report Progress",
-      "repo_issue_id": 490,
-      "status": "closed",
-      "linked_commits": [
-        "87716ee"
-      ],
-      "type": "feature"
-    },
-    "SPEC-1783664065": {
-      "spec_id": "Readme: Add Paperclip Integration And Agent Skills Docs",
-      "repo_issue_id": 492,
-      "status": "closed",
-      "linked_commits": [
-        "74b3f70"
-      ],
-      "type": "docs"
-    },
     "SPEC-1783664076": {
       "spec_id": "Add Paperclip Integration And Agent Skills Docs To Readme",
       "repo_issue_id": 0,
       "status": "draft",
       "linked_commits": []
-    },
-    "SPEC-1783669776": {
-      "spec_id": "Update Readme.Md With Complete Paperclip Integration And Agent Skills Documentation",
-      "repo_issue_id": 493,
-      "status": "closed",
-      "linked_commits": [],
-      "type": "docs"
     },
     "SPEC-1783669783": {
       "spec_id": "Implement Comprehensive Paperclip Integration Documentation And Agent Skills Features In Readme.Md",
@@ -132,38 +99,6 @@
         "1bab7fb"
       ],
       "type": "docs"
-    },
-    "SPEC-1783672720": {
-      "spec_id": "Update Readme.Md With Paperclip Integration And Agent Skills, Fix Housekeeping Background Cleanup And Test Coverage",
-      "repo_issue_id": 495,
-      "status": "closed",
-      "linked_commits": [],
-      "type": "docs"
-    },
-    "SPEC-1783672781": {
-      "spec_id": "Update Readme.Md With Complete Paperclip Integration Documentation And Agent Skills, Fix Housekeeping Background Cleanup",
-      "repo_issue_id": 496,
-      "status": "closed",
-      "linked_commits": [],
-      "type": "docs"
-    },
-    "SPEC-1783672995": {
-      "spec_id": "Implement Comprehensive Paperclip Integration Documentation And Agent Skills In Readme.Md, Fix Housekeeping Background Cleanup With Proper Error Handling, Add Test Coverage",
-      "repo_issue_id": 507,
-      "status": "closed",
-      "linked_commits": [
-        "cd6f761"
-      ],
-      "type": "feature"
-    },
-    "SPEC-1783707750": {
-      "spec_id": "Implement Interactive Kanban Board For Ff",
-      "repo_issue_id": 517,
-      "status": "draft",
-      "linked_commits": [
-        "d161126"
-      ],
-      "type": "feature"
     },
     "SPEC-1783714300": {
       "spec_id": "Migrate Ledger Data To SQLite And Remove Cruft From JSON",
@@ -239,6 +174,20 @@
       "repo_issue_id": 0,
       "status": "draft",
       "linked_commits": []
+    },
+    "SPEC-1783790935": {
+      "spec_id": "Add Build Tags For Windows Cross Compilation Support",
+      "repo_issue_id": 0,
+      "status": "draft",
+      "linked_commits": []
+    },
+    "SPEC-1783791504": {
+      "spec_id": "Fix Release Body Doubled Spec Ids And Add Clickable Links",
+      "repo_issue_id": 0,
+      "status": "review",
+      "linked_commits": [
+        "08d001b"
+      ]
     }
   }
 }

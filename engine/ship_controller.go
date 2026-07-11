@@ -140,12 +140,33 @@ func (sc *ShipController) buildReleaseBody(shipSpecs []string, shipVersion strin
 	var sb strings.Builder
 	sb.WriteString(fmt.Sprintf("## ForgeFix Release %s\n\n", shipVersion))
 	sb.WriteString("Shipped specs:\n\n")
+	baseURL := ""
+	if sc.config.GitHub != nil {
+		baseURL = sc.config.GitHub.BaseURL
+	}
 	for _, id := range shipSpecs {
-		title := id
-		if spec, err := LoadSpecByID(sc.configDir, id); err == nil && spec != nil && spec.Title != "" {
+		title := ""
+		issueURL := ""
+		if spec, err := LoadSpecByID(sc.configDir, id); err == nil && spec != nil {
 			title = spec.Title
+			if spec.RepoIssue > 0 && baseURL != "" {
+				issueURL = fmt.Sprintf("%s/repos/%s/%s/issues/%d", baseURL, sc.config.GitHub.Owner, sc.config.GitHub.Repo, spec.RepoIssue)
+			}
 		}
-		sb.WriteString(fmt.Sprintf("- `%s` %s\n", id, title))
+		if title == "" || title == id {
+			// Spec not found or title matches ID — show ID only, no doubling.
+			if issueURL != "" {
+				sb.WriteString(fmt.Sprintf("- [%s](%s)\n", id, issueURL))
+			} else {
+				sb.WriteString(fmt.Sprintf("- %s\n", id))
+			}
+		} else {
+			if issueURL != "" {
+				sb.WriteString(fmt.Sprintf("- [%s](%s) %s\n", id, issueURL, title))
+			} else {
+				sb.WriteString(fmt.Sprintf("- `%s` %s\n", id, title))
+			}
+		}
 	}
 	return sb.String()
 }

@@ -3,7 +3,7 @@ spec_id: "SPEC-1783784686"
 status: draft
 repo_issue: ""
 type: feature
-version: "v0.8.0"
+version: "v0.9.0"
 root_cause: ""
 resolution: ""
 ---
