@@ -104,12 +104,19 @@ func createSpec(configDir, name, bodyContent string, d *CommandDispatcher, flags
 	tpl := string(templateContent)
 	tpl = strings.ReplaceAll(tpl, `spec_id: ""`, fmt.Sprintf(`spec_id: "%s"`, specID))
 	tpl = strings.ReplaceAll(tpl, "created: YYYY-MM-DD", fmt.Sprintf("created: %s", now))
+	// Update the version comment in the template footer to match the binary.
+	tpl = strings.ReplaceAll(tpl, "Available versions: v0.8.0 (current), v0.9.0",
+		fmt.Sprintf("Available versions: v%s (current), v%s", Version, Version))
 	if flags.SpecType != "" {
 		tpl = strings.ReplaceAll(tpl, "type: feature", "type: "+flags.SpecType)
 	}
+	// Always fill the version with the current binary version, overriding the
+	// template default. The --ver flag allows manual override.
+	specVersion := Version
 	if flags.SpecVersion != "" {
-		tpl = strings.ReplaceAll(tpl, `version: "v0.8.0"`, fmt.Sprintf(`version: "%s"`, flags.SpecVersion))
+		specVersion = flags.SpecVersion
 	}
+	tpl = strings.ReplaceAll(tpl, `version: "v0.8.0"`, fmt.Sprintf(`version: "%s"`, specVersion))
 
 	// Split template into frontmatter and body.
 	parts := strings.SplitN(tpl, "---", 3)

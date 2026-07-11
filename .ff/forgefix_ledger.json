@@ -189,6 +189,38 @@
       "status": "draft",
       "linked_commits": [],
       "type": "bug"
+    },
+    "SPEC-1783784686": {
+      "spec_id": "Fix Kanban Ui Alignment When Terminal Has Non Standard Tab Stops",
+      "repo_issue_id": 0,
+      "status": "draft",
+      "linked_commits": []
+    },
+    "SPEC-1783784714": {
+      "spec_id": "Fix Ff V Update Downloads No Asset Found Error",
+      "repo_issue_id": 0,
+      "status": "draft",
+      "linked_commits": []
+    },
+    "SPEC-1783785602": {
+      "spec_id": "Use Current Project Version In Spec Template Instead Of Hardcoded V0.8.0",
+      "repo_issue_id": 0,
+      "status": "review",
+      "linked_commits": [
+        "bf27d70"
+      ]
+    },
+    "SPEC-1783786100": {
+      "spec_id": "Test Version",
+      "repo_issue_id": 0,
+      "status": "draft",
+      "linked_commits": []
+    },
+    "SPEC-1783786131": {
+      "spec_id": "Test Version2",
+      "repo_issue_id": 0,
+      "status": "draft",
+      "linked_commits": []
     }
   }
 }
