@@ -586,11 +586,11 @@ func checkShipGateSpecStatuses(configDir string) (shipSpecs []string, err error)
 	// First, check ledger for ship-ready specs
 	ledger, ledgerErr := LoadLedger(configDir)
 	if ledgerErr == nil {
-		for _, spec := range ledger.GetAllSpecEntries() {
+		for specID, spec := range ledger.GetAllSpecEntries() {
 			if spec.Status == "ship" {
-				shipSpecs = append(shipSpecs, spec.SpecID)
+				shipSpecs = append(shipSpecs, specID)
 			} else if spec.Status == "in-progress" {
-				blocking = append(blocking, fmt.Sprintf("  %s (%s)", spec.SpecID, spec.Status))
+				blocking = append(blocking, fmt.Sprintf("  %s (%s)", specID, spec.Status))
 			}
 			// backlog and review status do NOT block — they are non-blocking labels
 		}
