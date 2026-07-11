@@ -139,8 +139,10 @@
     "SPEC-1783664065": {
       "spec_id": "Readme: Add Paperclip Integration And Agent Skills Docs",
       "repo_issue_id": 492,
-      "status": "draft",
-      "linked_commits": []
+      "status": "review",
+      "linked_commits": [
+        "74b3f70"
+      ]
     },
     "SPEC-1783664076": {
       "spec_id": "Add Paperclip Integration And Agent Skills Docs To Readme",
