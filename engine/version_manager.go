@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
+	"path/filepath"
 	"regexp"
 	"strconv"
 	"strings"
@@ -42,14 +43,25 @@ func (vm *VersionManager) CurrentVersion() string {
 	return wrapper.Version
 }
 
-// WriteVersion persists the given version string to the project ledger.
+// WriteVersion persists the given version string to the project ledger and
+// updates the spec template so newly created specs use the current version.
 func (vm *VersionManager) WriteVersion(version string) error {
 	ledger, err := LoadLedger(vm.configDir)
 	if err != nil {
 		return fmt.Errorf("loading ledger: %w", err)
 	}
 	ledger.Version = version
-	return SaveLedger(ledger, vm.configDir)
+	if err := SaveLedger(ledger, vm.configDir); err != nil {
+		return err
+	}
+	// Update the template so future specs get the correct version.
+	templatePath := filepath.Join(vm.configDir, "templates", "spec_template.md")
+	data, err := os.ReadFile(templatePath)
+	if err == nil {
+		content := strings.ReplaceAll(string(data), `version: "v0.8.0"`, fmt.Sprintf(`version: "%s"`, version))
+		os.WriteFile(templatePath, []byte(content), 0644)
+	}
+	return nil
 }
 
 // PromptForVersion asks the user for a release version, defaulting to the

@@ -5,7 +5,7 @@ repo_issue: ""
 type: bug
 version: "0.9.0"
 root_cause: "templates/spec_template.md hardcodes version: v0.8.0 regardless of the actual compiled binary version"
-resolution: ""
+resolution: "Step 1 (02efbf8): createSpec always fills version from engine.Version. Step 2 (dcdd0d7): WriteVersion now updates templates/spec_template.md after writing to the ledger."
 ---
 # Use Current Project Version In Spec Template Instead Of Hardcoded V0.8.0
 
@@ -30,17 +30,26 @@ own compiled-in version number for spec frontmatter, not a hardcoded string.
 
 ## Implementation
 
-- In `createSpec`, replace the template's version line with `engine.Version`
-  unconditionally (not just when `flags.SpecVersion != ""`).
-- Update the template to use a placeholder like `version: "VERSION"` so it's
-  obvious it gets replaced.
-- The `--ver` flag overrides `engine.Version` when explicitly provided.
+### Step 1 (done — 02efbf8)
+- In `createSpec`, the template's `version:` line is now always replaced with
+  `engine.Version` (not just when `--ver` is provided). The `--ver` flag still
+  overrides when explicitly given.
+
+### Step 2
+- When `ff ship` bumps the project version via `VersionManager.WriteVersion`
+  (or `SetProjectVersion`), also update `templates/spec_template.md` in place
+  by replacing the `version: "vX.Y.Z"` line with the new shipped version.
+- This keeps the template in sync with the project so `createSpec` reads the
+  correct version even without relying on the compile-time `engine.Version`.
+- If the template file is missing, skip silently (non-fatal).
 
 ## Acceptance Criteria
 
 - `ff spec --ai "test" "body"` creates a spec with `version: "0.9.0"`
   (matching `engine.Version`), not `v0.8.0`.
 - `ff spec --ai "test" "body" --ver "0.5.0"` still allows manual override.
+- After `ff ship --ai`, `grep version: templates/spec_template.md` shows the
+  new shipped version.
 - All existing tests pass.
 
 ## Verification

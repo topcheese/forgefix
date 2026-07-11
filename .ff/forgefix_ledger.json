@@ -207,7 +207,8 @@
       "repo_issue_id": 0,
       "status": "review",
       "linked_commits": [
-        "bf27d70"
+        "bf27d70",
+        "ff9645d"
       ]
     },
     "SPEC-1783786100": {
@@ -218,6 +219,12 @@
     },
     "SPEC-1783786131": {
       "spec_id": "Test Version2",
+      "repo_issue_id": 0,
+      "status": "draft",
+      "linked_commits": []
+    },
+    "SPEC-1783786157": {
+      "spec_id": "Verify Fix",
       "repo_issue_id": 0,
       "status": "draft",
       "linked_commits": []
