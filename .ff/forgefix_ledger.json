@@ -237,8 +237,10 @@
     "SPEC-1783722120": {
       "spec_id": "Migrate Spec Archiving From Filesystem To SQLite",
       "repo_issue_id": 520,
-      "status": "ship",
-      "linked_commits": []
+      "status": "review",
+      "linked_commits": [
+        "5e7ee55"
+      ]
     },
     "SPEC-1783723663": {
       "spec_id": "Restore Type And Status Prefix In Remote Issue Titles",

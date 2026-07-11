@@ -1,11 +1,11 @@
 ---
 spec_id: "SPEC-1783722120"
-status: ship
+status: review
 repo_issue: 520
 type: refactor
 version: "0.9.0"
 root_cause: "ff archive moves closed spec files to specs/archive/archive_YYYYMMDD.md — file-based, unqueryable, creates stale files. DB already has a specs table; archiving should use it instead."
-resolution: ""
+resolution: "Implemented in 0d972e8. ArchiveSpec, ImportArchiveFiles, migration 003, and full DB-based archiving replacing ArchiveResolvedSpecs file-moving code. Related to SPEC-1783714300 (ledger migration) — both write to the same specs table."
 ---
 # Migrate Spec Archiving From Filesystem To SQLite
 
