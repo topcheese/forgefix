@@ -1,6 +1,6 @@
 ---
 spec_id: "SPEC-1783573136"
-status: review
+status: ship
 repo_issue: 486
 type: feature
 version: "0.9.0"

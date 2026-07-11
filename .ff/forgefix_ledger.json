@@ -72,10 +72,8 @@
     "SPEC-1783573136": {
       "spec_id": "Ff Commit   Ai Should Be Fully Non Interactive Without   Spec",
       "repo_issue_id": 486,
-      "status": "review",
-      "linked_commits": [
-        "1cdc37f"
-      ]
+      "status": "ship",
+      "linked_commits": []
     },
     "SPEC-1783576585": {
       "spec_id": "Promote",
