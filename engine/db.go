@@ -335,6 +335,18 @@ func (db *DB) CreateCard(columnID, cardType, title string) (string, error) {
 	return id, err
 }
 
+// MoveCard moves a card to a different column.
+func (db *DB) MoveCard(cardID, columnID string) error {
+	_, err := db.conn.Exec("UPDATE kanban_cards SET column_id = ?, updated_at = datetime('now') WHERE id = ?", columnID, cardID)
+	return err
+}
+
+// DeleteCard removes a card from the board.
+func (db *DB) DeleteCard(cardID string) error {
+	_, err := db.conn.Exec("DELETE FROM kanban_cards WHERE id = ?", cardID)
+	return err
+}
+
 // ListBoards returns all boards.
 func (db *DB) ListBoards() ([]KanbanBoard, error) {
 	rows, err := db.conn.Query("SELECT id, name, created_at, updated_at FROM kanban_boards ORDER BY created_at")

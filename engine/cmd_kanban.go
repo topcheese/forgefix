@@ -46,37 +46,51 @@ func (d *CommandDispatcher) kanbanInit(db *DB) (CommandResult, error) {
 }
 
 func (d *CommandDispatcher) kanbanColumn(db *DB, args []string) (CommandResult, error) {
-	if len(args) < 2 {
-		fmt.Fprintln(d.Stderr, "usage: ff --kanban column new <title>")
+	if len(args) < 1 {
+		fmt.Fprintln(d.Stderr, "usage: ff --kanban column <new|ls> [title]")
+		return CommandResult{ExitCode: 1}, nil
+	}
+	boards, err := db.ListBoards()
+	if err != nil {
+		fmt.Fprintf(d.Stderr, "error: %v\n", err)
+		return CommandResult{ExitCode: 1}, nil
+	}
+	if len(boards) == 0 {
+		fmt.Fprintln(d.Stderr, "error: no board exists. Run 'ff --kanban init' first.")
 		return CommandResult{ExitCode: 1}, nil
 	}
 	switch args[0] {
 	case "new":
+		if len(args) < 2 {
+			fmt.Fprintln(d.Stderr, "usage: ff --kanban column new <title>")
+			return CommandResult{ExitCode: 1}, nil
+		}
 		title := strings.Join(args[1:], " ")
-		boards, err := db.ListBoards()
-		if err != nil {
-			fmt.Fprintf(d.Stderr, "error: %v\n", err)
-			return CommandResult{ExitCode: 1}, nil
-		}
-		if len(boards) == 0 {
-			fmt.Fprintln(d.Stderr, "error: no board exists. Run 'ff --kanban init' first.")
-			return CommandResult{ExitCode: 1}, nil
-		}
 		if err := db.CreateColumn(boards[0].ID, title); err != nil {
 			fmt.Fprintf(d.Stderr, "error: %v\n", err)
 			return CommandResult{ExitCode: 1}, nil
 		}
 		fmt.Fprintf(d.Stdout, "Column %q created.\n", title)
 		return CommandResult{ExitCode: 0}, nil
+	case "ls":
+		board, err := db.ListBoard(boards[0].ID)
+		if err != nil {
+			fmt.Fprintf(d.Stderr, "error: %v\n", err)
+			return CommandResult{ExitCode: 1}, nil
+		}
+		for _, col := range board.Columns {
+			fmt.Fprintf(d.Stdout, "  %s (%s, pos %d)\n", col.Title, col.ID, col.Position)
+		}
+		return CommandResult{ExitCode: 0}, nil
 	default:
-		fmt.Fprintln(d.Stderr, "usage: ff --kanban column new <title>")
+		fmt.Fprintln(d.Stderr, "usage: ff --kanban column <new|ls> [title]")
 		return CommandResult{ExitCode: 1}, nil
 	}
 }
 
 func (d *CommandDispatcher) kanbanCard(db *DB, args []string) (CommandResult, error) {
 	if len(args) < 1 {
-		fmt.Fprintln(d.Stderr, "usage: ff --kanban card add <spec_id|title>")
+		fmt.Fprintln(d.Stderr, "usage: ff --kanban card <add|move|delete> ...")
 		return CommandResult{ExitCode: 1}, nil
 	}
 	switch args[0] {
@@ -111,8 +125,30 @@ func (d *CommandDispatcher) kanbanCard(db *DB, args []string) (CommandResult, er
 		}
 		fmt.Fprintf(d.Stdout, "Card %q added to column %q (id: %s)\n", title, board.Columns[0].Title, cardID)
 		return CommandResult{ExitCode: 0}, nil
+	case "move":
+		if len(args) < 3 {
+			fmt.Fprintln(d.Stderr, "usage: ff --kanban card move <card_id> <column_id>")
+			return CommandResult{ExitCode: 1}, nil
+		}
+		if err := db.MoveCard(args[1], args[2]); err != nil {
+			fmt.Fprintf(d.Stderr, "error: %v\n", err)
+			return CommandResult{ExitCode: 1}, nil
+		}
+		fmt.Fprintf(d.Stdout, "Card %s moved to column %s.\n", args[1], args[2])
+		return CommandResult{ExitCode: 0}, nil
+	case "delete", "rm":
+		if len(args) < 2 {
+			fmt.Fprintln(d.Stderr, "usage: ff --kanban card delete <card_id>")
+			return CommandResult{ExitCode: 1}, nil
+		}
+		if err := db.DeleteCard(args[1]); err != nil {
+			fmt.Fprintf(d.Stderr, "error: %v\n", err)
+			return CommandResult{ExitCode: 1}, nil
+		}
+		fmt.Fprintf(d.Stdout, "Card %s deleted.\n", args[1])
+		return CommandResult{ExitCode: 0}, nil
 	default:
-		fmt.Fprintln(d.Stderr, "usage: ff --kanban card add <spec_id|title>")
+		fmt.Fprintln(d.Stderr, "usage: ff --kanban card <add|move|delete> ...")
 		return CommandResult{ExitCode: 1}, nil
 	}
 }
@@ -136,7 +172,17 @@ func (d *CommandDispatcher) kanbanList(db *DB) (CommandResult, error) {
 		for _, col := range board.Columns {
 			fmt.Fprintf(d.Stdout, "  %s:\n", col.Title)
 			for _, card := range col.Cards {
-				fmt.Fprintf(d.Stdout, "    - [%s] %s (%s)\n", card.Status, card.Title, card.ID)
+				// If the card title looks like a spec ID, show its ledger status.
+				statusInfo := ""
+				if strings.HasPrefix(card.Title, "SPEC-") || strings.HasPrefix(card.Title, "SPEC ") {
+					specID := strings.Fields(card.Title)[0]
+					if ledger, lErr := LoadLedger(d.ConfigDir); lErr == nil {
+						if entry := ledger.GetSpecEntry(specID); entry != nil {
+							statusInfo = fmt.Sprintf(" [spec: %s]", entry.Status)
+						}
+					}
+				}
+				fmt.Fprintf(d.Stdout, "    - [%s] %s%s (%s)\n", card.Status, card.Title, statusInfo, card.ID)
 			}
 		}
 	}
