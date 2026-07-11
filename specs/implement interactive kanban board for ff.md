@@ -1,11 +1,11 @@
 ---
 spec_id: "SPEC-1783707750"
-status: draft
+status: ship
 repo_issue: 517
 type: feature
 version: "0.9.0"
 root_cause: "No tracking UI exists for spec workflow — users must check the ledger or spec files manually to see what's in progress, review, or done"
-resolution: ""
+resolution: "Implemented across multiple commits: DB schema, CLI CRUD, spec linking, pipeline stats, and interactive watch mode. See git log for SPEC-1783707750."
 ---
 # Implement Interactive Kanban Board For Ff
 
@@ -30,19 +30,18 @@ when spec statuses change.
 
 ## Implementation
 
-### Completed
-- **DB schema** (migration 001, `engine/db.go`): Tables `kanban_boards`,
-  `kanban_columns`, and `kanban_cards` with foreign keys and cascade deletes.
-
-### Not yet implemented
-- CLI command `ff --kanban` (new `engine/cmd_kanban.go`).
-- Data model types and business logic (`engine/kanban/` or inline).
-- Persistence uses the existing SQLite DB tables (`kanban_*` in
-  `.ff/forgefix.db`) — the original `.ff/kanban.json` approach is superseded.
-- Sync: on load and every refresh, diff spec files and git state against cards.
-- UI: simple text renderer first; Bubble Tea variant as opt-in (`--kanban-ui`).
-- Card → spec linking: when a card moves to Done, update spec status via
-  `UpdateLedgerAfterCommit`.—>
+### Implemented
+- **DB schema** (migration 001): Tables `kanban_boards`, `kanban_columns`,
+  `kanban_cards` with foreign keys and cascade deletes.
+- **Basic CLI** (`engine/cmd_kanban.go`): `ff --kanban init`, `column new`,
+  `column ls`, `card add`, `card move`, `card delete`, `ls`.
+- **Spec linking**: Card titles starting with `SPEC-` show the spec's ledger
+  status. `SyncCards` auto-moves cards to the matching column on every render.
+- **Live pipeline stats**: The "In Progress" column shows `[tests: X/Y pass, Z fail]`
+  from `pipeline_stats` in the DB.
+- **Interactive watch mode**: `ff --kanban ui` renders the board, redraws every
+  2s, auto-syncs cards, `q` to quit.
+- **State persistence**: All board data lives in the SQLite `kanban_*` tables.
 
 ## Acceptance Criteria
 
