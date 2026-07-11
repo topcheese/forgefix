@@ -140,21 +140,29 @@ func (sc *ShipController) buildReleaseBody(shipSpecs []string, shipVersion strin
 	var sb strings.Builder
 	sb.WriteString(fmt.Sprintf("## ForgeFix Release %s\n\n", shipVersion))
 	sb.WriteString("Shipped specs:\n\n")
-	baseURL := ""
-	if sc.config.GitHub != nil {
-		baseURL = sc.config.GitHub.BaseURL
+
+	// Derive web base from the API base URL (strip /api/v1 suffix).
+	webBase := ""
+	if sc.config.GitHub != nil && sc.config.GitHub.BaseURL != "" {
+		webBase = strings.TrimSuffix(sc.config.GitHub.BaseURL, "/api/v1")
 	}
+
 	for _, id := range shipSpecs {
 		title := ""
-		issueURL := ""
+		repoIssue := 0
 		if spec, err := LoadSpecByID(sc.configDir, id); err == nil && spec != nil {
 			title = spec.Title
-			if spec.RepoIssue > 0 && baseURL != "" {
-				issueURL = fmt.Sprintf("%s/repos/%s/%s/issues/%d", baseURL, sc.config.GitHub.Owner, sc.config.GitHub.Repo, spec.RepoIssue)
-			}
+			repoIssue = spec.RepoIssue
 		}
+
+		// Build clickable issue link when possible.
+		issueURL := ""
+		if repoIssue > 0 && webBase != "" && sc.config.GitHub != nil {
+			issueURL = fmt.Sprintf("%s/%s/%s/issues/%d", webBase, sc.config.GitHub.Owner, sc.config.GitHub.Repo, repoIssue)
+		}
+
+		// Avoid doubled IDs: when title is missing or matches the ID, show ID once.
 		if title == "" || title == id {
-			// Spec not found or title matches ID — show ID only, no doubling.
 			if issueURL != "" {
 				sb.WriteString(fmt.Sprintf("- [%s](%s)\n", id, issueURL))
 			} else {
