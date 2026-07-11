@@ -217,8 +217,10 @@
     "SPEC-1783714300": {
       "spec_id": "Migrate Ledger Data To SQLite And Remove Cruft From JSON",
       "repo_issue_id": 518,
-      "status": "ship",
-      "linked_commits": []
+      "status": "review",
+      "linked_commits": [
+        "dabe88b"
+      ]
     },
     "SPEC-1783715766": {
       "spec_id": "Finalize SQLite Schemas And Plan DB Integration",

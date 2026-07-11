@@ -1,11 +1,11 @@
 ---
 spec_id: "SPEC-1783714300"
-status: ship
+status: review
 repo_issue: 518
 type: refactor
 version: "0.9.0"
 root_cause: "forgefix_ledger.json stores version, pipeline stats, and spec_mappings in a single JSON file — hard to query, no referential integrity, migrations are manual"
-resolution: ""
+resolution: "Migration 002, meta/pipeline_stats/linked_commits tables, helper methods, ImportLedger, and version field removal from JSON all implemented in 427d632. Dual-write deferred per user decision — file is source of truth, DB is for archive/query."
 ---
 # Migrate Ledger Data To SQLite And Remove Cruft From JSON
 
@@ -34,13 +34,23 @@ truth for spec metadata, version tracking, and pipeline statistics.
 
 ## Implementation
 
-- Add migration `002` in `engine/db.go` with the new tables and import logic.
-- Add helper methods on `DB`: `SetMeta(key, value)`, `GetMeta(key)`,
-  `UpsertPipelineStats`, `GetPipelineStats`.
-- Modify `LoadLedger` and `SaveLedger` to optionally read/write from the DB
-  (dual-write: writes go to both JSON and DB; reads prefer DB when available).
-- Remove the `version` field from `SaveLedger` writes (it's in the DB now).
-- The `LedgerEngine` struct remains but its `Version` field becomes a DB read.
+### Completed (427d632)
+- Migration `002` in `engine/db.go` with `meta`, `pipeline_stats`, and
+  `linked_commits` tables plus default `project_version` insertion.
+- Helper methods: `SetMeta`, `GetMeta`, `GetAllMeta`, `ProjectVersion`,
+  `SetProjectVersion`, `UpsertPipelineStats`, `GetPipelineStats`,
+  `GetAllPipelineStats`, `UpsertSpec`, `AddLinkedCommit`, `GetLinkedCommits`,
+  `ImportLedger`.
+- `version` field removed from `SaveLedger` JSON output — it now lives in the
+  DB `meta` table.
+- `ImportLedger` runs on `OpenDB` to bulk-load existing JSON data into SQLite.
+
+### Not implemented (deferred)
+- Dual-write in `LoadLedger`/`SaveLedger` — user decision: file is source of
+  truth, DB is for archive/query. The `spec_storage: both` mode was added but
+  dual-write code was not connected.
+- `LedgerEngine` reads from DB — still reads from JSON. DB reads are available
+  via the `DB` struct directly for future use.
 
 ## Acceptance Criteria
 
