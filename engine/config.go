@@ -185,6 +185,11 @@ const genericConfigTemplate = `# ===============================================
 global_timeout_seconds: 60
 failure_decay_seconds: 15
 # auto_issue_management: true  # Uncomment to enable automatic issue creation/closure in --ai mode
+#
+# SECURITY: The test_command and pipeline command values are executed as raw
+# shell strings via bash -c. Only edit this file with trusted input. Commands
+# containing shell metacharacters (backticks, $(...), ;, or newlines) are rejected
+# when this config is loaded.
 
 languages:
   your_language_stack:
@@ -311,6 +316,18 @@ func loadConfigFromPath(path string) (*LoadedConfig, error) {
 		}
 		config.Pipelines[i].Command.Type = p.Type
 		config.Pipelines[i].TokenPatterns = lang.TokenPatterns
+
+		if err := validateCommandConfig(p.ID, config.Pipelines[i].Command); err != nil {
+			return nil, err
+		}
+	}
+
+	// The test_command field is also executed as a raw shell string in some
+	// flows, so reject the same injection indicators there.
+	for name, lang := range config.Languages {
+		if err := validateTestCommand(name, "test_command", lang.TestCommand); err != nil {
+			return nil, err
+		}
 	}
 
 	// Default spec_storage to sqlite. File mode is opt-in for backward compat.
@@ -413,7 +430,9 @@ func BuildInitConfig(wd string) ([]byte, error) {
 		if endIdx < len(yamlStr) {
 			endIdx++
 		}
-		comment := "# auto_issue_management: true  # Uncomment to enable automatic issue creation/closure in --ai mode\n"
+		comment := "# auto_issue_management: true  # Uncomment to enable automatic issue creation/closure in --ai mode\n" +
+			"# SECURITY: Pipeline test commands are executed as raw shell strings via `bash -c`.\n" +
+			"#           Only edit this file with trusted input; commands containing backticks, $(...), ;, or newlines are rejected on load.\n"
 		yamlStr = yamlStr[:endIdx] + comment + yamlStr[endIdx:]
 	}
 	excludeDirsLine := "exclude_dirs:"

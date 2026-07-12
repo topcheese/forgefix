@@ -147,7 +147,8 @@
       "spec_id": "Use Current Project Version In Spec Template Instead Of Hardcoded V0.8.0",
       "repo_issue_id": 529,
       "status": "review",
-      "linked_commits": []
+      "linked_commits": [],
+      "type": "bug"
     },
     "SPEC-1783786100": {
       "spec_id": "Test Version",
@@ -170,8 +171,10 @@
     "SPEC-1783788768": {
       "spec_id": "Add Commit Tracking Field To Spec Frontmatter",
       "repo_issue_id": 526,
-      "status": "draft",
-      "linked_commits": [],
+      "status": "review",
+      "linked_commits": [
+        "d7adac0"
+      ],
       "type": "feature"
     },
     "SPEC-1783790935": {
@@ -195,6 +198,15 @@
       "linked_commits": [
         "e1ff01d"
       ]
+    },
+    "SPEC-1783820660": {
+      "spec_id": "Remediate Shell Injection Vulnerability",
+      "repo_issue_id": 0,
+      "status": "review",
+      "linked_commits": [
+        "e973cf9"
+      ],
+      "type": "feature"
     }
   }
 }

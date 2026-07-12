@@ -74,6 +74,14 @@ func contains(slice []string, item string) bool {
 // ============================================================================
 
 func ExecuteCommand(command CommandConfig, paths []string) (string, error) {
+	// Defense-in-depth: reject any command configuration that contains unambiguous
+	// shell-injection indicators before it reaches exec.Command("bash", "-c", ...).
+	// This guards against configs built or modified outside loadConfigFromPath
+	// (e.g. the -run flag path) as well as direct callers.
+	if err := validateCommandConfig(command.Type, command); err != nil {
+		return "", err
+	}
+
 	// Clear Go's internal test cache to prevent stale buffered logs
 	if strings.HasPrefix(command.Type, "go_") {
 		exec.Command("go", "clean", "-testcache").Run()
