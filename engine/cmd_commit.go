@@ -166,6 +166,14 @@ func runCommit(wd, msg, flagSpecID, specType, specVersion string, aiMode bool, d
 		}
 	}
 
+	// Keep CHANGELOG.md in sync with changes by appending an entry derived
+	// from the conventional-commit message. Done before the commit so the
+	// change is staged and captured in the same commit. Best-effort: a
+	// failure here warns but does not fail the commit.
+	if err := AppendChangelogEntry(wd, commitMsg); err != nil {
+		fmt.Fprintf(d.Stderr, "warning: failed to update CHANGELOG.md: %v\n", err)
+	}
+
 	commitHash, err := AutoStageAndCommit(gitRoot, commitMsg)
 	if err != nil {
 		return "", "", "", err

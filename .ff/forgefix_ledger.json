@@ -207,6 +207,18 @@
         "e973cf9"
       ],
       "type": "feature"
+    },
+    "SPEC-1783898268": {
+      "spec_id": "Automatically Update Changelog.Md On Commit So It Stays In Sync With Changes",
+      "repo_issue_id": 0,
+      "status": "review",
+      "linked_commits": [
+        "68d7dd4",
+        "bd85a0f",
+        "ebfe9fd",
+        "1fb7e3c"
+      ],
+      "type": "feature"
     }
   }
 }

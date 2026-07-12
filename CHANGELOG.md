@@ -1,3 +1,8 @@
+## [Unreleased] - 2026-07-12
+
+### 🚀 Release Summary
+- feat: automatically update CHANGELOG.md on commit to keep it in sync with changes (SPEC-1783898268)
+
 ## [v0.9.0] - 2026-07-05
 
 ### 🚀 Release Summary
