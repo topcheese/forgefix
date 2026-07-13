@@ -10,10 +10,17 @@ description: "Use when making code changes, managing specs, or binding commits t
 ForgeFix (`ff`) replaces ad-hoc git workflow with a **spec-driven development lifecycle**. Every change is traceable to a spec, every spec links to a remote issue, and no code ships without a paper trail.
 
 ```
-AGENT WORKFLOW (exactly three steps):
-  ff spec --ai <title>   → Create a spec (issue contract)
-  ff test --ai           → Write the spec's tests, implement against the spec, run tests
-  ff commit --ai <msg>   → Only after tests pass: auto-detect spec, commit with binding, set "review"
+AGENT WORKFLOW (exactly five steps):
+  1. ff specs --search "<title>"   → Check for duplicates before creating (SPEC-1783931981)
+  2. ff spec --ai <title>          → Create a spec (issue contract)
+  3. [OUTPUT PRE-COMMIT SUMMARY]   → Print structured summary BEFORE calling ff commit
+  4. ff test --ai                  → Write the spec's tests, implement against the spec, run tests
+  5. ff commit --ai <msg>          → Only after tests pass + summary output: auto-detect spec, commit with binding, set "review"
+
+CRITICAL RULES:
+  - One spec at a time: commit the current spec before starting work on another
+  - Pre-commit summary MUST be output BEFORE ff commit --ai, not after
+  - ff commit --ai shows acceptance criteria from the spec — review them before confirming
 
 HUMAN-ONLY COMMANDS (never run by the agent):
   ff sync                → Talks to the remote issue tracker; requires explicit confirmation
@@ -353,28 +360,27 @@ Never lose more than one increment of work. Each save point has a paper trail vi
 
 When the feature is complete and all specs are in review, the human operator runs `ff sync --ai`, `ff ship --ai`, and `ff archive --ai` to close the loop.
 
-## Change Summaries
+## Pre-Commit Summary (MANDATORY)
 
-After any modification, provide a structured summary:
+**Before** calling `ff commit --ai`, the agent MUST output a structured change summary. This is not optional — the summary is the evidence that the work is deliberate, scoped, and tested. Output it as plain text in the conversation BEFORE the commit command:
 
 ```
-SPEC: SPEC-1741712345
+SPEC: SPEC-XXXXXXXXXX
 
 CHANGES MADE:
-- src/routes/tasks.ts: Added validation middleware
+- <file>: <what changed and why>
 
 THINGS I DIDN'T TOUCH (intentionally):
-- src/routes/auth.ts: Out of scope
+- <file or scope>: <why it was out of scope>
 
 POTENTIAL CONCERNS:
-- Added zod dependency (72KB gzipped)
+- <dependency changes, risk areas, edge cases>
 
 VERIFICATION:
-- Tests: ff --ai → JSON pass
-- Ship: ff ship --ai → passes
+- Tests: PASS (X/Y)
 ```
 
-Include the **spec ID** at the top.
+Include the **spec ID** at the top. This summary is the agent's declaration that the work matches the spec. If it doesn't match, don't commit — re-read the spec first.
 
 ## Pre-Commit Hygiene
 
@@ -603,8 +609,11 @@ ForgeFix auto-detects from anchor files: `go.mod`, `pubspec.yaml`, `package.json
 
 ### Agent (AI Mode) Red Flags
 - Agent runs `ff sync`, `ff ship`, or `ff archive` — these are HUMAN-ONLY
-- Agent's workflow exceeds the 3-step AGENT WORKFLOW (spec → test → commit)
-- Agent hand-maintains tracked artifacts (ledger, spec status) instead of using `ff` commands
+- Agent creates a spec without running `ff specs --search` for duplicates first
+- Agent commits without outputting a pre-commit change summary first
+- Agent starts work on spec Y while spec X has uncommitted changes (violates one-spec-at-a-time)
+- Agent creates a spec with a title closely matching an existing or archived spec
+- Agent uses raw `git` commands
 - Any use of raw `git` commands (all go through `ff` passthrough)
 - `ff commit` without `--ai` or `--spec` (interactive prompts fail in agent mode)
 - Specs stuck in `review` (run `ff sync --ai` to auto-promote)
@@ -625,18 +634,22 @@ ForgeFix auto-detects from anchor files: `go.mod`, `pubspec.yaml`, `package.json
 
 ## Agent Verification Checklist
 
-For every agent change cycle (exactly 3 steps):
+For every agent change cycle (exactly 5 steps):
 
-1. [ ] A spec exists (`ff specs` shows it) before code is written
-2. [ ] `ff commit --ai <msg>` auto-detects and commits with `[SPEC-XXX]`
-3. [ ] Each commit is bound to a spec (`ff specs` shows linked commits)
-4. [ ] Every `git` command replaced with `ff` passthrough
-5. [ ] `ff status --short` shows clean tree after each ff command
-6. [ ] All tests pass (`ff --ai` produces JSON pass)
-7. [ ] Build compiles (`go build ./...` or equivalent)
-8. [ ] No secrets in the diff
-9. [ ] `.gitignore` covers standard exclusions
-10. [ ] No formatting-only changes mixed with behavior changes
+1. [ ] Pre-spec duplicate check run (`ff specs --search` showed no match)
+2. [ ] A spec exists (`ff specs` shows it) before code is written
+3. [ ] Only one spec was active during this work cycle (no cross-spec leakage)
+4. [ ] Pre-commit change summary was output *before* the `ff commit --ai` call
+5. [ ] Acceptance criteria from the spec were reviewed at commit time
+6. [ ] `ff commit --ai <msg>` auto-detects and commits with `[SPEC-XXX]`
+7. [ ] Each commit is bound to a spec (`ff specs` shows linked commits)
+8. [ ] Every `git` command replaced with `ff` passthrough
+9. [ ] `ff status --short` shows clean tree after each ff command
+10. [ ] All tests pass (`ff --ai` produces JSON pass)
+11. [ ] Build compiles (`go build ./...` or equivalent)
+12. [ ] No secrets in the diff
+13. [ ] `.gitignore` covers standard exclusions
+14. [ ] No formatting-only changes mixed with behavior changes
 
 ## Human Verification Checklist
 

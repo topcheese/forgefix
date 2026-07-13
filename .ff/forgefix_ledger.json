@@ -237,6 +237,22 @@
         "c166a4b"
       ],
       "type": "feature"
+    },
+    "SPEC-1783931981": {
+      "spec_id": "Add Spec Search Command And Pre Spec Duplicate Check Workflow",
+      "repo_issue_id": 0,
+      "status": "draft",
+      "linked_commits": [],
+      "type": "feature"
+    },
+    "SPEC-1783933843": {
+      "spec_id": "Harden Agent Workflow Gates And Enforce Pre Commit Discipline",
+      "repo_issue_id": 0,
+      "status": "review",
+      "linked_commits": [
+        "146acde"
+      ],
+      "type": "feature"
     }
   }
 }
