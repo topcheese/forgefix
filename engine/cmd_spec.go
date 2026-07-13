@@ -110,13 +110,25 @@ func createSpec(configDir, name, bodyContent string, d *CommandDispatcher, flags
 	if flags.SpecType != "" {
 		tpl = strings.ReplaceAll(tpl, "type: feature", "type: "+flags.SpecType)
 	}
-	// Always fill the version with the current binary version, overriding the
-	// template default. The --ver flag allows manual override.
+	// Always fill the version with the current project version from the DB,
+	// overriding the template default. The --ver flag allows manual override.
 	specVersion := Version
+	if vm := NewVersionManager(configDir); vm != nil {
+		if pv := vm.CurrentVersion(); pv != "0.0.0" {
+			specVersion = pv
+		}
+	}
 	if flags.SpecVersion != "" {
 		specVersion = flags.SpecVersion
 	}
-	tpl = strings.ReplaceAll(tpl, `version: "v0.8.0"`, fmt.Sprintf(`version: "%s"`, specVersion))
+	// Update the version line in the template (match any version: line).
+	lines := strings.Split(tpl, "\n")
+	for i, line := range lines {
+		if strings.HasPrefix(strings.TrimSpace(line), "version:") {
+			lines[i] = fmt.Sprintf("version: \"%s\"", specVersion)
+		}
+	}
+	tpl = strings.Join(lines, "\n")
 
 	// Split template into frontmatter and body.
 	parts := strings.SplitN(tpl, "---", 3)

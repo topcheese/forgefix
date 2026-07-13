@@ -25,6 +25,14 @@ func NewVersionManager(configDir string) *VersionManager {
 // CurrentVersion reads the project version from the DB (or legacy JSON file).
 // Returns "0.0.0" if the version cannot be read.
 func (vm *VersionManager) CurrentVersion() string {
+	// DB is the canonical source of truth (written by WriteVersion).
+	if db, err := OpenDB(vm.configDir); err == nil {
+		defer db.Close()
+		if v, err := db.ProjectVersion(); err == nil && v != "" {
+			return v
+		}
+	}
+	// Fall back to the legacy ledger JSON file.
 	ledger, err := LoadLedger(vm.configDir)
 	if err != nil {
 		return "0.0.0"
@@ -47,11 +55,18 @@ func (vm *VersionManager) WriteVersion(version string) error {
 		return err
 	}
 	// Update the template so future specs get the correct version.
+	// Match any existing version: line (not just the hardcoded v0.8.0).
 	templatePath := filepath.Join(vm.configDir, "templates", "spec_template.md")
 	data, err := os.ReadFile(templatePath)
 	if err == nil {
-		content := strings.ReplaceAll(string(data), `version: "v0.8.0"`, fmt.Sprintf(`version: "%s"`, version))
-		os.WriteFile(templatePath, []byte(content), 0644)
+		lines := strings.Split(string(data), "\n")
+		for i, line := range lines {
+			trimmed := strings.TrimSpace(line)
+			if strings.HasPrefix(trimmed, "version:") {
+				lines[i] = fmt.Sprintf("version: \"%s\"", version)
+			}
+		}
+		os.WriteFile(templatePath, []byte(strings.Join(lines, "\n")), 0644)
 	}
 	// Update the DB meta table so ff -v and other tools see the current version.
 	if db, err := OpenDB(vm.configDir); err == nil {
