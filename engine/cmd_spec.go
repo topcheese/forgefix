@@ -113,10 +113,8 @@ func createSpec(configDir, name, bodyContent string, d *CommandDispatcher, flags
 	// Always fill the version with the current project version from the DB,
 	// overriding the template default. The --ver flag allows manual override.
 	specVersion := Version
-	if vm := NewVersionManager(configDir); vm != nil {
-		if pv := vm.CurrentVersion(); pv != "0.0.0" {
-			specVersion = pv
-		}
+	if pv := NewVersionManager(configDir).CurrentVersion(); pv != "0.0.0" {
+		specVersion = pv
 	}
 	if flags.SpecVersion != "" {
 		specVersion = flags.SpecVersion
