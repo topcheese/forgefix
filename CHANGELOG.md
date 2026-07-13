@@ -4,6 +4,7 @@
 - feat: enforce ForgeFix-native workflow: remote-target safeguard, sync/ship permission prompts, and agent workflow skill update (SPEC-1783899571)
 - feat: rewrite LoadLedger/SaveLedger to use SQLite as primary store instead of forgefix_ledger.json (SPEC-1783929475)
 - feat: harden agent workflow: pre-commit summary enforcement, one-spec-at-a-time rule, acceptance criteria review at commit time, and duplicate search workflow (SPEC-1783933843)
+- feat: add spec search command and enforce all-work-before-commit discipline (SPEC-1783931981)
 
 ## [Unreleased] - 2026-07-12
 

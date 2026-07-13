@@ -12,6 +12,40 @@ import (
 func (d *CommandDispatcher) handleListSpecs(args []string) (CommandResult, error) {
 	flags := ParseFlags(args)
 
+	// If --search was provided, query the DB directly and print results
+	if flags.SearchQuery != "" {
+		db, err := OpenDB(d.ConfigDir)
+		if err != nil {
+			fmt.Fprintf(d.Stderr, "error: opening DB: %v\n", err)
+			return CommandResult{ExitCode: 1}, nil
+		}
+		defer db.Close()
+
+		results, err := db.SearchSpecs(flags.SearchQuery, 10)
+		if err != nil {
+			fmt.Fprintf(d.Stderr, "error: searching specs: %v\n", err)
+			return CommandResult{ExitCode: 1}, nil
+		}
+
+		if len(results) == 0 {
+			fmt.Fprintln(d.Stdout, "No matching specs found.")
+			return CommandResult{ExitCode: 0}, nil
+		}
+
+		w := tabwriter.NewWriter(d.Stdout, 0, 8, 0, '\t', 0)
+		fmt.Fprintln(w, "Spec ID\tTitle\tStatus\tLinked Issue")
+		fmt.Fprintln(w, "-------\t-----\t------\t------------")
+		for _, r := range results {
+			issue := "-"
+			if r.RepoIssueID > 0 {
+				issue = fmt.Sprintf("#%d", r.RepoIssueID)
+			}
+			fmt.Fprintf(w, "%s\t%s\t%s\t%s\n", r.SpecID, r.Title, r.Status, issue)
+		}
+		w.Flush()
+		return CommandResult{ExitCode: 0}, nil
+	}
+
 	ledger, err := LoadLedger(d.ConfigDir)
 	if err != nil {
 		fmt.Fprintf(d.Stderr, "error: failed to load ledger: %v\n", err)

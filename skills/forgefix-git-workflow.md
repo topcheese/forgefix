@@ -19,6 +19,7 @@ AGENT WORKFLOW (exactly five steps):
 
 CRITICAL RULES:
   - One spec at a time: commit the current spec before starting work on another
+  - ALL work related to a spec must be completed before the first `ff commit --ai`. Any code changes after a commit require a NEW spec and a new commit — no follow-up changes under the same spec.
   - Pre-commit summary MUST be output BEFORE ff commit --ai, not after
   - ff commit --ai shows acceptance criteria from the spec — review them before confirming
 
@@ -612,6 +613,7 @@ ForgeFix auto-detects from anchor files: `go.mod`, `pubspec.yaml`, `package.json
 - Agent creates a spec without running `ff specs --search` for duplicates first
 - Agent commits without outputting a pre-commit change summary first
 - Agent starts work on spec Y while spec X has uncommitted changes (violates one-spec-at-a-time)
+- Agent makes additional code changes after `ff commit --ai` without a new spec (violates all-work-before-commit)
 - Agent creates a spec with a title closely matching an existing or archived spec
 - Agent uses raw `git` commands
 - Any use of raw `git` commands (all go through `ff` passthrough)
@@ -641,15 +643,16 @@ For every agent change cycle (exactly 5 steps):
 3. [ ] Only one spec was active during this work cycle (no cross-spec leakage)
 4. [ ] Pre-commit change summary was output *before* the `ff commit --ai` call
 5. [ ] Acceptance criteria from the spec were reviewed at commit time
-6. [ ] `ff commit --ai <msg>` auto-detects and commits with `[SPEC-XXX]`
-7. [ ] Each commit is bound to a spec (`ff specs` shows linked commits)
-8. [ ] Every `git` command replaced with `ff` passthrough
-9. [ ] `ff status --short` shows clean tree after each ff command
-10. [ ] All tests pass (`ff --ai` produces JSON pass)
-11. [ ] Build compiles (`go build ./...` or equivalent)
-12. [ ] No secrets in the diff
-13. [ ] `.gitignore` covers standard exclusions
-14. [ ] No formatting-only changes mixed with behavior changes
+6. [ ] All work for this spec is done — nothing remaining before commit
+7. [ ] `ff commit --ai <msg>` auto-detects and commits with `[SPEC-XXX]`
+8. [ ] Each commit is bound to a spec (`ff specs` shows linked commits)
+9. [ ] Every `git` command replaced with `ff` passthrough
+10. [ ] `ff status --short` shows clean tree after each ff command
+11. [ ] All tests pass (`ff --ai` produces JSON pass)
+12. [ ] Build compiles (`go build ./...` or equivalent)
+13. [ ] No secrets in the diff
+14. [ ] `.gitignore` covers standard exclusions
+15. [ ] No formatting-only changes mixed with behavior changes
 
 ## Human Verification Checklist
 

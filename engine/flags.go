@@ -26,6 +26,7 @@ type CLIArgs struct {
 	SpecAcceptance  string
 	All             bool
 	Delete          bool
+	SearchQuery     string
 }
 
 func ParseFlags(args []string) CLIArgs {
@@ -89,6 +90,11 @@ func ParseFlags(args []string) CLIArgs {
 			if i+1 < len(args) {
 				i++
 				flags.SpecAcceptance = args[i]
+			}
+		case "--search":
+			if i+1 < len(args) {
+				i++
+				flags.SearchQuery = args[i]
 			}
 		case "--all":
 			flags.All = true

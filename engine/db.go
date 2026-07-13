@@ -551,6 +551,39 @@ func (db *DB) CountArchivedSpecs() (int, error) {
 	return count, nil
 }
 
+// SpecSearchResult holds a single spec row from a search query.
+type SpecSearchResult struct {
+	SpecID      string
+	Title       string
+	Status      string
+	RepoIssueID int
+}
+
+// SearchSpecs searches the specs table by title or spec_id matching the query.
+func (db *DB) SearchSpecs(query string, limit int) ([]SpecSearchResult, error) {
+	pattern := "%" + query + "%"
+	rows, err := db.conn.Query(`
+		SELECT spec_id, title, status, repo_issue_id
+		FROM specs
+		WHERE title LIKE ? OR spec_id LIKE ?
+		ORDER BY updated_at DESC
+		LIMIT ?`, pattern, pattern, limit)
+	if err != nil {
+		return nil, fmt.Errorf("searching specs: %w", err)
+	}
+	defer rows.Close()
+
+	var results []SpecSearchResult
+	for rows.Next() {
+		var r SpecSearchResult
+		if err := rows.Scan(&r.SpecID, &r.Title, &r.Status, &r.RepoIssueID); err != nil {
+			return nil, fmt.Errorf("scanning search result: %w", err)
+		}
+		results = append(results, r)
+	}
+	return results, rows.Err()
+}
+
 // ImportLedger reads the current JSON ledger and writes all spec mappings and
 // pipeline entries into the DB. Idempotent — existing rows are overwritten.
 // Uses loadLedgerFromJSONFile (not LoadLedger) to avoid a circular dependency:

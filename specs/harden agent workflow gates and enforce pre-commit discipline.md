@@ -56,16 +56,23 @@ The `ff commit --ai` auto-detect heuristic already picks the most recently modif
 
 This is NOT a gate — it's a reminder. The agent can proceed regardless.
 
-### FR-004: Optional remote issue creation at spec creation time
-`ff spec --ai` optionally creates a draft remote issue when GitHub/Gitea credentials are configured in `_ff.yaml`. Adds a `--create-issue` flag (or makes it default when `github.*` is configured):
+### FR-004: Async remote issue lifecycle via sync queue + background service
+All remote issue operations happen through the existing sync queue — enqueue + spawn background, never block. Mirrors the existing `queueSpecBackgroundSync` pattern.
 
-- Calls the GitHub Issues API to create a draft issue with the spec title and objective
-- Sets `repo_issue` in the spec frontmatter immediately
-- The issue is created in "open" state with a label like `type/<spec-type>` and `status/draft`
-- `ff sync` later updates it during promotion (review→ship→closed)
-- If `auto_issue_management` is false in config, the flag is ignored with a warning
+**Lifecycle:**
+- `ff spec --ai` → enqueues `create_issue`, spawns background → returns immediately
+- `ff commit --ai` → enqueues `update_issue_body` (sets spec body + status/draft→in-review), spawns background → returns immediately
+- `ff ship --ai` → enqueues `close_issue` (existing handler at sync.go:522), spawns background → returns immediately
 
-This eliminates the "unlinked specs" problem that happens when `auto_issue_management` is off and `ff sync` is human-only.
+**How it works:**
+- `EnqueueSyncOp` writes to `sync_queue.json` (persistent, survives restarts)
+- `SpawnBackgroundSync` forks a subprocess that processes the queue
+- Existing `processCreateIssue` / `processCloseIssue` handlers handle the API calls
+- If background fails, the operation stays in the queue for the next `SpawnBackgroundSync` call
+- With `--ai`, no prompts at any point
+- If `auto_issue_management` is false or no GitHub token: enqueue is silently skipped, queue stays empty
+
+This uses the infrastructure that already exists (sync.go lines 36-180) — only the wiring from each command handler is new code.
 
 ### FR-005: Skill file hardening
 Update `skills/forgefix-git-workflow.md`:
@@ -105,13 +112,26 @@ In `cmd_commit.go` or `runCommit`, before the commit message prompt:
 
 This only runs with `--ai` flag. No structural enforcement — just visibility.
 
-### Step 3: ff spec --ai remote issue creation (code)
-In `cmd_spec.go` or `runSpec`:
-1. If `--create-issue` flag set OR github config is present, load the IssueCoordinator
-2. Call API to create a draft issue with the spec title and body
-3. Write the returned issue number to the spec file frontmatter's `repo_issue` field
-4. Silently skip if API call fails (non-fatal — ff sync will catch it later)
-5. Respect `auto_issue_management: false` by skipping
+### Step 3: Async remote issue ops on spec/commit/ship (code)
+In each command handler, enqueue + spawn background per the existing `queueSpecBackgroundSync` pattern:
+
+**`ff spec --ai`**: after writing the spec file and saving the ledger:
+1. If `auto_issue_management` is true AND GitHub config exists, call:
+   - `EnqueueSyncOp(configDir, SyncOperation{Type: "create_issue", SpecID: specID, Details: title})`
+   - `SpawnBackgroundSync(configDir, specID)`
+2. Existing `processCreateIssue` handler (sync.go:502) already creates the issue via `coord.CreateIssue` and writes `repo_issue` — no new handler needed
+3. Returns immediately. No synchronous API call, no blocking.
+
+**`ff commit --ai`**: after committing:
+1. If `auto_issue_management` is true AND the spec has `repo_issue` set, enqueue:
+   - `EnqueueSyncOp(configDir, SyncOperation{Type: "update_issue", SpecID: specID, RepoIssueID: repoIssue})`
+   - `SpawnBackgroundSync(configDir, specID)`
+2. If no `repo_issue` yet (background create hasn't finished), skip (it'll get the issue on next create attempt)
+3. Returns immediately. No blocking.
+
+**`ff ship --ai`**: after shipping:
+1. Enqueue `close_issue` — existing `processCloseIssue` handler already exists (sync.go:522)
+2. `SpawnBackgroundSync(configDir, specID)`
 
 ## Acceptance Criteria
 
@@ -120,6 +140,9 @@ In `cmd_spec.go` or `runSpec`:
 - [ ] One-spec-at-a-time rule documented in skill file
 - [ ] Red flags for cross-spec work and missing pre-commit summary added
 - [ ] `ff commit --ai` displays acceptance criteria from the spec before prompting
-- [ ] `ff spec --ai --create-issue` creates a draft GitHub/Gitea issue and sets repo_issue
+- [ ] `ff spec --ai` enqueues `create_issue` and spawns background (non-blocking)
+- [ ] `ff commit --ai` enqueues `update_issue_body` and spawns background (non-blocking)
+- [ ] `ff ship --ai` enqueues `close_issue` and spawns background (non-blocking)
+- [ ] No command blocks on queue processing
 - [ ] All engine tests pass
 - [ ] `go build ./...` compiles
