@@ -197,7 +197,7 @@ func (d *CommandDispatcher) kanbanList(db *DB) (CommandResult, error) {
 						}
 					}
 				}
-				fmt.Fprintf(w, "    -\t[%s]\t%s\t%s\t(%s)\n", card.Status, card.Title, statusInfo, card.ID)
+				fmt.Fprintf(w, "    -\t[%s]\t%s\t%s\n", card.Status, card.Title, statusInfo)
 			}
 		}
 	}
