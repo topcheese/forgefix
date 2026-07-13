@@ -47,6 +47,7 @@ type Config struct {
 	FailureDecaySeconds  int                 `yaml:"failure_decay_seconds"`
 	AutoIssueManagement  bool                `yaml:"auto_issue_management,omitempty"`
 	GitPassthrough       *bool               `yaml:"git_passthrough,omitempty"`
+	ShipRemote           string              `yaml:"ship_remote,omitempty"`
 	GitHub               *GitHubConfig       `yaml:"github,omitempty"`
 	SyncSchedule         *SyncScheduleConfig `yaml:"sync_schedule,omitempty"`
 	SpecStorage          string              `yaml:"spec_storage,omitempty"`

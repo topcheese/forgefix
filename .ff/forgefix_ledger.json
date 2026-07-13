@@ -219,6 +219,15 @@
         "1fb7e3c"
       ],
       "type": "feature"
+    },
+    "SPEC-1783899571": {
+      "spec_id": "Enforce Forgefix Native Workflow So Agents Stop Hand Maintaining Tracked Artifacts",
+      "repo_issue_id": 0,
+      "status": "review",
+      "linked_commits": [
+        "20a6e10"
+      ],
+      "type": "feature"
     }
   }
 }

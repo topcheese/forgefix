@@ -69,9 +69,27 @@ func (sc *ShipController) Run() {
 		}
 	}
 
+	// Resolve and validate the ship remote BEFORE pushing. Public remotes
+	// (github.com, gitlab.com, bitbucket.org, ...) require explicit confirmation
+	// and are refused by default and in AI mode. Private remotes (including the
+	// local NAS/Gitea) ship automatically.
+	decision, err := resolveShipRemote(sc.config, gitRemoteMapFunc(sc.configDir))
+	if err != nil {
+		sc.fatalError("SHIP_REMOTE_ERROR", err.Error())
+	}
+	if decision.Public {
+		if sc.aiMode {
+			sc.fatalError("SHIP_PUBLIC_REMOTE_BLOCKED",
+				fmt.Sprintf("Refusing to ship to public remote %q (%s) in AI mode. Set ship_remote to your private NAS remote to ship automatically, or run interactively to confirm.", decision.Remote, decision.URL))
+		}
+		if !confirmPrompt(fmt.Sprintf("⚠ Ship target %q (%s) is a PUBLIC remote. Push unreviewed code to a public host", decision.Remote, decision.URL)) {
+			sc.fatalError("SHIP_PUBLIC_REMOTE_DECLINED", fmt.Sprintf("Ship to public remote %q (%s) was not confirmed. Aborting.", decision.Remote, decision.URL))
+		}
+	}
+
 	// Git push
-	fmt.Println("Pushing to remote...")
-	pushOut, pushErr := execGit(sc.configDir, "push")
+	fmt.Printf("Pushing to remote %q (%s)...\n", decision.Remote, decision.URL)
+	pushOut, pushErr := execGit(sc.configDir, "push", decision.Remote)
 	if pushErr != nil {
 		fmt.Fprintf(os.Stderr, "Error: git push failed: %v\n%s\n", pushErr, pushOut)
 		os.Exit(1)

@@ -1,6 +1,6 @@
 ---
 name: forgefix-git-workflow
-description: "Use when making code changes, managing specs, binding commits to issues, or shipping releases in a ForgeFix-enabled project. Replaces all raw git operations with ff spec → ff commit → ff sync → ff ship → ff archive lifecycle. All git commands go through ff git passthrough."
+description: "Use when making code changes, managing specs, or binding commits to issues in a ForgeFix-enabled project. The AGENT workflow is exactly three steps: ff spec --ai → ff test --ai → ff commit --ai (only after tests pass). ff sync and ff ship are HUMAN-ONLY commands and must never be run by the agent. All git operations go through ff git passthrough."
 ---
 
 # ForgeFix Spec-Driven Git Workflow
@@ -10,13 +10,20 @@ description: "Use when making code changes, managing specs, binding commits to i
 ForgeFix (`ff`) replaces ad-hoc git workflow with a **spec-driven development lifecycle**. Every change is traceable to a spec, every spec links to a remote issue, and no code ships without a paper trail.
 
 ```
-Workflow:
-  ff spec --ai <title>  → Create a spec (issue contract)
-  Write code            → Implement against the spec
-  ff commit --ai <msg>  → Auto-detect spec, commit with binding, set "review"
-  ff sync --ai          → Sync local specs, auto-promote "review" → "ship"
-  ff ship --ai          → Shipping Gate: push, close issues, set "closed"
-  ff archive --ai       → Archive closed specs
+AGENT WORKFLOW (exactly three steps):
+  ff spec --ai <title>   → Create a spec (issue contract)
+  ff test --ai           → Write the spec's tests, implement against the spec, run tests
+  ff commit --ai <msg>   → Only after tests pass: auto-detect spec, commit with binding, set "review"
+
+HUMAN-ONLY COMMANDS (never run by the agent):
+  ff sync                → Talks to the remote issue tracker; requires explicit confirmation
+  ff ship                → Pushes commits/tags to a remote and creates a release; requires explicit confirmation
+  ff archive             → Archives closed specs (human housekeeping)
+
+The agent MUST NOT run `ff sync`, `ff ship`, or `ff archive`. If a workflow
+seems to need them, stop and ask the human. As of the remote-target safeguard,
+`ff sync` and `ff ship` themselves refuse to run without explicit confirmation
+and are refused by default (and always in --ai mode).
 ```
 
 **Never use raw `git` commands.** Every git operation uses `ff`'s transparent git passthrough — `ff log`, `ff diff`, `ff branch`, `ff rebase`, `ff stash`, `ff tag`, `ff worktree`, `ff reset`, `ff bisect`, `ff blame`. All work as drop-in replacements.
@@ -89,9 +96,9 @@ Agent starts work
     ├── Implement slice               ← Write code
     │   ├── Test passes?
     │   │   ├── Yes → ff commit --ai "message" → Continue
-    │   │   └── No  → ff reset --hard HEAD → Investigate
+    │       │   └── No  → ff reset --hard HEAD → Investigate
     │
-    └── Feature complete → ff sync --ai → ff ship --ai → ff archive --ai
+    └── Feature complete → [human handles ff sync/ff ship/ff archive]
 ```
 
 ### 2. Spec Lifecycle States
@@ -339,10 +346,12 @@ Agent starts work
     │   ├── Test passes? → ff commit --ai "msg" → Continue
     │   └── Test fails?  → ff reset --hard HEAD → Investigate
     │
-    └── Feature complete → ff sync --ai → ff ship --ai → ff archive --ai
+    └── Feature complete → [human handles ff sync/ff ship/ff archive]
 ```
 
 Never lose more than one increment of work. Each save point has a paper trail via spec binding.
+
+When the feature is complete and all specs are in review, the human operator runs `ff sync --ai`, `ff ship --ai`, and `ff archive --ai` to close the loop.
 
 ## Change Summaries
 
@@ -399,6 +408,9 @@ go build ./...
 2. Implement auth logic
 3. ff commit --ai "add JWT middleware"          → review
 4. ff commit --ai "add login endpoint"          → review
+                                                 ─────────────────
+                                                 Agent stops here.
+                                                 HUMAN-ONLY:
 5. ff sync --ai                                 → ship (auto-promote)
 6. ff ship --ai                                 → closed (push + housekeeping)
 7. ff archive --ai                              → archived
@@ -425,6 +437,9 @@ go build ./...
 1. ff spec --ai "fix login null pointer"        → draft
 2. Implement fix
 3. ff commit --ai "fix null check"              → review
+                                                 ─────────────────
+                                                 Agent stops here.
+                                                 HUMAN-ONLY:
 4. ff sync --ai                                 → ship
 5. ff ship --ai                                 → closed
 6. ff archive --ai                              → archived
@@ -446,6 +461,9 @@ go build ./...
 2. Set type: refactor in spec frontmatter
 3. ff commit --ai "extract email validation"     → review
 4. ff commit --ai "extract phone validation"     → review
+                                                 ─────────────────
+                                                 Agent stops here.
+                                                 HUMAN-ONLY:
 5. ff sync --ai                                 → ship
 6. ff ship --ai                                 → closed
 7. ff archive --ai                              → archived
@@ -583,6 +601,10 @@ ForgeFix auto-detects from anchor files: `go.mod`, `pubspec.yaml`, `package.json
 
 ## Red Flags
 
+### Agent (AI Mode) Red Flags
+- Agent runs `ff sync`, `ff ship`, or `ff archive` — these are HUMAN-ONLY
+- Agent's workflow exceeds the 3-step AGENT WORKFLOW (spec → test → commit)
+- Agent hand-maintains tracked artifacts (ledger, spec status) instead of using `ff` commands
 - Any use of raw `git` commands (all go through `ff` passthrough)
 - `ff commit` without `--ai` or `--spec` (interactive prompts fail in agent mode)
 - Specs stuck in `review` (run `ff sync --ai` to auto-promote)
@@ -601,23 +623,28 @@ ForgeFix auto-detects from anchor files: `go.mod`, `pubspec.yaml`, `package.json
 - A breaking change shipped under a minor or patch version bump
 - A user-facing release with no changelog entry
 
-## Verification Checklist
+## Agent Verification Checklist
 
-For every change cycle:
+For every agent change cycle (exactly 3 steps):
 
 1. [ ] A spec exists (`ff specs` shows it) before code is written
 2. [ ] `ff commit --ai <msg>` auto-detects and commits with `[SPEC-XXX]`
 3. [ ] Each commit is bound to a spec (`ff specs` shows linked commits)
-4. [ ] `ff sync --ai` promotes `review`→`ship` without prompts
-5. [ ] `ff ship --ai` ships, pushes, and sets to `closed`
-6. [ ] `ff archive --ai` archives closed specs
-7. [ ] Every `git` command replaced with `ff` passthrough
-8. [ ] `ff status --short` shows clean tree after each ff command
-9. [ ] `ff sync` completes without errors
-10. [ ] All tests pass (`ff --ai` produces JSON pass)
-11. [ ] Build compiles (`go build ./...` or equivalent)
-12. [ ] No secrets in the diff
-13. [ ] Archived specs are removed from active view (`ff archive --ai`)
-14. [ ] Spec file's `resolution` field is filled in for closed specs
-15. [ ] `.gitignore` covers standard exclusions
-16. [ ] No formatting-only changes mixed with behavior changes
+4. [ ] Every `git` command replaced with `ff` passthrough
+5. [ ] `ff status --short` shows clean tree after each ff command
+6. [ ] All tests pass (`ff --ai` produces JSON pass)
+7. [ ] Build compiles (`go build ./...` or equivalent)
+8. [ ] No secrets in the diff
+9. [ ] `.gitignore` covers standard exclusions
+10. [ ] No formatting-only changes mixed with behavior changes
+
+## Human Verification Checklist
+
+For human-operated sync/ship/archive operations:
+
+1. [ ] `ff sync --ai` promotes `review`→`ship` without prompts
+2. [ ] `ff ship --ai` ships, pushes, and sets to `closed`
+3. [ ] `ff archive --ai` archives closed specs
+4. [ ] `ff sync` completes without errors
+5. [ ] Archived specs are removed from active view (`ff archive --ai`)
+6. [ ] Spec file's `resolution` field is filled in for closed specs

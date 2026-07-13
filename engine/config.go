@@ -219,6 +219,12 @@ github:
   # For GitHub, use: "https://api.github.com"
   base_url: "https://api.github.com"
 
+# Remote that ff ship pushes to. If empty, ff ship resolves the remote whose
+# host matches github.base_url (your private NAS/Gitea); otherwise it falls back
+# to "origin". Pushing to a PUBLIC host (github.com, gitlab.com, bitbucket.org)
+# always requires explicit confirmation and is refused by default / in AI mode.
+ship_remote: ""
+
 sync_schedule:
   max_age_days: 7
   retry_interval_hours: 1

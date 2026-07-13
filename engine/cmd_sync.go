@@ -8,6 +8,17 @@ import (
 // handleSync synchronizes local spec status to the remote issue tracker.
 func (d *CommandDispatcher) handleSync(args []string) (CommandResult, error) {
 	flags := ParseFlags(args)
+
+	// DANGEROUS-COMMAND GUARD: ff sync talks to the remote issue tracker and
+	// may push metadata/releases. Require explicit confirmation. In AI mode
+	// there is no interactive input, so confirmPrompt returns false and the
+	// command is refused by default — preventing an agent from silently
+	// syncing/shipping unreviewed work.
+	if !confirmPrompt("⚠ `ff sync` talks to the remote issue tracker and may push metadata. Continue") {
+		fmt.Fprintln(d.Stdout, "sync: aborted — not confirmed.")
+		return CommandResult{ExitCode: 1}, nil
+	}
+
 	specID := flags.SpecID
 
 	// Extract optional target path from args (first non-flag token)

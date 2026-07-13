@@ -1,3 +1,8 @@
+## [Unreleased] - 2026-07-13
+
+### 🚀 Release Summary
+- feat: enforce ForgeFix-native workflow: remote-target safeguard, sync/ship permission prompts, and agent workflow skill update (SPEC-1783899571)
+
 ## [Unreleased] - 2026-07-12
 
 ### 🚀 Release Summary
