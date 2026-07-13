@@ -6,6 +6,7 @@
 - feat: harden agent workflow: pre-commit summary enforcement, one-spec-at-a-time rule, acceptance criteria review at commit time, and duplicate search workflow (SPEC-1783933843)
 - feat: add spec search command and enforce all-work-before-commit discipline (SPEC-1783931981)
 - feat: update forgefix-git-workflow skill with binary bypass enforcement and --ai discipline (SPEC-1783784714)
+- feat: spec: add SPEC-1783942277 - remove redundant spec-exists validation from ff commit --spec (SPEC-1783942277)
 
 ## [Unreleased] - 2026-07-12
 
