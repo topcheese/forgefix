@@ -125,6 +125,7 @@ Flags:
   --message, -m <msg>   Attach a custom commit message for changelog automation
   --failure-decay, -d <secs>  Override failure_decay_seconds (suppress flaky test issues)
   --run, -r <pattern>         Run only tests matching <pattern>
+  --kanban                   Open the kanban board viewer
 
 Examples:
   ff                    Run test suites with interactive TUI
@@ -132,6 +133,8 @@ Examples:
   ff --install-shortcut Install the 'ff' shorthand command
   ff -d 300             Run with 5-minute failure decay
   ff -r TestFoo         Run only tests matching "TestFoo"
+  ff --kanban           View and manage kanban board
+  ff --kanban ls        List board, columns, and cards
   ff --version          Show version
   ff --help             Show this help
 `)
