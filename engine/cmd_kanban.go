@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"strings"
+	"text/tabwriter"
 	"time"
 
 	"golang.org/x/term"
@@ -169,8 +170,9 @@ func (d *CommandDispatcher) kanbanList(db *DB) (CommandResult, error) {
 		fmt.Fprintln(d.Stdout, "No boards. Run 'ff --kanban init' to create one.")
 		return CommandResult{ExitCode: 0}, nil
 	}
+	w := tabwriter.NewWriter(d.Stdout, 0, 8, 1, '\t', 0)
 	for _, b := range boards {
-		fmt.Fprintf(d.Stdout, "Board: %s (%s)\n", b.Name, b.ID)
+		fmt.Fprintf(w, "Board:\t%s\t(%s)\n", b.Name, b.ID)
 		board, err := db.ListBoard(b.ID)
 		if err != nil {
 			continue
@@ -181,24 +183,25 @@ func (d *CommandDispatcher) kanbanList(db *DB) (CommandResult, error) {
 				stats, err := db.GetAllPipelineStats()
 				if err == nil && len(stats) > 0 {
 					s := stats[0]
-					extra = fmt.Sprintf(" [tests: %d/%d pass, %d fail]", s.TotalPassed, s.TotalRan, s.TotalFailed)
+					extra = fmt.Sprintf("[tests: %d/%d pass, %d fail]", s.TotalPassed, s.TotalRan, s.TotalFailed)
 				}
 			}
-			fmt.Fprintf(d.Stdout, "%s%s:\n", col.Title, extra)
+			fmt.Fprintf(w, "  %s:\t%s\n", col.Title, extra)
 			for _, card := range col.Cards {
 				statusInfo := ""
 				if strings.HasPrefix(card.Title, "SPEC-") || strings.HasPrefix(card.Title, "SPEC ") {
 					specID := strings.Fields(card.Title)[0]
 					if ledger, lErr := LoadLedger(d.ConfigDir); lErr == nil {
 						if entry := ledger.GetSpecEntry(specID); entry != nil {
-							statusInfo = fmt.Sprintf(" [spec: %s]", entry.Status)
+							statusInfo = fmt.Sprintf("[spec: %s]", entry.Status)
 						}
 					}
 				}
-				fmt.Fprintf(d.Stdout, "  - [%s] %s%s (%s)\n", card.Status, card.Title, statusInfo, card.ID)
+				fmt.Fprintf(w, "    -\t[%s]\t%s\t%s\t(%s)\n", card.Status, card.Title, statusInfo, card.ID)
 			}
 		}
 	}
+	w.Flush()
 	return CommandResult{ExitCode: 0}, nil
 }
 
