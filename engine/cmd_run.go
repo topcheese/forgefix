@@ -11,7 +11,7 @@ func (d *CommandDispatcher) handleRun(cmd string, args []string) (CommandResult,
 		return CommandResult{ExitCode: 0}, nil
 	}
 	if flags.Version {
-		PrintVersion(d.Stdout)
+		d.handleVersion()
 		return CommandResult{ExitCode: 0}, nil
 	}
 

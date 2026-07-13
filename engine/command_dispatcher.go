@@ -105,8 +105,16 @@ func (d *CommandDispatcher) handleHelp() CommandResult {
 
 // handleVersion prints version information to the configured stdout writer
 // and checks for a newer release on the NAS Gitea when configured.
+// The displayed version comes from the project DB (the canonical source),
+// falling back to the compile-time const when no project context exists.
 func (d *CommandDispatcher) handleVersion() CommandResult {
-	PrintVersion(d.Stdout)
+	version := Version
+	if vm := NewVersionManager(d.ConfigDir); vm != nil {
+		if pv := vm.CurrentVersion(); pv != "0.0.0" {
+			version = pv
+		}
+	}
+	fmt.Fprintf(d.Stdout, "ForgeFix %s\n", version)
 	checkAndPromptUpdate(d.ConfigDir, d.Stdout, d.Stderr, false)
 	return CommandResult{ExitCode: 0}
 }
