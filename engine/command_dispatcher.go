@@ -7,6 +7,8 @@ import (
 	"path/filepath"
 	"runtime"
 	"strings"
+
+	"golang.org/x/mod/semver"
 )
 
 // CommandResult represents the outcome of executing a command.
@@ -131,13 +133,10 @@ func checkAndPromptUpdate(configDir string, stdout, stderr io.Writer, aiMode boo
 	if release.TagName == "" {
 		return
 	}
-	// Strip leading "v" for comparison
-	latest := strings.TrimPrefix(release.TagName, "v")
-	current := Version
-	if latest <= current {
+	if semver.Compare(release.TagName, "v"+Version) <= 0 {
 		return
 	}
-	fmt.Fprintf(stdout, "New version available: %s (current: %s)\n", release.TagName, current)
+	fmt.Fprintf(stdout, "New version available: %s (current: %s)\n", release.TagName, Version)
 	if aiMode {
 		return
 	}
@@ -147,7 +146,7 @@ func checkAndPromptUpdate(configDir string, stdout, stderr io.Writer, aiMode boo
 	if strings.ToLower(strings.TrimSpace(response)) != "y" {
 		return
 	}
-	runUpdate(configDir, coord, latest, stdout, stderr)
+	runUpdate(configDir, coord, strings.TrimPrefix(release.TagName, "v"), stdout, stderr)
 }
 
 // runUpdate downloads the latest release binary and installs it.

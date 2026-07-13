@@ -8,6 +8,7 @@
 - feat: update forgefix-git-workflow skill with binary bypass enforcement and --ai discipline (SPEC-1783784714)
 - feat: spec: add SPEC-1783942277 - remove redundant spec-exists validation from ff commit --spec (SPEC-1783942277)
 - feat: remove redundant spec-exists validation from ff commit --specThe specExists check (loadActiveSpecs + specExists) was redundant.When --spec is explicitly provided, trust the caller — the spec file ondisk is canonical. findSpecFileByID still handles linked_commits update.Linked: SPEC-1783942277 (SPEC-1783942277)
+- feat: fix(update): use golang.org/x/mod/semver instead of hand-rolled compare, alert on missing tokenThe real bug was no alert when update check can't run (no GitHub token).Version comparison now uses Go's standard semver library instead ofa hand-written string-split function. SPEC-1783784714. (SPEC-1783942277)
 
 ## [Unreleased] - 2026-07-12
 
