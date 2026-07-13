@@ -2,6 +2,7 @@
 
 ### 🚀 Release Summary
 - feat: enforce ForgeFix-native workflow: remote-target safeguard, sync/ship permission prompts, and agent workflow skill update (SPEC-1783899571)
+- feat: rewrite LoadLedger/SaveLedger to use SQLite as primary store instead of forgefix_ledger.json (SPEC-1783929475)
 
 ## [Unreleased] - 2026-07-12
 

@@ -15,33 +15,183 @@ import (
 // LEDGER FILE MANAGER
 // ============================================================================
 
-func ledgerPath(configDir string) string {
-	return FFLedgerPath(configDir)
+// loadLedgerFromJSONFile reads the JSON ledger file directly without opening a
+// DB connection. Used only by ImportLedger for the one-time migration to SQLite.
+// Returns (nil, nil) if no JSON file exists.
+func loadLedgerFromJSONFile(configDir string) (*LedgerEngine, error) {
+	if err := MigrateToFF(configDir); err != nil {
+		return nil, fmt.Errorf("migrating to .ff/: %w", err)
+	}
+	path := FFLedgerPath(configDir)
+	_, err := os.Stat(path)
+	if err != nil {
+		return nil, nil
+	}
+	data, err := os.ReadFile(path)
+	if err != nil {
+		return nil, fmt.Errorf("reading JSON ledger: %w", err)
+	}
+	var wrapper struct {
+		Version      string                  `json:"version,omitempty"`
+		Entries      map[string]*LedgerEntry `json:"entries"`
+		SpecMappings map[string]*SpecEntry   `json:"spec_mappings"`
+	}
+	if err := json.Unmarshal(data, &wrapper); err != nil {
+		return nil, fmt.Errorf("invalid ledger JSON: %w", err)
+	}
+	le := NewLedgerEngine()
+	if wrapper.Version != "" {
+		le.Version = wrapper.Version
+	}
+	if wrapper.Entries != nil {
+		le.entries = wrapper.Entries
+	}
+	if wrapper.SpecMappings != nil {
+		le.specMappings = wrapper.SpecMappings
+	}
+	return le, nil
 }
 
 func LoadLedger(configDir string) (*LedgerEngine, error) {
 	if err := MigrateToFF(configDir); err != nil {
 		return nil, fmt.Errorf("migrating to .ff/: %w", err)
 	}
+
 	ledger := NewLedgerEngine()
 	ledger.WorkflowConfig = LoadWorkflowConfig(configDir)
-	path := ledgerPath(configDir)
-	_, err := os.Stat(path)
-	if err == nil {
-		if err := ledger.LoadFromFile(path); err != nil {
-			return nil, fmt.Errorf("ledger corruption detected: %w", err)
+
+	// Try loading from SQLite
+	db, dbErr := OpenDB(configDir)
+	if dbErr == nil {
+		defer db.Close()
+
+		// Read project version from meta
+		version, _ := db.ProjectVersion()
+		if version != "" {
+			ledger.Version = version
+		}
+
+		// Read pipeline stats
+		stats, err := db.GetAllPipelineStats()
+		if err == nil {
+			for _, s := range stats {
+				ledger.entries[s.PipelineID] = &LedgerEntry{
+					PipelineID:      s.PipelineID,
+					TotalRan:        s.TotalRan,
+					TotalPassed:     s.TotalPassed,
+					TotalFailed:     s.TotalFailed,
+					HistoricalFloor: s.HistoricalFloor,
+					LastUpdate:      s.LastUpdate,
+				}
+			}
+		}
+
+		// Read specs from DB — query all non-archived rows with their linked commits.
+		// Archived specs live only in the DB for query/reference; they are not
+		// loaded into the in-memory LedgerEngine, which mirrors the old JSON
+		// file behavior where archived entries were removed from the JSON file.
+		rows, err := db.Conn().Query("SELECT spec_id, title, status, type, repo_issue_id FROM specs WHERE status != 'archived'")
+		if err == nil {
+			defer rows.Close()
+			for rows.Next() {
+				var specID, title, st, specType string
+				var repoIssueID int
+				if err := rows.Scan(&specID, &title, &st, &specType, &repoIssueID); err != nil {
+					continue
+				}
+				linkedCommits, _ := db.GetLinkedCommits(specID)
+				ledger.specMappings[specID] = &SpecEntry{
+					SpecID:        title,
+					RepoIssueID:   repoIssueID,
+					Status:        st,
+					LinkedCommits: linkedCommits,
+					Type:          specType,
+				}
+			}
+		}
+	} else {
+		// DB not available — fall back to JSON file for legacy migration
+		jsonLedger, jErr := loadLedgerFromJSONFile(configDir)
+		if jErr == nil && jsonLedger != nil {
+			ledger = jsonLedger
+			ledger.WorkflowConfig = LoadWorkflowConfig(configDir)
 		}
 	}
-	if len(ledger.specMappings) == 0 {
-		if err := ledger.SyncFromSpecsDir(configDir); err != nil {
-			return nil, fmt.Errorf("syncing ledger from specs dir: %w", err)
-		}
+
+	// Always sync from filesystem to catch newly-created specs not yet in DB
+	// and to reconcile status changes made by editing spec files directly.
+	if err := ledger.SyncFromSpecsDir(configDir); err != nil {
+		return nil, fmt.Errorf("syncing ledger from specs dir: %w", err)
 	}
 	return ledger, nil
 }
 
 func SaveLedger(ledger *LedgerEngine, configDir string) error {
-	return ledger.SaveToFile(ledgerPath(configDir))
+	// Write to SQLite
+	db, err := OpenDB(configDir)
+	if err != nil {
+		// Fallback to JSON if DB is unavailable
+		return ledger.SaveToFile(FFLedgerPath(configDir))
+	}
+	defer db.Close()
+
+	tx, err := db.Conn().Begin()
+	if err != nil {
+		return fmt.Errorf("beginning transaction: %w", err)
+	}
+	defer tx.Rollback()
+
+	// Delete all non-archived records before re-inserting the current state.
+	// This mirrors the old JSON behavior where SaveLedger overwrote the entire file.
+	if _, err := tx.Exec("DELETE FROM pipeline_stats"); err != nil {
+		return fmt.Errorf("clearing pipeline stats: %w", err)
+	}
+	if _, err := tx.Exec("DELETE FROM linked_commits WHERE spec_id IN (SELECT spec_id FROM specs WHERE status != 'archived')"); err != nil {
+		return fmt.Errorf("clearing linked commits: %w", err)
+	}
+	if _, err := tx.Exec("DELETE FROM specs WHERE status != 'archived'"); err != nil {
+		return fmt.Errorf("clearing specs: %w", err)
+	}
+
+	// Persist project version
+	if ledger.Version != "" && ledger.Version != "0.0.0" {
+		if _, err := tx.Exec("INSERT OR REPLACE INTO meta (key, value) VALUES ('project_version', ?)", ledger.Version); err != nil {
+			return fmt.Errorf("saving project version: %w", err)
+		}
+	}
+
+	// Persist pipeline stats
+	for id, entry := range ledger.GetAllEntries() {
+		if _, err := tx.Exec(`
+			INSERT INTO pipeline_stats (pipeline_id, total_ran, total_passed, total_failed, historical_floor, last_update)
+			VALUES (?, ?, ?, ?, ?, datetime('now'))
+		`, id, entry.TotalRan, entry.TotalPassed, entry.TotalFailed, entry.HistoricalFloor); err != nil {
+			return fmt.Errorf("saving pipeline stats for %s: %w", id, err)
+		}
+	}
+
+	// Persist spec mappings
+	for specID, entry := range ledger.GetAllSpecEntries() {
+		if _, err := tx.Exec(`
+			INSERT INTO specs (spec_id, title, status, type, version, repo_issue_id, root_cause, resolution, body, updated_at)
+			VALUES (?, ?, ?, ?, '', ?, '', '', '', datetime('now'))
+		`, specID, entry.SpecID, entry.Status, entry.Type, entry.RepoIssueID); err != nil {
+			return fmt.Errorf("saving spec %s: %w", specID, err)
+		}
+		for _, hash := range entry.LinkedCommits {
+			if _, err := tx.Exec(
+				"INSERT OR IGNORE INTO linked_commits (spec_id, commit_hash) VALUES (?, ?)",
+				specID, hash,
+			); err != nil {
+				return fmt.Errorf("saving linked commit %s for %s: %w", hash, specID, err)
+			}
+		}
+	}
+
+	if err := tx.Commit(); err != nil {
+		return fmt.Errorf("committing transaction: %w", err)
+	}
+	return nil
 }
 
 // ============================================================================

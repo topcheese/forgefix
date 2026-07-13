@@ -553,10 +553,23 @@ func (db *DB) CountArchivedSpecs() (int, error) {
 
 // ImportLedger reads the current JSON ledger and writes all spec mappings and
 // pipeline entries into the DB. Idempotent — existing rows are overwritten.
+// Uses loadLedgerFromJSONFile (not LoadLedger) to avoid a circular dependency:
+// LoadLedger calls OpenDB, which calls ImportLedger.
+// Skips if the DB already has data (one-time migration).
 func (db *DB) ImportLedger() error {
-	ledger, err := LoadLedger(db.configDir)
+	// Early return if the DB already has spec data — migration already done.
+	var specCount int
+	if err := db.Conn().QueryRow("SELECT COUNT(*) FROM specs").Scan(&specCount); err == nil && specCount > 0 {
+		return nil
+	}
+
+	ledger, err := loadLedgerFromJSONFile(db.configDir)
 	if err != nil {
-		return fmt.Errorf("loading ledger: %w", err)
+		return fmt.Errorf("loading JSON ledger: %w", err)
+	}
+	if ledger == nil {
+		// No JSON file exists — nothing to migrate.
+		return nil
 	}
 
 	// Import project version — skip if still at the engine default (no real ledger loaded).

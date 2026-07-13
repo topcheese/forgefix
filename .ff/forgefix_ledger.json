@@ -2,11 +2,11 @@
   "entries": {
     "forgefix": {
       "pipeline_id": "forgefix",
-      "total_ran": 376,
-      "total_passed": 376,
-      "total_failed": 0,
-      "historical_floor": 376,
-      "last_update": "2026-07-10T19:03:18-07:00"
+      "total_ran": 396,
+      "total_passed": 390,
+      "total_failed": 6,
+      "historical_floor": 390,
+      "last_update": "2026-07-13T01:33:10-07:00"
     }
   },
   "spec_mappings": {
@@ -226,6 +226,15 @@
       "status": "review",
       "linked_commits": [
         "20a6e10"
+      ],
+      "type": "feature"
+    },
+    "SPEC-1783929475": {
+      "spec_id": "Migrate Ledger To Fully Remove Forgefix_ledger.Json",
+      "repo_issue_id": 0,
+      "status": "review",
+      "linked_commits": [
+        "c166a4b"
       ],
       "type": "feature"
     }

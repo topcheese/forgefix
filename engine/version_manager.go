@@ -2,7 +2,6 @@ package engine
 
 import (
 	"bufio"
-	"encoding/json"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -23,24 +22,17 @@ func NewVersionManager(configDir string) *VersionManager {
 	return &VersionManager{configDir: configDir}
 }
 
-// CurrentVersion reads the project version from the ledger JSON file.
-// Returns "0.0.0" if the file cannot be read or parsed.
+// CurrentVersion reads the project version from the DB (or legacy JSON file).
+// Returns "0.0.0" if the version cannot be read.
 func (vm *VersionManager) CurrentVersion() string {
-	path := ledgerPath(vm.configDir)
-	data, err := os.ReadFile(path)
+	ledger, err := LoadLedger(vm.configDir)
 	if err != nil {
 		return "0.0.0"
 	}
-	var wrapper struct {
-		Version string `json:"version"`
-	}
-	if err := json.Unmarshal(data, &wrapper); err != nil {
+	if ledger.Version == "" {
 		return "0.0.0"
 	}
-	if wrapper.Version == "" {
-		return "0.0.0"
-	}
-	return wrapper.Version
+	return ledger.Version
 }
 
 // WriteVersion persists the given version string to the project ledger and
