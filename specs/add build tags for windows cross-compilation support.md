@@ -1,11 +1,11 @@
 ---
 spec_id: "SPEC-1783790935"
-status: draft
+status: review
 repo_issue: 527
 type: bug
 version: "0.9.0"
 root_cause: "engine files use syscall.SIGWINCH, Setpgid, Kill, Setsid which are Unix-only — GOOS=windows cross-compile fails"
-resolution: ""
+resolution: "fb8e8f3 — added runner_unix.go/windows.go, signal_unix.go, sync_unix.go with build tags; Windows cross-compile now passes"
 ---
 # Add Build Tags For Windows Cross-compilation Support
 

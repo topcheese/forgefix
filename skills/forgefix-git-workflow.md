@@ -1,6 +1,6 @@
 ---
 name: forgefix-git-workflow
-description: "Use when making code changes, managing specs, or binding commits to issues in a ForgeFix-enabled project. The AGENT workflow is exactly three steps: ff spec --ai → ff test --ai → ff commit --ai (only after tests pass). ff sync and ff ship are HUMAN-ONLY commands and must never be run by the agent. All git operations go through ff git passthrough."
+description: "Use when making code changes, managing specs, or binding commits to issues in a ForgeFix-enabled project. The AGENT workflow is exactly five steps: ff specs --search → ff spec --ai → pre-commit summary → ff test --ai → ff commit --ai (only after tests pass). Always use the installed `ff` binary with `--ai` — never `go run .`, `./ff`, or any direct binary. All git operations go through `ff` passthrough, never raw `git`."
 ---
 
 # ForgeFix Spec-Driven Git Workflow
@@ -18,10 +18,12 @@ AGENT WORKFLOW (exactly five steps):
   5. ff commit --ai <msg>          → Only after tests pass + summary output: auto-detect spec, commit with binding, set "review"
 
 CRITICAL RULES:
+  - Always use the installed `ff` binary with `--ai` flag. Never `go run .`, `./ff`, or any direct binary path — these bypass the ledger, spec binding, and housekeeping. The installed `ff` is the ONLY valid entry point.
   - One spec at a time: commit the current spec before starting work on another
   - ALL work related to a spec must be completed before the first `ff commit --ai`. Any code changes after a commit require a NEW spec and a new commit — no follow-up changes under the same spec.
   - Pre-commit summary MUST be output BEFORE ff commit --ai, not after
   - ff commit --ai shows acceptance criteria from the spec — review them before confirming
+  - All git operations go through `ff` passthrough — never raw `git` commands
 
 HUMAN-ONLY COMMANDS (never run by the agent):
   ff sync                → Talks to the remote issue tracker; requires explicit confirmation
@@ -35,6 +37,8 @@ and are refused by default (and always in --ai mode).
 ```
 
 **Never use raw `git` commands.** Every git operation uses `ff`'s transparent git passthrough — `ff log`, `ff diff`, `ff branch`, `ff rebase`, `ff stash`, `ff tag`, `ff worktree`, `ff reset`, `ff bisect`, `ff blame`. All work as drop-in replacements.
+
+**Always use the installed `ff` binary.** Never `go run .`, `./ff`, or any direct path to the binary — always invoke `ff` from PATH with `--ai` flag. The installed binary is the only entry point that properly manages the ledger, spec bindings, and housekeeping.
 
 ## When to Use
 
@@ -590,6 +594,7 @@ ForgeFix auto-detects from anchor files: `go.mod`, `pubspec.yaml`, `package.json
 | Rationalization | Reality |
 | --- | --- |
 | "I'll use `git commit`, it's faster" | `ff commit --ai` auto-detects spec, formats message, binds to ledger, folds metadata. Raw `git commit` breaks traceability. |
+| "I'll run `go run .` to test quickly" | Always use the installed `ff` binary. `go run .` and `./ff` bypass the ledger, spec binding, and housekeeping queue. Build with `go build ./...` but execute with `ff --ai`. |
 | "Raw `git` is fine for simple commands" | Every `git log`/`diff`/`status` works identically through `ff` passthrough. No reason to use raw git. |
 | "I'll write the spec when the feature is done" | A spec written after the fact is documentation, not planning. Write it first. |
 | "I'll commit when the feature is done" | One giant commit is impossible to review, debug, or revert. Commit each slice with `ff commit --ai`. |
@@ -610,6 +615,7 @@ ForgeFix auto-detects from anchor files: `go.mod`, `pubspec.yaml`, `package.json
 
 ### Agent (AI Mode) Red Flags
 - Agent runs `ff sync`, `ff ship`, or `ff archive` — these are HUMAN-ONLY
+- Agent runs `go run .`, `./ff`, builds the binary directly, or uses any path other than the installed `ff` command — always use the installed `ff` binary
 - Agent creates a spec without running `ff specs --search` for duplicates first
 - Agent commits without outputting a pre-commit change summary first
 - Agent starts work on spec Y while spec X has uncommitted changes (violates one-spec-at-a-time)
@@ -646,13 +652,14 @@ For every agent change cycle (exactly 5 steps):
 6. [ ] All work for this spec is done — nothing remaining before commit
 7. [ ] `ff commit --ai <msg>` auto-detects and commits with `[SPEC-XXX]`
 8. [ ] Each commit is bound to a spec (`ff specs` shows linked commits)
-9. [ ] Every `git` command replaced with `ff` passthrough
-10. [ ] `ff status --short` shows clean tree after each ff command
-11. [ ] All tests pass (`ff --ai` produces JSON pass)
-12. [ ] Build compiles (`go build ./...` or equivalent)
-13. [ ] No secrets in the diff
-14. [ ] `.gitignore` covers standard exclusions
-15. [ ] No formatting-only changes mixed with behavior changes
+9. [ ] All `ff` commands use the `--ai` flag — no interactive prompts
+10. [ ] Every `git` command replaced with `ff` passthrough
+11. [ ] `ff status --short` shows clean tree after each ff command
+12. [ ] All tests pass (`ff --ai` produces JSON pass)
+13. [ ] Build compiles (`go build ./...` or equivalent)
+14. [ ] No secrets in the diff
+15. [ ] `.gitignore` covers standard exclusions
+16. [ ] No formatting-only changes mixed with behavior changes
 
 ## Human Verification Checklist
 
