@@ -7,6 +7,7 @@
 - feat: add spec search command and enforce all-work-before-commit discipline (SPEC-1783931981)
 - feat: update forgefix-git-workflow skill with binary bypass enforcement and --ai discipline (SPEC-1783784714)
 - feat: spec: add SPEC-1783942277 - remove redundant spec-exists validation from ff commit --spec (SPEC-1783942277)
+- feat: remove redundant spec-exists validation from ff commit --specThe specExists check (loadActiveSpecs + specExists) was redundant.When --spec is explicitly provided, trust the caller — the spec file ondisk is canonical. findSpecFileByID still handles linked_commits update.Linked: SPEC-1783942277 (SPEC-1783942277)
 
 ## [Unreleased] - 2026-07-12
 

@@ -85,15 +85,6 @@ func runCommit(wd, msg, flagSpecID, specType, specVersion string, aiMode bool, d
 
 	var commitMsg string
 	if specID != "" {
-		specs, err := loadActiveSpecs(wd)
-		if err != nil {
-			return "", "", "", fmt.Errorf("loading specs: %w", err)
-		}
-
-		if !specExists(specs, specID) {
-			return "", "", "", fmt.Errorf("spec %s not found in active specs", specID)
-		}
-
 		specDir := filepath.Join(wd, "specs")
 		specFile, err := findSpecFileByID(specDir, specID)
 		if err == nil && (specType != "" || specVersion != "") {
