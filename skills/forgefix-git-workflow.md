@@ -115,17 +115,19 @@ Agent starts work
 
 ### 2. Spec Lifecycle States
 
-With `--ai`, the lifecycle is fully automatic. Without `--ai`, edit the `status` field in the YAML frontmatter:
+The `status` field in a spec's YAML frontmatter tracks where it is in the lifecycle. Agents are responsible for promoting specs through the first transition; the tooling handles the rest:
 
-| Status | Auto Set By | Manual Edit | Description |
-|--------|-------------|-------------|-------------|
-| `draft` | `ff spec --ai` | initial creation | Newly created, not yet actionable |
-| `review` | `ff commit --ai` | edit status | Committed, ready for feedback |
-| `ship` | `ff sync --ai` | edit status | Approved — passes the Shipping Gate |
-| `closed` | `ff ship --ai` (via housekeeping drain) | edit status | Shipped, remote issue closed |
-| archived | `ff archive --ai` | — | Moved to archive document |
+| Status | Set By | Description |
+|--------|--------|-------------|
+| `draft` | `ff spec --ai` | Newly created, not yet implemented |
+| `review` | **Agent edits status** after commit | Implementation done, ready for feedback |
+| `ship` | `ff sync --ai` | Approved — passes the Shipping Gate |
+| `closed` | `ff ship --ai` (via housekeeping drain) | Shipped, remote issue closed |
+| archived | `ff archive --ai` | Moved to archive document |
 
-The auto-promote (`ff sync --ai` promotes review→ship) only runs with `--ai` flag. Without `--ai`, the function checks if stdin is a terminal and prompts interactively.
+**Important: `ff commit --ai` does NOT auto-promote from draft to review.** The tool binds the commit to the spec in the ledger and adds the linked commit hash, but it does not touch the spec file's `status:` field. After every `ff commit --ai`, the agent MUST open the spec file and change `status: draft` to `status: review` manually. This is a known gap in the tooling.
+
+The auto-promote (`ff sync --ai` promotes review→ship) works correctly for the second transition. Without `--ai`, the function checks if stdin is a terminal and prompts interactively.
 
 ### 3. Atomic Specs, Atomic Commits
 
@@ -148,11 +150,12 @@ A spec can have multiple commits (one logical feature). A commit must belong to 
 2. **Stages all changes** automatically via `GitHelper.AddAll()`
 3. **Binds the commit** to a spec ID in the ledger
 4. **Auto-formats the message** as `feat: [SPEC-XXX] <description>`
-5. **Advances the spec** to "review"
-6. **Folds metadata** into the commit (spec status, ledger binding) via pre-commit write + amend — no untracked side effects
-7. **Preserves references** to other specs in the message (dedup strips only the current spec's tag)
-8. **Queues a background sync** to the remote issue tracker
-9. **Drains housekeeping queue** to process any pending metadata tasks
+5. **Fold metadata** (ledger binding) into the commit via pre-commit write + amend — no untracked side effects
+6. **Preserves references** to other specs in the message (dedup strips only the current spec's tag)
+7. **Queues a background sync** to the remote issue tracker
+8. **Drains housekeeping queue** to process any pending metadata tasks
+
+> **After `ff commit --ai`, the agent MUST edit the spec file to change `status: draft` to `status: review`.** The tool does not do this. This is a manual step every time.
 
 ```
 # Auto-detect spec (recommended for agents):
@@ -415,16 +418,18 @@ go build ./...
 ### New Feature (Agent Workflow)
 
 ```
-1. ff spec --ai "user-authentication"           → draft
+1. ff spec --ai "user-authentication"             → draft
 2. Implement auth logic
-3. ff commit --ai "add JWT middleware"          → review
-4. ff commit --ai "add login endpoint"          → review
-                                                 ─────────────────
-                                                 Agent stops here.
-                                                 HUMAN-ONLY:
-5. ff sync --ai                                 → ship (auto-promote)
-6. ff ship --ai                                 → closed (push + housekeeping)
-7. ff archive --ai                              → archived
+3. ff commit --ai "add JWT middleware"             → commit bound to spec
+4. Edit spec status to "review" (manual)           → review
+5. (optionally) ff commit --ai "add login endpoint" → commit bound to spec
+6. Edit spec status to "review" (manual)           → review
+                                                    ─────────────────
+                                                    Agent stops here.
+                                                    HUMAN-ONLY:
+7. ff sync --ai                                     → ship (auto-promote)
+8. ff ship --ai                                     → closed (push + housekeeping)
+9. ff archive --ai                                  → archived
 ```
 
 ### New Feature (Manual Workflow)
@@ -445,39 +450,43 @@ go build ./...
 
 ```
 # Agent workflow (--ai):
-1. ff spec --ai "fix login null pointer"        → draft
+1. ff spec --ai "fix login null pointer"          → draft
 2. Implement fix
-3. ff commit --ai "fix null check"              → review
-                                                 ─────────────────
-                                                 Agent stops here.
-                                                 HUMAN-ONLY:
-4. ff sync --ai                                 → ship
-5. ff ship --ai                                 → closed
-6. ff archive --ai                              → archived
+3. ff commit --ai "fix null check"                → commit bound to spec
+4. Edit spec status to "review" (manual)          → review
+                                                    ─────────────────
+                                                    Agent stops here.
+                                                    HUMAN-ONLY:
+5. ff sync --ai                                   → ship
+6. ff ship --ai                                   → closed
+7. ff archive --ai                                → archived
 
 # Interactive:
 1. ff commit                          → interactive mode
 2. Select "Bug" category → [0] New Bug → enter title
 3. Implement fix
-4. ff commit --spec SPEC-X "fix null pointer"   → review
-5. ff sync
-6. Edit status to "ship"
-7. ff ship
+4. ff commit --spec SPEC-X "fix null pointer"
+5. Edit spec status to "review" (manual)          → review
+6. ff sync
+7. Edit status to "ship"
+8. ff ship
 ```
 
 ### Refactoring
 
 ```
-1. ff spec --ai "extract-validation-module"     → draft
+1. ff spec --ai "extract-validation-module"      → draft
 2. Set type: refactor in spec frontmatter
-3. ff commit --ai "extract email validation"     → review
-4. ff commit --ai "extract phone validation"     → review
-                                                 ─────────────────
-                                                 Agent stops here.
-                                                 HUMAN-ONLY:
-5. ff sync --ai                                 → ship
-6. ff ship --ai                                 → closed
-7. ff archive --ai                              → archived
+3. ff commit --ai "extract email validation"      → commit bound to spec
+4. Edit spec status to "review" (manual)          → review
+5. ff commit --ai "extract phone validation"      → commit bound to spec
+6. Edit spec status to "review" (manual)          → review
+                                                    ─────────────────
+                                                    Agent stops here.
+                                                    HUMAN-ONLY:
+7. ff sync --ai                                   → ship
+8. ff ship --ai                                   → closed
+9. ff archive --ai                                → archived
 ```
 
 ## Release & Versioning
@@ -651,8 +660,9 @@ For every agent change cycle (exactly 5 steps):
 5. [ ] Acceptance criteria from the spec were reviewed at commit time
 6. [ ] All work for this spec is done — nothing remaining before commit
 7. [ ] `ff commit --ai <msg>` auto-detects and commits with `[SPEC-XXX]`
-8. [ ] Each commit is bound to a spec (`ff specs` shows linked commits)
-9. [ ] All `ff` commands use the `--ai` flag — no interactive prompts
+8. [ ] Spec status promoted to `review` (edit `status: draft` → `status: review` in spec file)
+9. [ ] Each commit is bound to a spec (`ff specs` shows linked commits)
+10. [ ] All `ff` commands use the `--ai` flag — no interactive prompts
 10. [ ] Every `git` command replaced with `ff` passthrough
 11. [ ] `ff status --short` shows clean tree after each ff command
 12. [ ] All tests pass (`ff --ai` produces JSON pass)
