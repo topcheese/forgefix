@@ -222,18 +222,31 @@ func (db *DB) GetLinkedCommits(specID string) ([]string, error) {
 }
 
 // ArchiveSpec sets a spec's status to "archived" in the DB and deletes its file.
-// Returns an error if the file can't be removed (non-fatal) or the DB update fails.
+// The file is deleted ONLY after the DB update succeeds.
+// Returns an error if the DB update fails or if the file can't be removed after successful archive.
 func (db *DB) ArchiveSpec(specID, title, specType string, repoIssueID int) error {
 	specDir := filepath.Join(db.configDir, "specs")
-	// Use findSpecFileByID to locate the file by spec_id, not by title —
-	// the title in the ledger may not match the actual filename on disk.
+	// First, update the DB to mark as archived
+	if err := db.UpsertSpec(specID, title, "archived", specType, "", repoIssueID, "", "", ""); err != nil {
+		return fmt.Errorf("failed to archive spec in DB: %w", err)
+	}
+
+	// Now that DB is updated, try to find and remove the file
+	// Use findSpecFileByID to locate the file by spec_id
 	filePath, err := findSpecFileByID(specDir, specID)
-	if err == nil {
-		if err := os.Remove(filePath); err != nil {
-			fmt.Fprintf(os.Stderr, "warning: failed to remove spec file %s: %v\n", filepath.Base(filePath), err)
+	if err != nil {
+		// Fallback: try to find by filename pattern (specID.md)
+		filePath = filepath.Join(specDir, specID+".md")
+		if _, statErr := os.Stat(filePath); statErr != nil {
+			// File not found by either method - log warning but don't fail
+			fmt.Fprintf(os.Stderr, "warning: archived spec %s file not found on disk (tried findSpecFileByID and %s.md)\n", specID, specID)
+			return nil
 		}
 	}
-	return db.UpsertSpec(specID, title, "archived", specType, "", repoIssueID, "", "", "")
+	if err := os.Remove(filePath); err != nil {
+		return fmt.Errorf("failed to remove archived spec file %s: %w", filepath.Base(filePath), err)
+	}
+	return nil
 }
 
 // ---------------------------------------------------------------------------

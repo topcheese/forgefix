@@ -193,3 +193,64 @@ func TestArchiveResolvedSpecs_MixedResolvedAndClosed(t *testing.T) {
 		t.Errorf("expected 2 archived specs in DB, got %d", archivedCount)
 	}
 }
+
+func TestArchiveResolvedSpecs_QuarantinesMalformedFiles(t *testing.T) {
+	configDir := t.TempDir()
+	specsDir := filepath.Join(configDir, "specs")
+	if err := os.MkdirAll(specsDir, 0755); err != nil {
+		t.Fatal(err)
+	}
+
+	// Create a malformed spec file (empty spec_id)
+	malformedContent := "---\n" +
+		"spec_id: \"\"\n" +
+		"status: closed\n" +
+		"type: feature\n" +
+		"created: 2026-07-03\n" +
+		"---\n" +
+		"# Malformed Spec\n\n" +
+		"## Goal\n\nTest spec with empty spec_id.\n"
+	malformedPath := filepath.Join(specsDir, "malformed.md")
+	if err := os.WriteFile(malformedPath, []byte(malformedContent), 0644); err != nil {
+		t.Fatal(err)
+	}
+
+	// Create a valid closed spec
+	writeArchiveSpecFile(t, configDir, "SPEC-VALID", "closed")
+	addToLedger(t, configDir, "SPEC-VALID", "closed")
+
+	_, count, err := ArchiveResolvedSpecs(configDir)
+	if err != nil {
+		t.Fatalf("ArchiveResolvedSpecs: %v", err)
+	}
+	if count != 1 {
+		t.Errorf("expected 1 archived spec, got %d", count)
+	}
+
+	// Valid spec file should be deleted
+	if _, err := os.Stat(filepath.Join(specsDir, "SPEC-VALID.md")); !os.IsNotExist(err) {
+		t.Error("valid spec file should have been deleted")
+	}
+
+	// Malformed file should be quarantined
+	quarantineDir := filepath.Join(specsDir, "_quarantine")
+	quarantinedPath := filepath.Join(quarantineDir, "malformed.md")
+	if _, err := os.Stat(quarantinedPath); os.IsNotExist(err) {
+		t.Errorf("malformed file should have been quarantined to %s", quarantinedPath)
+	}
+
+	// DB should have the valid spec archived
+	db, err := OpenDB(configDir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer db.Close()
+	var status string
+	err = db.Conn().QueryRow("SELECT status FROM specs WHERE spec_id = ?", "SPEC-VALID").Scan(&status)
+	if err != nil {
+		t.Fatalf("querying archived spec: %v", err)
+	}
+	if status != "archived" {
+		t.Errorf("expected status 'archived', got %q", status)
+	}
+}
