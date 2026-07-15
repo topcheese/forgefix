@@ -39,6 +39,7 @@ const (
 	SyncOpUpdateIssueBody SyncOpType = "update_issue_body"
 	SyncOpSyncSpec        SyncOpType = "sync_spec"
 	SyncOpDeleteIssue     SyncOpType = "delete_issue"
+	SyncOpUpdateFailure   SyncOpType = "update_failure"
 )
 
 type SyncOperation struct {
@@ -181,6 +182,16 @@ func QueueDeleteIssue(configDir, specID string, issueNumber int) error {
 		Type:     SyncOpDeleteIssue,
 		SpecID:   specID,
 		IssueNum: issueNumber,
+	})
+}
+
+// QueueUpdateFailure enqueues an update failure to the sync queue for attention.
+// This ensures update failures (no asset found, download error, etc.) are not silently dropped.
+func QueueUpdateFailure(configDir, errorCode, detail string) error {
+	return EnqueueSyncOp(configDir, SyncOperation{
+		Type:   SyncOpUpdateFailure,
+		Title:  errorCode,
+		Body:   detail,
 	})
 }
 

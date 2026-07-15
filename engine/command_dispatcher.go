@@ -162,6 +162,8 @@ func runUpdate(configDir string, coord *IssueCoordinator, version string, stdout
 	release, err := coord.LatestRelease()
 	if err != nil {
 		fmt.Fprintf(stderr, "Update failed: %v\n", err)
+		EmitAIError("UPDATE_RELEASE_FETCH_FAILED", err.Error())
+		_ = QueueUpdateFailure(configDir, "UPDATE_RELEASE_FETCH_FAILED", err.Error())
 		return
 	}
 	// Find asset matching current platform. Assets are named "ff", "ff-linux-amd64",
@@ -184,23 +186,32 @@ func runUpdate(configDir string, coord *IssueCoordinator, version string, stdout
 		}
 	}
 	if asset == nil {
-		fmt.Fprintf(stderr, "Update failed: no asset found for %s/%s\n", runtime.GOOS, runtime.GOARCH)
+		errMsg := fmt.Sprintf("no asset found for %s/%s", runtime.GOOS, runtime.GOARCH)
+		fmt.Fprintf(stderr, "Update failed: %s\n", errMsg)
+		EmitAIError("UPDATE_NO_ASSET", errMsg)
+		_ = QueueUpdateFailure(configDir, "UPDATE_NO_ASSET", errMsg)
 		return
 	}
 	data, err := coord.DownloadReleaseAsset(asset.ID)
 	if err != nil {
 		fmt.Fprintf(stderr, "Update failed: %v\n", err)
+		EmitAIError("UPDATE_DOWNLOAD_FAILED", err.Error())
+		_ = QueueUpdateFailure(configDir, "UPDATE_DOWNLOAD_FAILED", err.Error())
 		return
 	}
 	// Write to a temp file, make executable, replace current binary
 	tmpPath := filepath.Join(os.TempDir(), "ff-update")
 	if err := os.WriteFile(tmpPath, data, 0755); err != nil {
 		fmt.Fprintf(stderr, "Update failed: writing temp file: %v\n", err)
+		EmitAIError("UPDATE_WRITE_TEMP_FAILED", err.Error())
+		_ = QueueUpdateFailure(configDir, "UPDATE_WRITE_TEMP_FAILED", err.Error())
 		return
 	}
 	exe, err := os.Executable()
 	if err != nil {
 		fmt.Fprintf(stderr, "Update failed: finding executable: %v\n", err)
+		EmitAIError("UPDATE_FIND_EXECUTABLE_FAILED", err.Error())
+		_ = QueueUpdateFailure(configDir, "UPDATE_FIND_EXECUTABLE_FAILED", err.Error())
 		return
 	}
 	backupPath := exe + ".bak"
@@ -208,6 +219,8 @@ func runUpdate(configDir string, coord *IssueCoordinator, version string, stdout
 	if err := os.Rename(tmpPath, exe); err != nil {
 		os.Rename(backupPath, exe) // restore backup
 		fmt.Fprintf(stderr, "Update failed: replacing binary: %v\n", err)
+		EmitAIError("UPDATE_REPLACE_BINARY_FAILED", err.Error())
+		_ = QueueUpdateFailure(configDir, "UPDATE_REPLACE_BINARY_FAILED", err.Error())
 		return
 	}
 	fmt.Fprintf(stdout, "Updated to version %s.\n", version)

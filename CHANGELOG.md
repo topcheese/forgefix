@@ -6,6 +6,7 @@
 - feat: Remove test-specs directory from commit (SPEC-1784101811)
 - feat: Update spec SPEC-1784100187 to review status with linked commit (SPEC-1784100187)
 - feat: Fix detonation/defused/timeout issue-handling integration tests failing on GitHub API 404 (SPEC-1784101189)
+- feat: Fix ff -v update no asset found error not captured (SPEC-1784103956)
 
 ## [Unreleased] - 2026-07-14
 
