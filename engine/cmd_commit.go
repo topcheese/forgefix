@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"regexp"
 	"sort"
@@ -21,7 +22,7 @@ func (d *CommandDispatcher) handleCommit(args []string) (CommandResult, error) {
 		msg = ExtractMessageFromArgs(args)
 	}
 
-	commitHash, specID, commitMsg, err := runCommit(d.WorkDir, msg, flags.SpecID, flags.SpecType, flags.SpecVersion, flags.AIMode, d)
+	commitHash, specID, commitMsg, err := runCommit(d.WorkDir, msg, flags.SpecID, flags.SpecType, flags.SpecVersion, flags.AIMode, d, flags.Body)
 	if err != nil {
 		fmt.Fprintf(d.Stderr, "error: %v\n", err)
 		return CommandResult{ExitCode: 1}, nil
@@ -36,6 +37,55 @@ func (d *CommandDispatcher) handleCommit(args []string) (CommandResult, error) {
 		if err := UpdateLedgerAfterCommit(ledgerDir, specID, commitHash); err != nil {
 			fmt.Fprintf(d.Stderr, "error: %v\n", err)
 			return CommandResult{ExitCode: 1}, nil
+		}
+
+		// Step 5 — Capture git diff in spec file's resolution field (FR-5)
+		if specID != "" && commitHash != "" {
+			gitRoot, err := findGitRootWalk(d.WorkDir)
+			if err == nil {
+				diffCmd := exec.Command("git", "-C", gitRoot, "diff", "HEAD~1..HEAD")
+				diffOut, diffErr := diffCmd.Output()
+				if diffErr != nil {
+					// Fallback: first commit on branch, diff HEAD~1 doesn't exist
+					diffCmd2 := exec.Command("git", "-C", gitRoot, "diff", "--cached")
+					diffOut, _ = diffCmd2.Output()
+				}
+				diffText := strings.TrimSpace(string(diffOut))
+				if diffText != "" {
+					// Truncate at 10KB
+					if len(diffText) > 10240 {
+						diffText = diffText[:10240] + "... [truncated at 10KB]"
+					}
+					// Write into spec file's resolution frontmatter
+					specDir := filepath.Join(d.WorkDir, "specs")
+					if specFile, fErr := findSpecFileByID(specDir, specID); fErr == nil {
+						// Read, modify frontmatter, write back
+						if data, rErr := os.ReadFile(specFile); rErr == nil {
+							content := string(data)
+							parts := strings.SplitN(content, "---", 3)
+							if len(parts) >= 3 {
+								// Remove existing resolution block (header + any indented continuation lines)
+								existingFrontmatter := parts[1]
+								re := regexp.MustCompile(`(?m)^resolution:(\n[ \t]+.*)*`)
+								cleanedFrontmatter := re.ReplaceAllString(existingFrontmatter, "")
+								newFrontmatter := strings.TrimSpace(cleanedFrontmatter) + "\nresolution: |\n  " + strings.ReplaceAll(diffText, "\n", "\n  ") + "\n"
+								newContent := parts[0] + "---" + newFrontmatter + "---" + parts[2]
+								_ = os.WriteFile(specFile, []byte(newContent), 0644)
+
+								// Also update the ledger entry
+								ledgerDir := SpecConfigDir(d.WorkDir)
+								if ledger, lErr := LoadLedger(ledgerDir); lErr == nil {
+									if entry := ledger.GetSpecEntry(specID); entry != nil {
+										entry.Resolution = diffText
+										ledger.SetSpecEntry(specID, entry)
+										_ = SaveLedger(ledger, ledgerDir)
+									}
+								}
+							}
+						}
+					}
+				}
+			}
 		}
 
 		// Fold the metadata changes into the previous commit so they're not left
@@ -61,7 +111,7 @@ func (d *CommandDispatcher) handleCommit(args []string) (CommandResult, error) {
 
 // runCommit executes the full commit workflow: resolves the spec, stages, commits,
 // and updates the ledger. Returns the commit hash and spec ID.
-func runCommit(wd, msg, flagSpecID, specType, specVersion string, aiMode bool, d *CommandDispatcher) (string, string, string, error) {
+func runCommit(wd, msg, flagSpecID, specType, specVersion string, aiMode bool, d *CommandDispatcher, body string) (string, string, string, error) {
 	gitRoot, err := findGitRootWalk(wd)
 	if err != nil {
 		return "", "", "", err
@@ -87,6 +137,49 @@ func runCommit(wd, msg, flagSpecID, specType, specVersion string, aiMode bool, d
 	if specID != "" {
 		specDir := filepath.Join(wd, "specs")
 		specFile, err := findSpecFileByID(specDir, specID)
+
+		// Tier 2 — ff commit --ai reads and validates spec metadata (SOFT GATE)
+		if err == nil {
+			if data, rErr := os.ReadFile(specFile); rErr == nil {
+				content := string(data)
+				if strings.HasPrefix(content, "---") {
+					parts := strings.SplitN(content, "---", 3)
+					if len(parts) >= 3 {
+						frontmatter := parts[1]
+						isBug := strings.Contains(frontmatter, "type: bug")
+						hasRootCause := false
+						for _, fl := range strings.Split(frontmatter, "\n") {
+							fl = strings.TrimSpace(fl)
+							if strings.HasPrefix(fl, "root_cause:") {
+								rv := strings.Trim(strings.TrimPrefix(fl, "root_cause:"), ` "`)
+								if rv != "" {
+									hasRootCause = true
+								}
+								break
+							}
+						}
+						hasVersion := false
+						for _, fl := range strings.Split(frontmatter, "\n") {
+							fl = strings.TrimSpace(fl)
+							if strings.HasPrefix(fl, "version:") {
+								sv := strings.Trim(strings.TrimPrefix(fl, "version:"), ` "`)
+								if sv != "" {
+									hasVersion = true
+								}
+								break
+							}
+						}
+						if isBug && !hasRootCause {
+							fmt.Fprintf(os.Stderr, "warning: bug spec %s has no root_cause documented in frontmatter\n", specID)
+						}
+						if !hasVersion {
+							fmt.Fprintf(os.Stderr, "warning: spec %s has no version set in frontmatter\n", specID)
+						}
+					}
+				}
+			}
+		}
+
 		if err == nil && (specType != "" || specVersion != "") {
 			ledgerDir := SpecConfigDir(wd)
 			wc := LoadWorkflowConfig(ledgerDir)
@@ -124,6 +217,11 @@ func runCommit(wd, msg, flagSpecID, specType, specVersion string, aiMode bool, d
 		// Strip the current spec's tag from message to avoid doubling, but leave other spec references intact
 		cleaned := strings.TrimSpace(strings.ReplaceAll(msg, "["+specID+"]", ""))
 		commitMsg = strings.TrimSpace(fmt.Sprintf("feat: [%s] %s", specID, cleaned))
+
+		// Append body if provided (FR-4 — commit message body support)
+		if body != "" {
+			commitMsg = fmt.Sprintf("%s\n\n%s", commitMsg, body)
+		}
 	} else {
 		if msg == "" {
 			fmt.Fprint(d.Stdout, "Commit message (or q to quit): ")
@@ -734,8 +832,8 @@ func autoDetectSpecFromWorkingTree(wd string) (string, error) {
 	}
 
 	type candidate struct {
-		specID string
-		status string
+		specID  string
+		status  string
 		modTime time.Time
 	}
 

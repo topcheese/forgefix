@@ -55,11 +55,11 @@ type RepoLabel struct {
 
 // Release represents a Gitea/GitHub release with its assets.
 type Release struct {
-	ID        int            `json:"id"`
-	TagName   string         `json:"tag_name"`
-	Name      string         `json:"name"`
-	Body      string         `json:"body"`
-	Assets    []ReleaseAsset `json:"assets"`
+	ID      int            `json:"id"`
+	TagName string         `json:"tag_name"`
+	Name    string         `json:"name"`
+	Body    string         `json:"body"`
+	Assets  []ReleaseAsset `json:"assets"`
 }
 
 // ReleaseAsset represents a downloadable file attached to a release.

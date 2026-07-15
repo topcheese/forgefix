@@ -282,7 +282,7 @@ func handleDetonationIssues(d *Dashboard, configDir string) {
 			if pv := NewVersionManager(configDir).CurrentVersion(); pv != "0.0.0" {
 				specVersion = pv
 			}
-			sid, specPath, werr := writeSpecFromTemplate(configDir, title, title, body, "bug", specVersion)
+			sid, specPath, werr := writeSpecFromTemplate(configDir, title, title, body, "bug", specVersion, "")
 			if werr != nil {
 				d.AddSystemError(fmt.Sprintf("failed to create spec for %s: %v", info.Name, werr))
 				continue

@@ -75,7 +75,7 @@ func SpecConfigDir(workDir string) string {
 // it to specs/<name>.md. It does not perform duplicate detection
 // or body prompting — callers handle those. Returns the generated
 // spec ID and file path.
-func writeSpecFromTemplate(configDir, name, title, body, specType, specVersion string) (string, string, error) {
+func writeSpecFromTemplate(configDir, name, title, body, specType, specVersion, specRootCause string) (string, string, error) {
 	templatePath := filepath.Join(configDir, "templates", "spec_template.md")
 	templateContent, err := os.ReadFile(templatePath)
 	if err != nil {
@@ -99,6 +99,10 @@ func writeSpecFromTemplate(configDir, name, title, body, specType, specVersion s
 		}
 	}
 	tpl = strings.Join(lines, "\n")
+
+	if specRootCause != "" {
+		tpl = strings.ReplaceAll(tpl, `root_cause: ""`, fmt.Sprintf(`root_cause: "%s"`, specRootCause))
+	}
 
 	parts := strings.SplitN(tpl, "---", 3)
 	if len(parts) < 3 {
@@ -141,6 +145,14 @@ func createSpec(configDir, name, bodyContent string, d *CommandDispatcher, flags
 		}
 	}
 
+	// Tier 1: --type is required in --ai mode (FR-6)
+	if flags.AIMode && flags.SpecType == "" {
+		return fmt.Errorf("--type is required in --ai mode: valid values are feature, bug, refactor")
+	}
+	if flags.AIMode && flags.SpecType != "" && !isValidSpecType(flags.SpecType) {
+		return fmt.Errorf("invalid --type %q: valid values are feature, bug, refactor", flags.SpecType)
+	}
+
 	// Resolve version from DB (not the compile-time const).
 	specVersion := Version
 	if pv := NewVersionManager(configDir).CurrentVersion(); pv != "0.0.0" {
@@ -161,7 +173,7 @@ func createSpec(configDir, name, bodyContent string, d *CommandDispatcher, flags
 		return fmt.Errorf("spec body cannot be empty")
 	}
 
-	specID, filePath, err := writeSpecFromTemplate(configDir, name, title, body, flags.SpecType, specVersion)
+	specID, filePath, err := writeSpecFromTemplate(configDir, name, title, body, flags.SpecType, specVersion, flags.SpecRootCause)
 	if err != nil {
 		return err
 	}
@@ -352,4 +364,14 @@ func promptForSpecBody(title string) string {
 		body += strings.Join(sections, "\n\n") + "\n"
 	}
 	return strings.TrimSpace(body)
+}
+
+// isValidSpecType checks whether the given type is one of the known spec types.
+func isValidSpecType(t string) bool {
+	switch t {
+	case "feature", "bug", "refactor":
+		return true
+	default:
+		return false
+	}
 }

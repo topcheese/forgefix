@@ -822,7 +822,6 @@ func TestSpecMetadataSyncer_ErrorSpecNotFound(t *testing.T) {
 	}
 }
 
-
 func TestClearRepoIssueForSpec_NoopWhenNoSpec(t *testing.T) {
 	tmpDir := t.TempDir()
 	os.MkdirAll(filepath.Join(tmpDir, "specs"), 0755)

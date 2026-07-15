@@ -9,7 +9,7 @@ import (
 )
 
 // SpecFile represents a parsed spec file from the specs/ directory.
-	type SpecFile struct {
+type SpecFile struct {
 	SpecID        string
 	Title         string
 	Body          string

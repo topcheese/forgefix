@@ -174,8 +174,8 @@ func SaveLedger(ledger *LedgerEngine, configDir string) error {
 	for specID, entry := range ledger.GetAllSpecEntries() {
 		if _, err := tx.Exec(`
 			INSERT INTO specs (spec_id, title, status, type, version, repo_issue_id, root_cause, resolution, body, updated_at)
-			VALUES (?, ?, ?, ?, '', ?, '', '', '', datetime('now'))
-		`, specID, entry.SpecID, entry.Status, entry.Type, entry.RepoIssueID); err != nil {
+			VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'))
+		`, specID, entry.SpecID, entry.Status, entry.Type, entry.Version, entry.RepoIssueID, entry.RootCause, entry.Resolution, entry.Body); err != nil {
 			return fmt.Errorf("saving spec %s: %w", specID, err)
 		}
 		for _, hash := range entry.LinkedCommits {
@@ -208,11 +208,15 @@ type LedgerEntry struct {
 }
 
 type SpecEntry struct {
-	SpecID        string   `json:"spec_id"`        // Human-readable title from spec file heading (map key is the real spec ID)
+	SpecID        string   `json:"spec_id"` // Human-readable title from spec file heading (map key is the real spec ID)
 	RepoIssueID   int      `json:"repo_issue_id"`
 	Status        string   `json:"status"`
 	LinkedCommits []string `json:"linked_commits"`
 	Type          string   `json:"type,omitempty"`
+	Body          string   `json:"body,omitempty"`
+	RootCause     string   `json:"root_cause,omitempty"`
+	Resolution    string   `json:"resolution,omitempty"`
+	Version       string   `json:"version,omitempty"`
 }
 
 type LedgerEngine struct {
@@ -582,7 +586,8 @@ func (le *LedgerEngine) SyncFromSpecsDir(configDir string) error {
 		}
 		frontmatter := parts[1]
 		body := strings.TrimSpace(parts[2])
-		var specID, status, specType, title string
+		var specID, status, specType, title, version, rootCause, resolution string
+		var repoIssueID int
 		lines := strings.Split(frontmatter, "\n")
 		for _, line := range lines {
 			line = strings.TrimSpace(line)
@@ -595,6 +600,16 @@ func (le *LedgerEngine) SyncFromSpecsDir(configDir string) error {
 			} else if strings.HasPrefix(line, "type:") {
 				specType = strings.TrimSpace(strings.TrimPrefix(line, "type:"))
 				specType = strings.Trim(specType, `"`)
+			} else if strings.HasPrefix(line, "version:") {
+				version = strings.Trim(strings.TrimPrefix(line, "version:"), ` "`)
+			} else if strings.HasPrefix(line, "root_cause:") {
+				rootCause = strings.Trim(strings.TrimPrefix(line, "root_cause:"), ` "`)
+			} else if strings.HasPrefix(line, "resolution:") {
+				resolution = strings.Trim(strings.TrimPrefix(line, "resolution:"), ` "`)
+			} else if strings.HasPrefix(line, "repo_issue:") {
+				if val := strings.TrimSpace(strings.TrimPrefix(line, "repo_issue:")); val != "" && val != `""` {
+					fmt.Sscanf(val, "%d", &repoIssueID)
+				}
 			}
 		}
 		// Extract title from markdown heading
@@ -614,6 +629,19 @@ func (le *LedgerEngine) SyncFromSpecsDir(configDir string) error {
 			if specType != "" {
 				existing.Type = specType
 			}
+			existing.Body = body
+			if version != "" {
+				existing.Version = version
+			}
+			if rootCause != "" {
+				existing.RootCause = rootCause
+			}
+			if resolution != "" {
+				existing.Resolution = resolution
+			}
+			if repoIssueID > 0 {
+				existing.RepoIssueID = repoIssueID
+			}
 		} else {
 			titleVal := title
 			if titleVal == "" {
@@ -621,10 +649,14 @@ func (le *LedgerEngine) SyncFromSpecsDir(configDir string) error {
 			}
 			le.specMappings[specID] = &SpecEntry{
 				SpecID:        titleVal,
-				RepoIssueID:   0,
+				RepoIssueID:   repoIssueID,
 				Status:        status,
 				LinkedCommits: []string{},
 				Type:          specType,
+				Body:          body,
+				RootCause:     rootCause,
+				Resolution:    resolution,
+				Version:       version,
 			}
 		}
 	}

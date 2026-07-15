@@ -10,7 +10,9 @@ import (
 )
 
 // changelogEntryRegex parses a conventional-commit message of the form
-//   feat: [SPEC-123] description
+//
+//	feat: [SPEC-123] description
+//
 // into its type, optional SPEC-ID, and description.
 var changelogEntryRegex = regexp.MustCompile(`^([A-Za-z0-9_]+):\s*(?:\[(SPEC-\d+)\]\s*)?(.+)$`)
 

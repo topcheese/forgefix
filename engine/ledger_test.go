@@ -497,3 +497,155 @@ func TestLedgerPreservesProjectVersion(t *testing.T) {
 	// Version field is removed from JSON output, so loaded.Version is empty.
 	_ = loaded.Version
 }
+
+func TestSyncFromSpecsDir_ExtractsNewFields(t *testing.T) {
+	tmpDir := t.TempDir()
+	specDir := filepath.Join(tmpDir, "specs")
+	if err := os.MkdirAll(specDir, 0755); err != nil {
+		t.Fatal(err)
+	}
+
+	// Create a spec file with all the new frontmatter fields (version, root_cause, resolution)
+	// and a non-trivial body. This reflects the format produced by writeSpecFromTemplate.
+	specContent := `---
+spec_id: "SPEC-NEW-FIELDS"
+status: draft
+type: bug
+repo_issue: 42
+version: "v0.9.0"
+root_cause: "nil pointer dereference in config loader"
+resolution: ""
+linked_commits: []
+---
+# Config Loader Fix
+
+## Root Cause Analysis
+
+The config loader does not check if the file pointer is nil before dereferencing.
+
+## Fix
+
+Added nil check before dereference.
+`
+	specFile := filepath.Join(specDir, "config-loader-fix.md")
+	if err := os.WriteFile(specFile, []byte(specContent), 0644); err != nil {
+		t.Fatal(err)
+	}
+
+	le := NewLedgerEngine()
+	// Pre-set an existing entry to verify the update path handles all fields
+	le.SetSpecEntry("SPEC-NEW-FIELDS", &SpecEntry{
+		SpecID:        "Old Title",
+		RepoIssueID:   0,
+		Status:        "draft",
+		LinkedCommits: []string{},
+	})
+
+	if err := le.SyncFromSpecsDir(tmpDir); err != nil {
+		t.Fatalf("SyncFromSpecsDir failed: %v", err)
+	}
+
+	entry := le.GetSpecEntry("SPEC-NEW-FIELDS")
+	if entry == nil {
+		t.Fatal("expected SPEC-NEW-FIELDS entry after sync, got nil")
+	}
+
+	// Verify all new fields are extracted
+	if entry.Version != "v0.9.0" {
+		t.Errorf("Version = %q, want %q", entry.Version, "v0.9.0")
+	}
+	if entry.RootCause != "nil pointer dereference in config loader" {
+		t.Errorf("RootCause = %q, want %q", entry.RootCause, "nil pointer dereference in config loader")
+	}
+	if entry.Resolution != "" {
+		t.Errorf("Resolution = %q, want empty string", entry.Resolution)
+	}
+	if entry.RepoIssueID != 42 {
+		t.Errorf("RepoIssueID = %d, want 42", entry.RepoIssueID)
+	}
+	if entry.Type != "bug" {
+		t.Errorf("Type = %q, want %q", entry.Type, "bug")
+	}
+
+	// Verify body content is extracted (everything after frontmatter)
+	if entry.Body == "" {
+		t.Fatal("Body should not be empty after sync")
+	}
+	if !strings.Contains(entry.Body, "## Root Cause Analysis") {
+		t.Errorf("expected Body to contain '## Root Cause Analysis', got:\n%s", entry.Body)
+	}
+	if !strings.Contains(entry.Body, "Added nil check before dereference") {
+		t.Errorf("expected Body to contain fix description, got:\n%s", entry.Body)
+	}
+
+	// Verify SpecID (title from markdown heading) is updated
+	if entry.SpecID != "Config Loader Fix" {
+		t.Errorf("SpecID (title) = %q, want %q", entry.SpecID, "Config Loader Fix")
+	}
+}
+
+func TestSyncFromSpecsDir_ExtractsNewFieldsNewEntry(t *testing.T) {
+	tmpDir := t.TempDir()
+	specDir := filepath.Join(tmpDir, "specs")
+	if err := os.MkdirAll(specDir, 0755); err != nil {
+		t.Fatal(err)
+	}
+
+	// Create a spec file with all fields — this tests the "not found in ledger" branch
+	// where a brand-new SpecEntry is created from the parsed fields.
+	specContent := `---
+spec_id: "SPEC-BRAND-NEW"
+status: in-progress
+type: feature
+repo_issue: 99
+version: "v0.9.5"
+root_cause: "race condition in concurrent map writes"
+resolution: "added sync.RWMutex"
+linked_commits: []
+---
+# Concurrent Map Fix
+`
+	if err := os.WriteFile(filepath.Join(specDir, "concurrent-map.md"), []byte(specContent), 0644); err != nil {
+		t.Fatal(err)
+	}
+
+	le := NewLedgerEngine()
+	if err := le.SyncFromSpecsDir(tmpDir); err != nil {
+		t.Fatalf("SyncFromSpecsDir failed: %v", err)
+	}
+
+	entry := le.GetSpecEntry("SPEC-BRAND-NEW")
+	if entry == nil {
+		t.Fatal("expected SPEC-BRAND-NEW entry after sync")
+	}
+
+	if entry.Version != "v0.9.5" {
+		t.Errorf("Version = %q, want %q", entry.Version, "v0.9.5")
+	}
+	if entry.RootCause != "race condition in concurrent map writes" {
+		t.Errorf("RootCause = %q, want %q", entry.RootCause, "race condition in concurrent map writes")
+	}
+	if entry.Resolution != "added sync.RWMutex" {
+		t.Errorf("Resolution = %q, want %q", entry.Resolution, "added sync.RWMutex")
+	}
+	if entry.RepoIssueID != 99 {
+		t.Errorf("RepoIssueID = %d, want 99", entry.RepoIssueID)
+	}
+	if entry.Type != "feature" {
+		t.Errorf("Type = %q, want %q", entry.Type, "feature")
+	}
+	if entry.SpecID != "Concurrent Map Fix" {
+		t.Errorf("SpecID (title) = %q, want %q", entry.SpecID, "Concurrent Map Fix")
+	}
+	if entry.Status != "in-progress" {
+		t.Errorf("Status = %q, want %q", entry.Status, "in-progress")
+	}
+
+	// Verify body captures everything after frontmatter
+	if entry.Body == "" {
+		t.Fatal("Body should contain the markdown body")
+	}
+	if !strings.Contains(entry.Body, "# Concurrent Map Fix") {
+		t.Errorf("expected Body to start with heading, got:\n%s", entry.Body)
+	}
+}

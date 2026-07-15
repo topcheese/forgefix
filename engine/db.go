@@ -621,7 +621,7 @@ func (db *DB) ImportLedger() error {
 
 	// Import spec mappings
 	for specID, entry := range ledger.GetAllSpecEntries() {
-		if err := db.UpsertSpec(specID, entry.SpecID, entry.Status, entry.Type, "", entry.RepoIssueID, "", "", ""); err != nil {
+		if err := db.UpsertSpec(specID, entry.SpecID, entry.Status, entry.Type, entry.Version, entry.RepoIssueID, entry.RootCause, entry.Resolution, entry.Body); err != nil {
 			return fmt.Errorf("importing spec %s: %w", specID, err)
 		}
 		for _, hash := range entry.LinkedCommits {

@@ -97,7 +97,7 @@ created: 2024-01-01
 	d := &CommandDispatcher{Stdout: io.Discard, Stderr: io.Discard}
 	// User passes message that already contains the spec ID tag — dedup should
 	// strip [SPEC-123] before the function prepends "feat: [SPEC-123]"
-	hash, specID, commitMsg, err := runCommit(tmpDir, "implement feature [SPEC-123]", "SPEC-123", "", "", false, d)
+	hash, specID, commitMsg, err := runCommit(tmpDir, "implement feature [SPEC-123]", "SPEC-123", "", "", false, d, "")
 	if err != nil {
 		t.Fatalf("runCommit failed: %v", err)
 	}
@@ -141,7 +141,7 @@ created: 2024-01-01
 	}
 
 	d := &CommandDispatcher{Stdout: io.Discard, Stderr: io.Discard}
-	_, _, commitMsg, err := runCommit(tmpDir, "[SPEC-456] add new feature", "SPEC-456", "", "", false, d)
+	_, _, commitMsg, err := runCommit(tmpDir, "[SPEC-456] add new feature", "SPEC-456", "", "", false, d, "")
 	if err != nil {
 		t.Fatalf("runCommit failed: %v", err)
 	}
@@ -176,7 +176,7 @@ created: 2024-01-01
 
 	d := &CommandDispatcher{Stdout: io.Discard, Stderr: io.Discard}
 	// Committing to SPEC-111, message references SPEC-456 and SPEC-789
-	_, _, commitMsg, err := runCommit(tmpDir, "[SPEC-111] integrate with [SPEC-456] and [SPEC-789]", "SPEC-111", "", "", false, d)
+	_, _, commitMsg, err := runCommit(tmpDir, "[SPEC-111] integrate with [SPEC-456] and [SPEC-789]", "SPEC-111", "", "", false, d, "")
 	if err != nil {
 		t.Fatalf("runCommit failed: %v", err)
 	}
@@ -215,7 +215,7 @@ created: 2024-01-01
 	}
 
 	d := &CommandDispatcher{Stdout: io.Discard, Stderr: io.Discard}
-	_, _, commitMsg, err := runCommit(tmpDir, "[SPEC-999]", "SPEC-999", "", "", false, d)
+	_, _, commitMsg, err := runCommit(tmpDir, "[SPEC-999]", "SPEC-999", "", "", false, d, "")
 	if err != nil {
 		t.Fatalf("runCommit failed: %v", err)
 	}
@@ -254,12 +254,148 @@ created: 2024-01-01
 	}
 
 	d := &CommandDispatcher{Stdout: io.Discard, Stderr: io.Discard}
-	_, _, commitMsg, err := runCommit(tmpDir, "implement feature", "SPEC-789", "", "", false, d)
+	_, _, commitMsg, err := runCommit(tmpDir, "implement feature", "SPEC-789", "", "", false, d, "")
 	if err != nil {
 		t.Fatalf("runCommit failed: %v", err)
 	}
 	if commitMsg != "feat: [SPEC-789] implement feature" {
 		t.Errorf("expected clean format, got: %q", commitMsg)
+	}
+}
+
+func TestRunCommit_BodyAppended(t *testing.T) {
+	tmpDir := t.TempDir()
+	initGitRepo(t, tmpDir)
+
+	specDir := filepath.Join(tmpDir, "specs")
+	if err := os.MkdirAll(specDir, 0755); err != nil {
+		t.Fatal(err)
+	}
+	specContent := `---
+spec_id: "SPEC-BODY-1"
+status: in-progress
+type: feature
+repo_issue: ""
+created: 2024-01-01
+---
+# Test Spec
+`
+	if err := os.WriteFile(filepath.Join(specDir, "SPEC-BODY-1.md"), []byte(specContent), 0644); err != nil {
+		t.Fatal(err)
+	}
+	workFile := filepath.Join(tmpDir, "work.txt")
+	if err := os.WriteFile(workFile, []byte("work"), 0644); err != nil {
+		t.Fatal(err)
+	}
+
+	d := &CommandDispatcher{Stdout: io.Discard, Stderr: io.Discard}
+	hash, specID, commitMsg, err := runCommit(tmpDir, "my message", "SPEC-BODY-1", "", "", false, d, "Additional body text")
+	if err != nil {
+		t.Fatalf("runCommit failed: %v", err)
+	}
+	if hash == "" {
+		t.Fatal("expected non-empty commit hash")
+	}
+	if specID != "SPEC-BODY-1" {
+		t.Errorf("expected SPEC-BODY-1, got %s", specID)
+	}
+	// Commit message should contain body appended with \n\n separator (FR-4)
+	expectedSubject := "feat: [SPEC-BODY-1] my message"
+	if !strings.HasPrefix(commitMsg, expectedSubject) {
+		t.Errorf("expected commitMsg to start with %q, got: %q", expectedSubject, commitMsg)
+	}
+	if !strings.Contains(commitMsg, "\n\nAdditional body text") {
+		t.Errorf("expected body to be appended with \\n\\n separator in commitMsg, got: %q", commitMsg)
+	}
+	// Verify git log contains the full message body
+	logOut := runGit(t, tmpDir, "log", "--format=%B", "-1")
+	if !strings.Contains(logOut, "Additional body text") {
+		t.Errorf("expected git log to contain body text, got:\n%s", logOut)
+	}
+	if !strings.Contains(logOut, expectedSubject) {
+		t.Errorf("expected git log to contain subject, got:\n%s", logOut)
+	}
+}
+
+func TestRunCommit_BodyEmptyDoesNotAffect(t *testing.T) {
+	tmpDir := t.TempDir()
+	initGitRepo(t, tmpDir)
+
+	specDir := filepath.Join(tmpDir, "specs")
+	if err := os.MkdirAll(specDir, 0755); err != nil {
+		t.Fatal(err)
+	}
+	specContent := `---
+spec_id: "SPEC-BODY-EMPTY"
+status: in-progress
+type: feature
+repo_issue: ""
+created: 2024-01-01
+---
+# Test Spec
+`
+	if err := os.WriteFile(filepath.Join(specDir, "SPEC-BODY-EMPTY.md"), []byte(specContent), 0644); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(tmpDir, "data.txt"), []byte("data"), 0644); err != nil {
+		t.Fatal(err)
+	}
+
+	d := &CommandDispatcher{Stdout: io.Discard, Stderr: io.Discard}
+	_, _, commitMsg, err := runCommit(tmpDir, "no body here", "SPEC-BODY-EMPTY", "", "", false, d, "")
+	if err != nil {
+		t.Fatalf("runCommit failed: %v", err)
+	}
+	// Empty body string should produce a single-line commit message with no body
+	if commitMsg != "feat: [SPEC-BODY-EMPTY] no body here" {
+		t.Errorf("expected commit msg without body, got: %q", commitMsg)
+	}
+	// Verify git log also has single line
+	logOut := runGit(t, tmpDir, "log", "--format=%B", "-1")
+	logOut = strings.TrimSpace(logOut)
+	if strings.Contains(logOut, "\n\n") {
+		t.Errorf("expected no body in git log when body is empty, got:\n%s", logOut)
+	}
+}
+
+func TestRunCommit_BodyWithNewlines(t *testing.T) {
+	tmpDir := t.TempDir()
+	initGitRepo(t, tmpDir)
+
+	specDir := filepath.Join(tmpDir, "specs")
+	if err := os.MkdirAll(specDir, 0755); err != nil {
+		t.Fatal(err)
+	}
+	specContent := `---
+spec_id: "SPEC-BODY-NL"
+status: in-progress
+type: feature
+repo_issue: ""
+created: 2024-01-01
+---
+# Test
+`
+	if err := os.WriteFile(filepath.Join(specDir, "SPEC-BODY-NL.md"), []byte(specContent), 0644); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(tmpDir, "f.txt"), []byte("content"), 0644); err != nil {
+		t.Fatal(err)
+	}
+
+	multilineBody := "Line one\n\nLine two\nLine three"
+	d := &CommandDispatcher{Stdout: io.Discard, Stderr: io.Discard}
+	_, _, commitMsg, err := runCommit(tmpDir, "multiline body test", "SPEC-BODY-NL", "", "", false, d, multilineBody)
+	if err != nil {
+		t.Fatalf("runCommit failed: %v", err)
+	}
+	expected := "feat: [SPEC-BODY-NL] multiline body test\n\nLine one\n\nLine two\nLine three"
+	if commitMsg != expected {
+		t.Errorf("commitMsg mismatch.\n  got:  %q\n  want: %q", commitMsg, expected)
+	}
+	// Verify git log preserves the multiline body
+	logOut := runGit(t, tmpDir, "log", "--format=%B", "-1")
+	if !strings.Contains(logOut, "Line one") || !strings.Contains(logOut, "Line two") || !strings.Contains(logOut, "Line three") {
+		t.Errorf("expected git log to contain all body lines, got:\n%s", logOut)
 	}
 }
 

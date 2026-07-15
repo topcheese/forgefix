@@ -10,23 +10,25 @@ import (
 const Version = "0.9.0"
 
 type CLIArgs struct {
-	AIMode          bool
-	Help            bool
-	InstallShortcut bool
-	InstallGlobal   bool
-	Version         bool
-	Message         string
-	FailureDecay    int
-	RunTest         string
-	SpecID          string
-	SpecType        string
-	SpecVersion     string
-	SpecObjective   string
+	AIMode           bool
+	Help             bool
+	InstallShortcut  bool
+	InstallGlobal    bool
+	Version          bool
+	Message          string
+	FailureDecay     int
+	RunTest          string
+	SpecID           string
+	SpecType         string
+	SpecVersion      string
+	SpecObjective    string
 	SpecRequirements string
-	SpecAcceptance  string
-	All             bool
-	Delete          bool
-	SearchQuery     string
+	SpecAcceptance   string
+	Body             string // NEW — --body flag for commit message body
+	SpecRootCause    string // NEW — --root-cause flag for spec creation
+	All              bool
+	Delete           bool
+	SearchQuery      string
 }
 
 func ParseFlags(args []string) CLIArgs {
@@ -90,6 +92,16 @@ func ParseFlags(args []string) CLIArgs {
 			if i+1 < len(args) {
 				i++
 				flags.SpecAcceptance = args[i]
+			}
+		case "--body":
+			if i+1 < len(args) {
+				i++
+				flags.Body = args[i]
+			}
+		case "--root-cause":
+			if i+1 < len(args) {
+				i++
+				flags.SpecRootCause = args[i]
 			}
 		case "--search":
 			if i+1 < len(args) {

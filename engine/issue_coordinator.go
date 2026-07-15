@@ -1054,13 +1054,13 @@ func (c *IssueCoordinator) SyncSpecs(configDir string) error {
 					}
 				}
 
-			if remoteIssue.State == "closed" && spec.Status != "closed" && spec.Status != "ship" {
-				fmt.Printf("Status change detected: issue #%d is now closed, updating spec status to closed\n", spec.RepoIssue)
-				spec.Status = "closed"
-				if err := c.sm.UpdateStatus(filePath, "closed"); err != nil {
-					fmt.Fprintf(os.Stderr, "warning: failed to update spec file status: %v\n", err)
+				if remoteIssue.State == "closed" && spec.Status != "closed" && spec.Status != "ship" {
+					fmt.Printf("Status change detected: issue #%d is now closed, updating spec status to closed\n", spec.RepoIssue)
+					spec.Status = "closed"
+					if err := c.sm.UpdateStatus(filePath, "closed"); err != nil {
+						fmt.Fprintf(os.Stderr, "warning: failed to update spec file status: %v\n", err)
+					}
 				}
-			}
 			}
 		}
 
