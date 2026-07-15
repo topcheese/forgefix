@@ -3,7 +3,7 @@ spec_id: "SPEC-1783791504"
 status: review
 repo_issue: 528
 type: bug
-version: "0.9.0"
+version: "0.9.5"
 root_cause: "buildReleaseBody uses the numeric spec ID as both the ID and title when LoadSpecByID fails, producing doubled IDs. No clickable links to the remote issue."
 resolution: ""
 ---

@@ -3,7 +3,7 @@ spec_id: "SPEC-1783784714"
 status: review
 repo_issue: ""
 type: feature
-version: "v0.9.0"
+version: "v0.9.5"
 root_cause: "Version comparison used lexicographic string <= which fails when major/minor version digits increase in length (e.g. 0.9.9 vs 0.10.0)."
 resolution: "Replaced hand-written compareVersions with golang.org/x/mod/semver.Compare (Go standard library). Previous commits 805248a/32a7bca fixed the asset naming mismatch."
 linked_commits: ["32a7bca", "805248a"]

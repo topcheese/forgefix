@@ -3,7 +3,7 @@ spec_id: "SPEC-1783899571"
 status: review
 repo_issue: ""
 type: feature
-version: "0.9.0"
+version: "0.9.5"
 root_cause: ""
 resolution: ""
 linked_commits: ["20a6e10"]

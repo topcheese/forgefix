@@ -10,6 +10,17 @@ description: "Use when making code changes, managing specs, or binding commits t
 ForgeFix (`ff`) replaces ad-hoc git workflow with a **spec-driven development lifecycle**. Every change is traceable to a spec, every spec links to a remote issue, and no code ships without a paper trail.
 
 ```
+Full lifecycle:
+  ff spec --ai <title>             → Create a spec (issue contract)
+  ff spec --ai --type bug <title>  → Create bug spec with --type enforcement
+  ff spec --ai --root-cause "..."  → Document root cause at creation time
+  Implement code                   → Write against the spec
+  ff commit --ai <msg>             → Auto-detect spec, commit with binding, set "review"
+  ff commit --ai --body "..."      → Commit with multi-line message body
+  ff sync --ai                     → Sync to remote issue tracker, auto-promote to "ship"
+  ff ship --ai                     → Push, close issues, set "closed"
+  ff archive --ai                  → Archive closed specs into timestamped document
+
 AGENT WORKFLOW (exactly five steps):
   1. ff specs --search "<title>"   → Check for duplicates before creating (SPEC-1783931981)
   2. ff spec --ai <title>          → Create a spec (issue contract)
@@ -166,6 +177,13 @@ ff commit --ai --spec SPEC-1741712345 "fix login timeout"
 
 # With metadata flags:
 ff commit --ai --type bug "fix login timeout"
+
+# With multi-line body:
+ff commit --ai --body "detailed description spanning
+multiple lines explaining the change" "short description"
+
+# ff commit --ai auto-captures the git diff into the spec's resolution: frontmatter
+# ff commit --ai warns on stderr if a bug spec has no root_cause or a spec has no version
 ```
 
 **If you omit both `--ai` and `--spec`**, ForgeFix shows an interactive categorized menu (Feature / Bug / Refactor / All) to pick the spec. In agent mode always use `--ai`.
@@ -195,6 +213,15 @@ If the message already contains `[SPEC-XXX]`, only the matching spec's tag is st
 ```
 
 **Types:** `feat`, `fix`, `refactor`, `test`, `docs`, `chore`
+
+The `--body` flag appends a multi-line body to the commit message, so you get:
+```
+feat: [SPEC-XXX] short description
+
+Detailed body spanning multiple lines explaining the change.
+```
+
+The body is NOT sanitized (newlines preserved), unlike `--message` which strips newlines.
 
 ### 6. Keep Concerns Separate
 
@@ -418,14 +445,18 @@ go build ./...
 ### New Feature (Agent Workflow)
 
 ```
-1. ff spec --ai "user-authentication"             → draft
+1. ff spec --ai "user-authentication"               → draft
 2. Implement auth logic
-3. ff commit --ai "add JWT middleware"             → commit bound to spec
-4. Edit spec status to "review" (manual)           → review
-5. (optionally) ff commit --ai "add login endpoint" → commit bound to spec
-6. Edit spec status to "review" (manual)           → review
-                                                    ─────────────────
-                                                    Agent stops here.
+3. ff commit --ai "add JWT middleware"               → commit bound to spec
+3a. ff commit --ai --body "JWT middleware validates\nall protected routes" "add JWT middleware" → commit with body (optional)
+4. Edit spec status to "review" (manual)             → review
+5. (optionally) ff commit --ai "add login endpoint"  → commit bound to spec
+5a. ff commit --ai --body "Multi-line\ndescription" "add login endpoint"   → commit with body (optional)
+6. Edit spec status to "review" (manual)             → review
+                                                     ─────────────────
+                                                     Agent stops here.
+                                                     --body can be used with any ff commit --ai
+                                                     for multi-line commit messages.
                                                     HUMAN-ONLY:
 7. ff sync --ai                                     → ship (auto-promote)
 8. ff ship --ai                                     → closed (push + housekeeping)
@@ -450,16 +481,17 @@ go build ./...
 
 ```
 # Agent workflow (--ai):
-1. ff spec --ai "fix login null pointer"          → draft
-2. Implement fix
-3. ff commit --ai "fix null check"                → commit bound to spec
-4. Edit spec status to "review" (manual)          → review
+1. ff spec --ai --type bug "fix login null pointer"          → draft
+2. (optionally) ff spec --ai --root-cause "null check missing on session object" --type bug "fix null pointer" → draft with root cause
+3. Implement fix
+4. ff commit --ai "fix null check"                → commit bound to spec
+5. Edit spec status to "review" (manual)          → review
                                                     ─────────────────
                                                     Agent stops here.
                                                     HUMAN-ONLY:
-5. ff sync --ai                                   → ship
-6. ff ship --ai                                   → closed
-7. ff archive --ai                                → archived
+6. ff sync --ai                                   → ship
+7. ff ship --ai                                   → closed
+8. ff archive --ai                                → archived
 
 # Interactive:
 1. ff commit                          → interactive mode
@@ -662,14 +694,15 @@ For every agent change cycle (exactly 5 steps):
 7. [ ] `ff commit --ai <msg>` auto-detects and commits with `[SPEC-XXX]`
 8. [ ] Spec status promoted to `review` (edit `status: draft` → `status: review` in spec file)
 9. [ ] Each commit is bound to a spec (`ff specs` shows linked commits)
-10. [ ] All `ff` commands use the `--ai` flag — no interactive prompts
-10. [ ] Every `git` command replaced with `ff` passthrough
-11. [ ] `ff status --short` shows clean tree after each ff command
-12. [ ] All tests pass (`ff --ai` produces JSON pass)
-13. [ ] Build compiles (`go build ./...` or equivalent)
-14. [ ] No secrets in the diff
-15. [ ] `.gitignore` covers standard exclusions
-16. [ ] No formatting-only changes mixed with behavior changes
+10. [ ] `ff commit --ai --body` properly formats multi-line commit messages
+11. [ ] All `ff` commands use the `--ai` flag — no interactive prompts
+12. [ ] Every `git` command replaced with `ff` passthrough
+13. [ ] `ff status --short` shows clean tree after each ff command
+14. [ ] All tests pass (`ff --ai` produces JSON pass)
+15. [ ] Build compiles (`go build ./...` or equivalent)
+16. [ ] No secrets in the diff
+17. [ ] `.gitignore` covers standard exclusions
+18. [ ] No formatting-only changes mixed with behavior changes
 
 ## Human Verification Checklist
 
@@ -680,4 +713,6 @@ For human-operated sync/ship/archive operations:
 3. [ ] `ff archive --ai` archives closed specs
 4. [ ] `ff sync` completes without errors
 5. [ ] Archived specs are removed from active view (`ff archive --ai`)
-6. [ ] Spec file's `resolution` field is filled in for closed specs
+6. [ ] `ff commit --ai --body "..."` creates multi-line commit with body
+7. [ ] `ff spec --ai --type bug "title"` rejects with error if --type is missing
+8. [ ] Spec file's `resolution` field is filled in for closed specs

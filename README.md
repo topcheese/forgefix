@@ -102,7 +102,7 @@ ff spec --delete SPEC-1741712345
 
 ### `ff commit [message]`
 
-Stages all changes and creates a commit with the message formatted as `feat: [SPEC-XXX] <message>`. Records the commit hash in the ledger and advances the spec status to `review`.
+Stages all changes and creates a commit with the message formatted as `feat: [SPEC-XXX] <message>`. Records the commit hash in the ledger and advances the spec status to `review`. The `--body` flag can be used to supply a multi-line body. The git diff is auto-captured into the spec's `resolution:` frontmatter.
 
 **Spec selection (interactive):** If you omit `-s`, ForgeFix shows a categorized menu (Feature / Bug / Refactor / All) to pick the spec.
 
@@ -110,6 +110,7 @@ Stages all changes and creates a commit with the message formatted as `feat: [SP
 ff commit -s SPEC-1741712345 "add user authentication"
 ff commit                          # interactive picker
 ff commit -s SPEC-1741712345 --type bug --ver 1.1   # set metadata
+ff commit -s SPEC-1741712345 "add auth" --body "multi-line\ndescription"   # with body
 ```
 
 **Commit flags:**
@@ -120,6 +121,7 @@ ff commit -s SPEC-1741712345 --type bug --ver 1.1   # set metadata
 | `-t, --type <type>` | Set spec type label (`feature`, `bug`, `refactor`) |
 | `--ver <version>` | Set spec version label |
 | `-m, --message <msg>` | Supply message inline (non-interactive) |
+| `--body <body>` | Supply multi-line body for commit message (newlines preserved) |
 
 ### `ff specs`
 
@@ -412,11 +414,14 @@ skill to load, another file to remember. ForgeFix replaces all of it.
 With ForgeFix, an agent only needs to remember one thing:
 
 ```
-ff spec --ai <title>     → define the work
-ff commit --ai <msg>     → bind commits to specs (auto-detect)
-ff sync --ai             → sync to remote, promote to ship
-ff ship --ai             → push, close, release
-ff archive --ai          → archive completed specs
+ff spec --ai <title>                 → define the work
+ff spec --ai --type bug <title>      → define bug work with type enforcement
+ff spec --ai --root-cause "..."      → document root cause at creation
+ff commit --ai <msg>                 → bind commits to specs (auto-detect)
+ff commit --ai --body "..."          → commit with multi-line body
+ff sync --ai                         → sync to remote, promote to ship
+ff ship --ai                         → push, close, release
+ff archive --ai                      → archive completed specs
 ```
 
 That's it. The spec file is the skill. The `[SPEC-XXX]` tag in every commit
@@ -427,6 +432,7 @@ specs and enforced by the gate.
 ForgeFix handles the gritty details agents always forget:
 - **Commit conventions.** `ff commit --ai` auto-formats
   `feat: [SPEC-XXX] <message>` — agents never memorize conventional commits.
+  Use `--body` to add multi-line bodies with preserved newlines.
 - **Status tracking.** Draft → Review → Ship → Closed — the spec file tracks
   it, the ledger persists it, `ff sync` advances it.
 - **Remote sync.** `ff sync` creates/updates remote issues with the spec body.
@@ -596,6 +602,14 @@ ff commit --ai "implement feature"
 ff sync --ai
 ff ship --ai
 ff archive --ai
+
+# Bug fix workflow with root cause
+ff spec --ai --type bug "fix login timeout"
+implement fix
+ff commit --ai "fix null pointer" --body "Dropped connection handling
+was missing a nil check on the session object"
+ff sync --ai
+ff ship --ai
 
 # With Paperclip for agent teams
 ff --paperclip

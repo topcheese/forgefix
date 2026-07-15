@@ -11,12 +11,15 @@ ForgeFix (`ff`) replaces ad-hoc git workflow with a **spec-driven development li
 
 ```
 Full lifecycle:
-  ff spec --ai <title>   → Create a spec (issue contract)
-  Implement code         → Write against the spec
-  ff commit --ai <msg>   → Auto-detect spec, commit with binding, set "review"
-  ff sync --ai           → Sync to remote issue tracker, auto-promote to "ship"
-  ff ship --ai           → Push, close issues, set "closed"
-  ff archive --ai        → Archive closed specs into timestamped document
+  ff spec --ai <title>             → Create a spec (issue contract)
+  ff spec --ai --type bug <title>  → Create bug spec with --type enforcement
+  ff spec --ai --root-cause "..."  → Document root cause at creation time
+  Implement code                   → Write against the spec
+  ff commit --ai <msg>             → Auto-detect spec, commit with binding, set "review"
+  ff commit --ai --body "..."      → Commit with multi-line message body
+  ff sync --ai                     → Sync to remote issue tracker, auto-promote to "ship"
+  ff ship --ai                     → Push, close issues, set "closed"
+  ff archive --ai                  → Archive closed specs into timestamped document
 ```
 
 **Never use raw `git` commands.** Every git operation goes through `ff`'s git passthrough: `ff log`, `ff diff`, `ff rebase`, `ff reset`, `ff stash`, `ff tag`, `ff worktree`, `ff bisect`, `ff blame`, etc. Raw `git commit` is forbidden; always use `ff commit`.
@@ -48,9 +51,12 @@ ff spec --ai "my feature" → creates spec with SPEC-ID, registers as "draft"
 `ff commit --ai` auto-detects the most-recently-modified active spec:
 
 ```
-ff commit --ai "add user authentication"     → auto-detect spec
-ff commit --ai --spec SPEC-X "fix bug"       → explicit spec
-ff commit --ai --type bug "fix null pointer" → with metadata
+ff commit --ai "add user authentication"              → auto-detect spec
+ff commit --ai --spec SPEC-X "fix bug"                → explicit spec
+ff commit --ai --type bug "fix null pointer"          → with metadata
+ff commit --ai --body "multi-line\nbody" "msg body"   → with body for multi-line messages
+ff commit --ai captures git diff in the spec's resolution: field
+ff commit --ai warns if bug spec missing root_cause or spec missing version
 ```
 
 Never use `git commit` — even infrastructure changes.
@@ -89,6 +95,8 @@ Exit codes are preserved for CI.
 5. [ ] `ff archive --ai` archives closed specs
 6. [ ] Every `git` command replaced with `ff` passthrough
 7. [ ] `ff status --short` shows clean tree after each ff command
+8. [ ] `ff commit --ai --body "..."` creates multi-line commit with body
+9. [ ] `ff spec --ai --type bug "title"` rejects if --type is missing
 
 ## Red Flags
 
@@ -97,3 +105,4 @@ Exit codes are preserved for CI.
 - Specs stuck in `review` (run `ff sync --ai`)
 - Manual editing of `.ff/forgefix_ledger.json`
 - Accumulating unarchived closed specs (run `ff archive --ai`)
+- Skipping `--type` in `ff spec --ai` will produce an error in agent mode
