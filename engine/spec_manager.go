@@ -110,6 +110,10 @@ type SpecManager interface {
 	// SpecWebURL converts a local spec file path to a web URL on the remote
 	// (GitHub or Gitea). Returns empty string if the file doesn't exist locally.
 	SpecWebURL(apiBase, owner, repo, filePath string) string
+
+	// ValidateSpecFrontmatter checks that required frontmatter fields are non-empty
+	// for the given status level. Returns a list of missing/empty field names.
+	ValidateSpecFrontmatter(spec *SpecFile) []string
 }
 
 type specManager struct{}
@@ -117,6 +121,40 @@ type specManager struct{}
 // NewSpecManager creates a new SpecManager.
 func NewSpecManager() SpecManager {
 	return &specManager{}
+}
+
+// validSpecStatuses contains all recognised spec status values.
+var validSpecStatuses = map[string]bool{
+	"draft":       true,
+	"review":      true,
+	"in-progress": true,
+	"ship":        true,
+	"closed":      true,
+	"fixed":       true,
+	"resolved":    true,
+}
+
+// isValidSpecStatus checks whether the given status is a known spec status.
+func isValidSpecStatus(status string) bool {
+	return validSpecStatuses[status]
+}
+
+// specStatusLevel returns the validation level for a status:
+//   - 0: draft (minimum requirements)
+//   - 1: review, in-progress (requires root_cause, resolution)
+//   - 2: ship, closed, fixed, resolved (requires root_cause, resolution, linked_commits)
+//   - -1: invalid status
+func specStatusLevel(status string) int {
+	switch status {
+	case "draft":
+		return 0
+	case "review", "in-progress":
+		return 1
+	case "ship", "closed", "fixed", "resolved":
+		return 2
+	default:
+		return -1
+	}
 }
 
 // ParseSpecFile reads a spec file from disk and parses its YAML frontmatter.
@@ -240,6 +278,54 @@ func (m *specManager) UpdateStatus(filePath string, status string) error {
 	return os.WriteFile(filePath, []byte(strings.Join(lines, "\n")), 0644)
 }
 
+// ValidateSpecFrontmatter checks that required frontmatter fields are non-empty
+// for the given status level. Returns a list of human-readable messages describing
+// missing or empty fields, or nil if all required fields pass.
+func (m *specManager) ValidateSpecFrontmatter(spec *SpecFile) []string {
+	var missing []string
+
+	// Always required
+	if spec.SpecID == "" {
+		missing = append(missing, "spec_id is required")
+	}
+	if spec.Type == "" {
+		missing = append(missing, "type is required")
+	}
+	if spec.Version == "" {
+		missing = append(missing, "version is required")
+	}
+
+	// Status must be non-empty and valid
+	if spec.Status == "" {
+		missing = append(missing, "status is required")
+	} else if !isValidSpecStatus(spec.Status) {
+		missing = append(missing, fmt.Sprintf("status '%s' is not a valid status", spec.Status))
+	}
+
+	// Fields required at levels 1 and above (review, ship, etc.)
+	level := specStatusLevel(spec.Status)
+	if level >= 1 {
+		if spec.RootCause == "" {
+			missing = append(missing, fmt.Sprintf("root_cause is required for status '%s'", spec.Status))
+		}
+		if spec.Resolution == "" {
+			missing = append(missing, fmt.Sprintf("resolution is required for status '%s'", spec.Status))
+		}
+	}
+
+	// Fields required at level 2 and above (ship, closed, etc.)
+	if level >= 2 {
+		if len(spec.LinkedCommits) == 0 {
+			missing = append(missing, fmt.Sprintf("linked_commits is required for status '%s' (at least 1 entry)", spec.Status))
+		}
+	}
+
+	if len(missing) == 0 {
+		return nil
+	}
+	return missing
+}
+
 // Package-level wrappers for backward compatibility with existing callers.
 // These delegate to a SpecManager instance and maintain the same function signatures.
 
@@ -256,6 +342,11 @@ func updateSpecFileRepoIssue(filePath string, issueNumber int) error {
 // specFileWebURL wraps SpecManager.SpecWebURL for backward compatibility.
 func specFileWebURL(apiBase, owner, repo, filePath string) string {
 	return NewSpecManager().SpecWebURL(apiBase, owner, repo, filePath)
+}
+
+// validateSpecFrontmatter wraps SpecManager.ValidateSpecFrontmatter for backward compatibility.
+func validateSpecFrontmatter(spec *SpecFile) []string {
+	return NewSpecManager().ValidateSpecFrontmatter(spec)
 }
 
 // SpecWebURL converts an API base URL and local spec file path into a

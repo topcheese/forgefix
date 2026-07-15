@@ -4,6 +4,7 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"reflect"
 	"strings"
 	"testing"
 )
@@ -262,5 +263,130 @@ func TestIsValidSpecType(t *testing.T) {
 		if got != tt.want {
 			t.Errorf("isValidSpecType(%q) = %v, want %v", tt.input, got, tt.want)
 		}
+	}
+}
+
+func TestValidateSpecFrontmatter(t *testing.T) {
+	tests := []struct {
+		name string
+		spec *SpecFile
+		want []string
+	}{
+		{
+			name: "draft with empty optional fields",
+			spec: &SpecFile{
+				SpecID:        "SPEC-001",
+				Status:        "draft",
+				Type:          "feature",
+				Version:       "v0.8.0",
+				RootCause:     "",
+				Resolution:    "",
+				LinkedCommits: nil,
+			},
+			want: nil,
+		},
+		{
+			name: "review with empty root_cause",
+			spec: &SpecFile{
+				SpecID:        "SPEC-001",
+				Status:        "review",
+				Type:          "feature",
+				Version:       "v0.8.0",
+				RootCause:     "",
+				Resolution:    "fixed it",
+				LinkedCommits: []string{"abc123"},
+			},
+			want: []string{"root_cause is required for status 'review'"},
+		},
+		{
+			name: "review with empty resolution",
+			spec: &SpecFile{
+				SpecID:        "SPEC-001",
+				Status:        "review",
+				Type:          "feature",
+				Version:       "v0.8.0",
+				RootCause:     "null pointer",
+				Resolution:    "",
+				LinkedCommits: []string{"abc123"},
+			},
+			want: []string{"resolution is required for status 'review'"},
+		},
+		{
+			name: "review with both root_cause and resolution empty",
+			spec: &SpecFile{
+				SpecID:        "SPEC-001",
+				Status:        "review",
+				Type:          "feature",
+				Version:       "v0.8.0",
+				RootCause:     "",
+				Resolution:    "",
+				LinkedCommits: []string{"abc123"},
+			},
+			want: []string{
+				"root_cause is required for status 'review'",
+				"resolution is required for status 'review'",
+			},
+		},
+		{
+			name: "ship with empty linked_commits",
+			spec: &SpecFile{
+				SpecID:        "SPEC-001",
+				Status:        "ship",
+				Type:          "feature",
+				Version:       "v0.8.0",
+				RootCause:     "cause",
+				Resolution:    "fixed",
+				LinkedCommits: nil,
+			},
+			want: []string{"linked_commits is required for status 'ship' (at least 1 entry)"},
+		},
+		{
+			name: "ship with valid linked_commits",
+			spec: &SpecFile{
+				SpecID:        "SPEC-001",
+				Status:        "ship",
+				Type:          "feature",
+				Version:       "v0.8.0",
+				RootCause:     "cause",
+				Resolution:    "fixed",
+				LinkedCommits: []string{"abc123"},
+			},
+			want: nil,
+		},
+		{
+			name: "invalid status",
+			spec: &SpecFile{
+				SpecID:        "SPEC-001",
+				Status:        "unknown",
+				Type:          "feature",
+				Version:       "v0.8.0",
+				RootCause:     "",
+				Resolution:    "",
+				LinkedCommits: nil,
+			},
+			want: []string{"status 'unknown' is not a valid status"},
+		},
+		{
+			name: "fully valid review",
+			spec: &SpecFile{
+				SpecID:        "SPEC-001",
+				Status:        "review",
+				Type:          "feature",
+				Version:       "v0.8.0",
+				RootCause:     "null pointer",
+				Resolution:    "added nil check",
+				LinkedCommits: []string{"abc123"},
+			},
+			want: nil,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := NewSpecManager().ValidateSpecFrontmatter(tt.spec)
+			if !reflect.DeepEqual(got, tt.want) {
+				t.Errorf("ValidateSpecFrontmatter() = %v, want %v", got, tt.want)
+			}
+		})
 	}
 }

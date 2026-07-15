@@ -11,6 +11,7 @@
 - feat: docs: fill in linked_commits for version source of truth fix (SPEC-1783945938)
 - feat: docs: fill in root_cause, resolution, and linked_commits for shell injection fix (SPEC-1783820660)
 - feat: docs: fill in root_cause, resolution, and linked_commits for dead nil-check removal (SPEC-1783975440)
+- feat: test: add ValidateSpecFrontmatter to catch empty root_cause/resolution/linked_commits before status transitions (SPEC-1783820660)
 
 ## [Unreleased] - 2026-07-13
 
