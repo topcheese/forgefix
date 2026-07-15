@@ -610,6 +610,39 @@ func TestEnsureIssue_SetsTracked(t *testing.T) {
 }
 
 func TestHandleDetonationIssues(t *testing.T) {
+	tmpDir := t.TempDir()
+
+	// Create template directory and spec template file (required by writeSpecFromTemplate)
+	templateDir := filepath.Join(tmpDir, "templates")
+	if err := os.MkdirAll(templateDir, 0755); err != nil {
+		t.Fatal(err)
+	}
+	templateContent := `---
+spec_id: ""
+status: draft
+repo_issue: ""
+type: feature
+version: "0.9.6"
+root_cause: ""
+resolution: ""
+linked_commits: []
+---
+# [Title]
+
+## Objective
+
+## Requirements
+
+## Implementation
+
+## Acceptance Criteria
+
+## Verification
+`
+	if err := os.WriteFile(filepath.Join(templateDir, "spec_template.md"), []byte(templateContent), 0644); err != nil {
+		t.Fatal(err)
+	}
+
 	d := NewDashboard([]PipelineConfig{
 		{ID: "p1", Name: "Pipeline 1"},
 	})
@@ -631,7 +664,6 @@ func TestHandleDetonationIssues(t *testing.T) {
 		CompletedIDs: map[string]bool{"test_fail": true},
 	})
 
-	tmpDir := t.TempDir()
 	d.ConfigDir = tmpDir
 
 	handleDetonationIssues(d, tmpDir)
@@ -670,6 +702,38 @@ func TestHandleDetonationIssues(t *testing.T) {
 
 func TestHandleDetonationIssues_ExistingIssue(t *testing.T) {
 	tmpDir := t.TempDir()
+
+	// Create template directory and spec template file (required by writeSpecFromTemplate)
+	templateDir := filepath.Join(tmpDir, "templates")
+	if err := os.MkdirAll(templateDir, 0755); err != nil {
+		t.Fatal(err)
+	}
+	templateContent := `---
+spec_id: ""
+status: draft
+repo_issue: ""
+type: feature
+version: "0.9.6"
+root_cause: ""
+resolution: ""
+linked_commits: []
+---
+# [Title]
+
+## Objective
+
+## Requirements
+
+## Implementation
+
+## Acceptance Criteria
+
+## Verification
+`
+	if err := os.WriteFile(filepath.Join(templateDir, "spec_template.md"), []byte(templateContent), 0644); err != nil {
+		t.Fatal(err)
+	}
+
 	d := NewDashboard([]PipelineConfig{
 		{ID: "p1", Name: "Pipeline 1"},
 	})
@@ -1088,6 +1152,38 @@ func TestHandleDefusedIssues_PurgesGhostOnClose(t *testing.T) {
 
 func TestHandleTimeoutIssues(t *testing.T) {
 	tmpDir := t.TempDir()
+
+	// Create template directory and spec template file (required by writeSpecFromTemplate)
+	templateDir := filepath.Join(tmpDir, "templates")
+	if err := os.MkdirAll(templateDir, 0755); err != nil {
+		t.Fatal(err)
+	}
+	templateContent := `---
+spec_id: ""
+status: draft
+repo_issue: ""
+type: feature
+version: "0.9.6"
+root_cause: ""
+resolution: ""
+linked_commits: []
+---
+# [Title]
+
+## Objective
+
+## Requirements
+
+## Implementation
+
+## Acceptance Criteria
+
+## Verification
+`
+	if err := os.WriteFile(filepath.Join(templateDir, "spec_template.md"), []byte(templateContent), 0644); err != nil {
+		t.Fatal(err)
+	}
+
 	d := NewDashboard([]PipelineConfig{
 		{ID: "p1", Name: "Pipeline 1"},
 	})

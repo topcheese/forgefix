@@ -150,14 +150,18 @@ func TestSpecLifecycleFiltering(t *testing.T) {
 }
 
 func createTestSpecFile(t *testing.T, specDir, specID string) string {
+	return createTestSpecFileWithIssue(t, specDir, specID, 42)
+}
+
+func createTestSpecFileWithIssue(t *testing.T, specDir, specID string, repoIssue int) string {
 	t.Helper()
 	content := fmt.Sprintf(`---
 spec_id: "%s"
 status: draft
-repo_issue: 42
+repo_issue: %d
 ---
 # Test Spec
-`, specID)
+`, specID, repoIssue)
 	dir := filepath.Join(specDir, "specs")
 	if err := os.MkdirAll(dir, 0755); err != nil {
 		t.Fatalf("creating specs dir: %v", err)
@@ -436,7 +440,7 @@ func TestDeleteSpec_FullIntegration(t *testing.T) {
 		t.Fatalf("saving ledger: %v", err)
 	}
 
-	createTestSpecFile(t, tmpDir, "SPEC-INTEGRATION")
+	createTestSpecFileWithIssue(t, tmpDir, "SPEC-INTEGRATION", 55)
 
 	reloaded, err := LoadLedger(tmpDir)
 	if err != nil {
