@@ -140,8 +140,8 @@ func printStatusHeader(w io.Writer, entry *LedgerEntry) {
 }
 
 // checkBlockingSpecs scans the specs directory and returns a list of spec
-// identifiers that are not in "ship" or "closed" status (i.e. would block
-// the shipping gate).
+// identifiers that have "in-progress" status (i.e. would block the shipping
+// gate).
 func checkBlockingSpecs(configDir string) []string {
 	specDir := filepath.Join(configDir, "specs")
 	if _, statErr := os.Stat(specDir); os.IsNotExist(statErr) {
@@ -161,7 +161,7 @@ func checkBlockingSpecs(configDir string) []string {
 		if parseErr != nil {
 			continue
 		}
-		if spec.Status != "ship" && spec.Status != "closed" {
+		if spec.Status == "in-progress" {
 			blocking = append(blocking, fmt.Sprintf("%s (%s)", spec.SpecID, spec.Status))
 		}
 	}

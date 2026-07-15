@@ -3,7 +3,7 @@ spec_id: "SPEC-1783784686"
 status: review
 repo_issue: ""
 type: bug
-version: "v0.9.0"
+version: "v0.9.5"
 root_cause: "fmt.Fprintf used raw spaces for alignment, which shifts on terminals with non-standard tab stop widths."
 resolution: "Replaced fmt.Fprintf with text/tabwriter-aligned rendering matching the approach used by specs listing."
 linked_commits: ["0f91b62", "43b188c"]

@@ -271,6 +271,41 @@ func handleDetonationIssues(d *Dashboard, configDir string) {
 	sysErrors := d.GetSystemErrors()
 
 	for _, info := range failed {
+		// 1. Create spec FIRST, capture the real specID
+		title := sanitizeSpecTitle("Fix " + info.Name)
+		var specID string
+		if _, _, isDup := FindDuplicateSpec(configDir, title); !isDup {
+			body := fmt.Sprintf("## Objective\nAutomatically created from failing test %s during ff --ai run.\n\n## Root Cause\nTest failed - see failure details below.\n\n## Failure Details\n- Test: %s\n- File: %s\n- Line: %d\n- Error: %s",
+				info.Name, info.Name, info.FilePath, info.FailureLine, info.ErrorTrace)
+
+			specVersion := Version
+			if pv := NewVersionManager(configDir).CurrentVersion(); pv != "0.0.0" {
+				specVersion = pv
+			}
+			sid, specPath, werr := writeSpecFromTemplate(configDir, title, title, body, "bug", specVersion)
+			if werr != nil {
+				d.AddSystemError(fmt.Sprintf("failed to create spec for %s: %v", info.Name, werr))
+				continue
+			}
+			specID = sid
+			// Register the spec in the ledger with the REAL specID
+			if ledger, lerr := LoadLedger(configDir); lerr == nil {
+				ledger.SetSpecEntry(specID, &SpecEntry{
+					SpecID:        specID,
+					RepoIssueID:   0,
+					Status:        "draft",
+					LinkedCommits: []string{},
+				})
+				_ = SaveLedger(ledger, configDir)
+			}
+			d.AddSystemError(fmt.Sprintf("created spec %s for failing test %s", specPath, info.Name))
+		} else {
+			// If duplicate, set specID to empty — the issue still gets
+			// created but won't be force-linked to a new spec.
+			specID = ""
+		}
+
+		// 2. Queue issue creation with the real specID (if we have one)
 		details := &ErrorDetails{
 			TestName:     info.Name,
 			FilePath:     info.FilePath,
@@ -278,10 +313,11 @@ func handleDetonationIssues(d *Dashboard, configDir string) {
 			ErrorMessage: info.ErrorTrace,
 			StackTrace:   info.ErrorTrace,
 		}
-		if err := QueueCreateIssue(configDir, "", info.Name, details); err != nil {
+		if err := QueueCreateIssue(configDir, specID, info.Name, details); err != nil {
 			d.AddSystemError(fmt.Sprintf("failed to queue issue creation for %s: %v", info.Name, err))
 			continue
 		}
+
 		d.mu.Lock()
 		if d.IssueRefs == nil {
 			d.IssueRefs = make(map[string]*IssueInfo)

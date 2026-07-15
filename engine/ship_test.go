@@ -123,7 +123,7 @@ func TestCheckShipGateSpecStatuses_DraftPasses(t *testing.T) {
 	}
 }
 
-func TestCheckShipGateSpecStatuses_MultipleBlocking(t *testing.T) {
+func TestCheckShipGateSpecStatuses_OnlyInProgressBlocks(t *testing.T) {
 	configDir := setupSpecsDir(t, map[string]string{
 		"SPEC-100": "in-progress",
 		"SPEC-200": "backlog",

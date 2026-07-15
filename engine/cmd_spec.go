@@ -71,17 +71,58 @@ func SpecConfigDir(workDir string) string {
 	}
 }
 
-// createSpec creates a new spec file from the template.
-func createSpec(configDir, name, bodyContent string, d *CommandDispatcher, flags CLIArgs) error {
+// writeSpecFromTemplate renders the spec template with the given fields and writes
+// it to specs/<name>.md. It does not perform duplicate detection
+// or body prompting — callers handle those. Returns the generated
+// spec ID and file path.
+func writeSpecFromTemplate(configDir, name, title, body, specType, specVersion string) (string, string, error) {
 	templatePath := filepath.Join(configDir, "templates", "spec_template.md")
 	templateContent, err := os.ReadFile(templatePath)
 	if err != nil {
-		return fmt.Errorf("reading template: %w", err)
+		return "", "", fmt.Errorf("reading template: %w", err)
 	}
 
 	specID := fmt.Sprintf("SPEC-%d", time.Now().Unix())
 	now := time.Now().Format("2006-01-02")
 
+	tpl := string(templateContent)
+	tpl = strings.ReplaceAll(tpl, `spec_id: ""`, fmt.Sprintf(`spec_id: "%s"`, specID))
+	tpl = strings.ReplaceAll(tpl, "created: YYYY-MM-DD", fmt.Sprintf("created: %s", now))
+	if specType != "" {
+		tpl = strings.ReplaceAll(tpl, "type: feature", "type: "+specType)
+	}
+	// Update the version line (match any version: line).
+	lines := strings.Split(tpl, "\n")
+	for i, line := range lines {
+		if strings.HasPrefix(strings.TrimSpace(line), "version:") {
+			lines[i] = fmt.Sprintf("version: \"%s\"", specVersion)
+		}
+	}
+	tpl = strings.Join(lines, "\n")
+
+	parts := strings.SplitN(tpl, "---", 3)
+	if len(parts) < 3 {
+		return "", "", fmt.Errorf("malformed template: expected frontmatter delimiters")
+	}
+	frontmatter := parts[1]
+
+	content := fmt.Sprintf("---%s---\n%s\n", frontmatter, body)
+
+	specDir := filepath.Join(configDir, "specs")
+	if err := os.MkdirAll(specDir, 0755); err != nil {
+		return "", "", fmt.Errorf("creating specs directory: %w", err)
+	}
+
+	fileName := fmt.Sprintf("%s.md", name)
+	filePath := filepath.Join(specDir, fileName)
+	if err := os.WriteFile(filePath, []byte(content), 0644); err != nil {
+		return "", "", fmt.Errorf("writing spec file: %w", err)
+	}
+	return specID, filePath, nil
+}
+
+// createSpec creates a new spec file from the template.
+func createSpec(configDir, name, bodyContent string, d *CommandDispatcher, flags CLIArgs) error {
 	title := sanitizeSpecTitle(name)
 
 	origSpecID, origTitle, isDup := FindDuplicateSpec(configDir, title)
@@ -100,18 +141,7 @@ func createSpec(configDir, name, bodyContent string, d *CommandDispatcher, flags
 		}
 	}
 
-	// Build frontmatter by replacing placeholders in the template.
-	tpl := string(templateContent)
-	tpl = strings.ReplaceAll(tpl, `spec_id: ""`, fmt.Sprintf(`spec_id: "%s"`, specID))
-	tpl = strings.ReplaceAll(tpl, "created: YYYY-MM-DD", fmt.Sprintf("created: %s", now))
-	// Update the version comment in the template footer to match the binary.
-	tpl = strings.ReplaceAll(tpl, "Available versions: v0.8.0 (current), v0.9.0",
-		fmt.Sprintf("Available versions: v%s (current), v%s", Version, Version))
-	if flags.SpecType != "" {
-		tpl = strings.ReplaceAll(tpl, "type: feature", "type: "+flags.SpecType)
-	}
-	// Always fill the version with the current project version from the DB,
-	// overriding the template default. The --ver flag allows manual override.
+	// Resolve version from DB (not the compile-time const).
 	specVersion := Version
 	if pv := NewVersionManager(configDir).CurrentVersion(); pv != "0.0.0" {
 		specVersion = pv
@@ -119,23 +149,7 @@ func createSpec(configDir, name, bodyContent string, d *CommandDispatcher, flags
 	if flags.SpecVersion != "" {
 		specVersion = flags.SpecVersion
 	}
-	// Update the version line in the template (match any version: line).
-	lines := strings.Split(tpl, "\n")
-	for i, line := range lines {
-		if strings.HasPrefix(strings.TrimSpace(line), "version:") {
-			lines[i] = fmt.Sprintf("version: \"%s\"", specVersion)
-		}
-	}
-	tpl = strings.Join(lines, "\n")
 
-	// Split template into frontmatter and body.
-	parts := strings.SplitN(tpl, "---", 3)
-	if len(parts) < 3 {
-		return fmt.Errorf("malformed template: expected frontmatter delimiters")
-	}
-	frontmatter := parts[1]
-
-	// Determine the body content.
 	body := strings.TrimSpace(bodyContent)
 	if body == "" && !flags.AIMode {
 		body = promptForSpecBody(title)
@@ -147,24 +161,9 @@ func createSpec(configDir, name, bodyContent string, d *CommandDispatcher, flags
 		return fmt.Errorf("spec body cannot be empty")
 	}
 
-	// Assemble the final spec file.
-	content := fmt.Sprintf("---%s---\n%s\n", frontmatter, body)
-
-	if isDup {
-		ref := fmt.Sprintf("\n\n> This spec has been identified as a duplicate of `%s`.", origSpecID)
-		content += ref
-	}
-
-	specDir := filepath.Join(configDir, "specs")
-	if err := os.MkdirAll(specDir, 0755); err != nil {
-		return fmt.Errorf("creating specs directory: %w", err)
-	}
-
-	fileName := fmt.Sprintf("%s.md", name)
-	filePath := filepath.Join(specDir, fileName)
-
-	if err := os.WriteFile(filePath, []byte(content), 0644); err != nil {
-		return fmt.Errorf("writing spec file: %w", err)
+	specID, filePath, err := writeSpecFromTemplate(configDir, name, title, body, flags.SpecType, specVersion)
+	if err != nil {
+		return err
 	}
 
 	fmt.Fprintf(d.Stdout, "Created spec: %s\n", filePath)

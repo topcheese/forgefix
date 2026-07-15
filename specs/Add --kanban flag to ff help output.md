@@ -1,9 +1,9 @@
 ---
 spec_id: "SPEC-1783944063"
-status: draft
+status: review
 repo_issue: ""
 type: feature
-version: "0.9.0"
+version: "0.9.5"
 root_cause: "Kanban feature was undocumented in ff --help. Users could not discover it from the CLI."
 resolution: "Added --kanban to Flags and Examples sections in PrintHelp()."
 linked_commits: ["98d8c15"]

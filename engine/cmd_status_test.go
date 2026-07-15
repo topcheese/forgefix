@@ -39,10 +39,10 @@ func TestCommandDispatcher_StatusWithBlockingSpecs(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	// Write a backlog spec that blocks ship
-	backlogSpec := `---
+	// Write an in-progress spec that blocks shipping
+	blockingSpec := `---
 spec_id: "SPEC-TEST-001"
-status: backlog
+status: in-progress
 repo_issue: ""
 type: feature
 version: ""
@@ -57,7 +57,7 @@ Test
 
 - None
 `
-	if err := os.WriteFile(filepath.Join(specsDir, "test-backlog.md"), []byte(backlogSpec), 0644); err != nil {
+	if err := os.WriteFile(filepath.Join(specsDir, "test-backlog.md"), []byte(blockingSpec), 0644); err != nil {
 		t.Fatal(err)
 	}
 

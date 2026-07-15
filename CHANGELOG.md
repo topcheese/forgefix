@@ -1,3 +1,9 @@
+## [Unreleased] - 2026-07-14
+
+### 🚀 Release Summary
+- feat: test (SPEC-1783983677)
+- feat: restore and fix auto-spec-creation on test failure (SPEC-1783975469)
+
 ## [Unreleased] - 2026-07-13
 
 ### 🚀 Release Summary
