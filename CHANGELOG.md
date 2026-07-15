@@ -8,6 +8,7 @@
 - feat: feat:  fix: spec body persistence gap (SPEC-1784078880)
 - feat: investigate: repo_issue field population lifecycle (SPEC-1784075091)
 - feat: fix: align syncSingleSpec with SyncSpecs find-before-create to prevent duplicate remote issues (SPEC-1784075091)
+- feat: docs: fill in linked_commits for version source of truth fix (SPEC-1783945938)
 
 ## [Unreleased] - 2026-07-13
 
