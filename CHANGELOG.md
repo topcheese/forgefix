@@ -7,6 +7,7 @@
 - feat: fix: spec body persistence gap Implemented SPEC-1784078880 to close the data-fragmentation gap across layers:\n\n- Add Body/RootCause/Resolution/Version fields to SpecEntry struct\n- SyncFromSpecsDir now extracts and propagates all frontmatter fields\n- DB INSERT binds real field values instead of hardcoded empty strings\n- Fix hardcoded empties in UpsertSpec call from ledger import path\n- Add --body flag to ff commit --ai for multi-line commit messages\n- Add --root-cause flag for bug spec creation\n- Capture git diff in resolution: field on each commit\n- Enforce --type required in --ai spec creation (feature/bug/refactor)\n- Add metadata validation warnings on commit for missing fields\n- Fix resolution regex to properly clear multi-line YAML block content\n- Fix root_cause warning to check for non-empty value (SPEC-1784078880)
 - feat: feat:  fix: spec body persistence gap (SPEC-1784078880)
 - feat: investigate: repo_issue field population lifecycle (SPEC-1784075091)
+- feat: fix: align syncSingleSpec with SyncSpecs find-before-create to prevent duplicate remote issues (SPEC-1784075091)
 
 ## [Unreleased] - 2026-07-13
 

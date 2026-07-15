@@ -666,6 +666,164 @@ func TestSyncSingleSpec_DeletedIssueClearsRepoIssue(t *testing.T) {
 	}
 }
 
+func TestSyncSingleSpec_NoRepoIssue_FindsExistingIssue(t *testing.T) {
+	tmpDir := t.TempDir()
+	os.MkdirAll(filepath.Join(tmpDir, "specs"), 0755)
+	writeSpecFile(t, tmpDir, "SPEC-FIND-BY-TITLE", "draft", 0, "Body content")
+
+	coord, transport := newMockCoordinator()
+	base := testBaseURL + "/repos/test-owner/test-repo"
+
+	// Remote already has an open issue with matching title
+	matchingIssue := GitHubIssue{
+		ID: 100, Number: 100,
+		Title: "feat/test: SPEC-FIND-BY-TITLE",
+		State: "open", Body: expectedSpecBody("SPEC-FIND-BY-TITLE", "Body content"),
+	}
+
+	transport.setResponse("GET", base+"/labels", 200, []RepoLabel{})
+	// findRemoteIssueByTitle -> ListOpenIssues returns the matching issue
+	transport.setResponse("GET", base+"/issues?per_page=100&state=open", 200, []GitHubIssue{matchingIssue})
+	// syncSpecLabels needs issue detail + labels endpoints
+	issueData, _ := json.Marshal(matchingIssue)
+	transport.setResponse("GET", fmt.Sprintf(base+"/issues/%d", 100), 200, issueData)
+	transport.setResponse("GET", fmt.Sprintf(base+"/issues/%d/labels", 100), 200, []RepoLabel{})
+	transport.setResponse("PUT", fmt.Sprintf(base+"/issues/%d/labels", 100), 200, []RepoLabel{})
+
+	cfg := &Config{}
+	err := syncSingleSpec(coord, tmpDir, "SPEC-FIND-BY-TITLE", cfg)
+	if err != nil {
+		t.Fatalf("syncSingleSpec failed: %v", err)
+	}
+
+	// No POST should have been made (existing issue found by title)
+	transport.mu.Lock()
+	postCount := transport.callCount["POST "+base+"/issues"]
+	transport.mu.Unlock()
+	if postCount > 0 {
+		t.Errorf("expected 0 POST calls when existing issue is found by title, got %d", postCount)
+	}
+
+	// Spec file should have repo_issue: 100 (bound to existing issue)
+	data, err := os.ReadFile(filepath.Join(tmpDir, "specs", "SPEC-FIND-BY-TITLE.md"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(string(data), "repo_issue: 100") {
+		t.Errorf("spec file should have repo_issue: 100 after binding to existing issue, got:\n%s", string(data))
+	}
+}
+
+func TestSyncSingleSpec_NoRepoIssue_CreatesNewIssue(t *testing.T) {
+	tmpDir := t.TempDir()
+	os.MkdirAll(filepath.Join(tmpDir, "specs"), 0755)
+	writeSpecFile(t, tmpDir, "SPEC-CREATE-NEW", "draft", 0, "Body content")
+
+	coord, transport := newMockCoordinator()
+	base := testBaseURL + "/repos/test-owner/test-repo"
+
+	transport.setResponse("GET", base+"/labels", 200, []RepoLabel{})
+	// findRemoteIssueByTitle -> ListOpenIssues returns empty (no match)
+	transport.setResponse("GET", base+"/issues?per_page=100&state=open", 200, []GitHubIssue{})
+	// POST to create a new issue
+	newIssue := GitHubIssue{Number: 300, State: "open", Title: "feat/test: SPEC-CREATE-NEW"}
+	transport.setResponse("POST", base+"/issues", 201, newIssue)
+	// Body sync + labels for the newly created issue
+	newIssueData, _ := json.Marshal(newIssue)
+	transport.setResponse("GET", fmt.Sprintf(base+"/issues/%d", 300), 200, newIssueData)
+	transport.setResponse("GET", fmt.Sprintf(base+"/issues/%d/labels", 300), 200, []RepoLabel{})
+	transport.setResponse("PUT", fmt.Sprintf(base+"/issues/%d/labels", 300), 200, []RepoLabel{})
+
+	cfg := &Config{}
+	err := syncSingleSpec(coord, tmpDir, "SPEC-CREATE-NEW", cfg)
+	if err != nil {
+		t.Fatalf("syncSingleSpec failed: %v", err)
+	}
+
+	// Exactly 1 POST should have been made to create the new issue
+	transport.mu.Lock()
+	postCount := transport.callCount["POST "+base+"/issues"]
+	transport.mu.Unlock()
+	if postCount != 1 {
+		t.Errorf("expected 1 POST call to create new issue, got %d", postCount)
+	}
+
+	// Spec file should have repo_issue: 300
+	data, err := os.ReadFile(filepath.Join(tmpDir, "specs", "SPEC-CREATE-NEW.md"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(string(data), "repo_issue: 300") {
+		t.Errorf("spec file should have repo_issue: 300 after new issue creation, got:\n%s", string(data))
+	}
+}
+
+func TestSyncSingleSpec_DeletedIssueClearsAndThenFindsExisting(t *testing.T) {
+	tmpDir := t.TempDir()
+	os.MkdirAll(filepath.Join(tmpDir, "specs"), 0755)
+	writeSpecFile(t, tmpDir, "SPEC-DEL-FIND", "in-progress", 77, "Body content")
+
+	coord, transport := newMockCoordinator()
+	base := testBaseURL + "/repos/test-owner/test-repo"
+
+	transport.setResponse("GET", base+"/labels", 200, []RepoLabel{})
+
+	// First call: GetIssueByNumber(77) returns 404 — issue was deleted
+	transport.setResponse("GET", fmt.Sprintf(base+"/issues/%d", 77), 404, []byte(`{"message":"Not Found"}`))
+
+	// Second call: findRemoteIssueByTitle finds issue 200 as a match
+	existingIssue := GitHubIssue{
+		ID: 200, Number: 200,
+		Title: "feat/test: SPEC-DEL-FIND",
+		State: "open", Body: expectedSpecBody("SPEC-DEL-FIND", "Body content"),
+	}
+	transport.setResponse("GET", base+"/issues?per_page=100&state=open", 200, []GitHubIssue{existingIssue})
+	// Body sync + labels for the found issue
+	issueData, _ := json.Marshal(existingIssue)
+	transport.setResponse("GET", fmt.Sprintf(base+"/issues/%d", 200), 200, issueData)
+	transport.setResponse("GET", fmt.Sprintf(base+"/issues/%d/labels", 200), 200, []RepoLabel{})
+	transport.setResponse("PUT", fmt.Sprintf(base+"/issues/%d/labels", 200), 200, []RepoLabel{})
+
+	// First call: spec has repo_issue 77 → 404 → cleared to 0
+	cfg := &Config{}
+	err := syncSingleSpec(coord, tmpDir, "SPEC-DEL-FIND", cfg)
+	if err != nil {
+		t.Fatalf("first syncSingleSpec (deleted issue) failed: %v", err)
+	}
+
+	// Verify spec file was cleared to 0
+	data, err := os.ReadFile(filepath.Join(tmpDir, "specs", "SPEC-DEL-FIND.md"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(string(data), "repo_issue: 0") {
+		t.Errorf("after first sync, spec file should have repo_issue: 0, got:\n%s", string(data))
+	}
+
+	// Second call: spec now has repo_issue 0 → findRemoteIssueByTitle → bind to 200 (no POST)
+	err = syncSingleSpec(coord, tmpDir, "SPEC-DEL-FIND", cfg)
+	if err != nil {
+		t.Fatalf("second syncSingleSpec (find by title after clear) failed: %v", err)
+	}
+
+	// Spec file should now have repo_issue: 200 (found by title)
+	data, err = os.ReadFile(filepath.Join(tmpDir, "specs", "SPEC-DEL-FIND.md"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(string(data), "repo_issue: 200") {
+		t.Errorf("after second sync, spec file should have repo_issue: 200, got:\n%s", string(data))
+	}
+
+	// No POST should have been made across both calls
+	transport.mu.Lock()
+	postCount := transport.callCount["POST "+base+"/issues"]
+	transport.mu.Unlock()
+	if postCount > 0 {
+		t.Errorf("expected 0 POST calls across both sync runs, got %d", postCount)
+	}
+}
+
 func TestSyncSpecs_DeletedIssueCreatesReplacement(t *testing.T) {
 	tmpDir := t.TempDir()
 	os.MkdirAll(filepath.Join(tmpDir, "specs"), 0755)

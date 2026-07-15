@@ -4,9 +4,9 @@ status: review
 repo_issue: ""
 type: feature
 version: "0.9.5"
-root_cause: "No code bug — repo_issue is a sync-time field populated only during ff sync --ai against a reachable remote issue tracker. Specs without it either never went through a successful sync, or the remote is unreachable (current Gitea). The lifecycle is correct by design."
-resolution: "Investigation complete — no code change needed. The repo_issue population lifecycle is: (1) ff spec/ff commit creates repo_issue: '' in frontmatter, (2) ff sync --ai calls SyncSpecs -> resolves or creates remote issue -> sets spec.RepoIssue -> updates spec file, (3) ff ship uses existing repo_issue to close. Specs created after the last successful sync (or when remote is unreachable) will have repo_issue: '' — this is expected behavior. Only notable finding: syncSingleSpec diverges from SyncSpecs by not attempting findRemoteIssueByTitle before creating — it unconditionally creates a new remote issue when RepoIssue==0."
-linked_commits: ["0467f8b"]
+root_cause: "Investigation identified syncSingleSpec unconditionally creating remote issues when RepoIssue==0 instead of checking for existing issues by title first, risking duplicate remote issues if repo_issue was cleared"
+resolution: "Aligned syncSingleSpec with SyncSpecs: now calls findRemoteIssueByTitle first, and only creates a new issue when no match is found. Also aligned title format to prefixedTitle(spec) and added markSpecAsDuplicateIfNeeded call for consistency. Duplicate issue risk eliminated."
+linked_commits: ["0467f8b", "0fce8d8", "37ff9ba"]
 ---
 Investigate where, how, and when the repo_issue value gets set in spec frontmatter. Some specs have it populated (e.g., repo_issue: 42) and others don't (repo_issue: ''). Trace the full lifecycle of repo_issue assignment across spec creation, sync, commit, and ship operations to identify the source of inconsistency.
 

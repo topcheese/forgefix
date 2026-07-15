@@ -603,26 +603,34 @@ func syncSingleSpec(coord *IssueCoordinator, configDir, specID string, cfg *Conf
 		}
 
 		if spec.RepoIssue == 0 {
-			title := spec.Title
-			if !IsValidIssueTitle(title) {
-				title = fmt.Sprintf("feat/spec: %s", title)
-			}
-			if len(title) > maxTitleLength {
-				// Truncate at last word boundary to fit within maxTitleLength
-				cutAt := maxTitleLength
-				for cutAt > 10 && title[cutAt-1] != ' ' {
-					cutAt--
+			// Match SyncSpecs behavior: find existing remote issue by title first
+			if existing, err := coord.findRemoteIssueByTitle(spec.Title); err == nil {
+				spec.RepoIssue = existing.Number
+				fmt.Printf("Found existing remote issue #%d for spec: %s (skipping POST)\n", existing.Number, spec.Title)
+			} else {
+				coord.markSpecAsDuplicateIfNeeded(spec)
+				title := prefixedTitle(spec)
+				if !IsValidIssueTitle(title) {
+					title = fmt.Sprintf("feat/spec: %s", title)
 				}
-				if cutAt <= 10 {
-					cutAt = maxTitleLength
+				if len(title) > maxTitleLength {
+					// Truncate at last word boundary to fit within maxTitleLength
+					cutAt := maxTitleLength
+					for cutAt > 10 && title[cutAt-1] != ' ' {
+						cutAt--
+					}
+					if cutAt <= 10 {
+						cutAt = maxTitleLength
+					}
+					title = strings.TrimSpace(title[:cutAt])
 				}
-				title = strings.TrimSpace(title[:cutAt])
+				issue, err := coord.CreateIssueWithBody(title, effectiveSpecBody(spec))
+				if err != nil {
+					return fmt.Errorf("creating issue for spec %s: %w", spec.Title, err)
+				}
+				spec.RepoIssue = issue.Number
+				fmt.Printf("Created issue #%d for spec: %s\n", issue.Number, spec.Title)
 			}
-			issue, err := coord.CreateIssueWithBody(title, effectiveSpecBody(spec))
-			if err != nil {
-				return fmt.Errorf("creating issue for spec %s: %w", spec.Title, err)
-			}
-			spec.RepoIssue = issue.Number
 		} else {
 			remoteIssue, err := coord.GetIssueByNumber(spec.RepoIssue)
 			if err != nil {
