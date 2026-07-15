@@ -29,7 +29,7 @@ func (d *CommandDispatcher) handleCommit(args []string) (CommandResult, error) {
 	}
 
 	ledgerDir := SpecConfigDir(d.WorkDir)
-	if err := DrainHousekeepingQueueFromConfig(ledgerDir); err != nil {
+	if err := DrainHousekeepingQueueFromConfig(ledgerDir, flags.AIMode); err != nil {
 		fmt.Fprintf(d.Stderr, "warning: housekeeping drain failed: %v\n", err)
 	}
 

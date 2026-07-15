@@ -327,6 +327,19 @@ func RunBackgroundSync(configDir, specID string, aiMode bool) error {
 		}
 	}
 
+	// AUTO_ISSUE_MANAGEMENT GATE: In --ai mode without auto_issue_management,
+	// skip all remote issue operations. Reconcile ledger from spec files locally.
+	if aiMode && !loaded.Config.AutoIssueManagement {
+		if ledger, loadErr := LoadLedger(configDir); loadErr == nil {
+			if syncErr := ledger.SyncFromSpecsDir(configDir); syncErr == nil {
+				if saveErr := SaveLedger(ledger, configDir); saveErr != nil {
+					fmt.Fprintf(os.Stderr, "warning: failed to save reconciled ledger: %v\n", saveErr)
+				}
+			}
+		}
+		return nil
+	}
+
 	if loaded.Config.GitHub == nil || loaded.Config.GitHub.Token == "" || loaded.Config.GitHub.Owner == "" || loaded.Config.GitHub.Repo == "" {
 		// Reconcile ledger from spec files even without remote access
 		if ledger, loadErr := LoadLedger(configDir); loadErr == nil {
@@ -850,11 +863,19 @@ func DrainHousekeepingQueue(configDir string, coord *IssueCoordinator) error {
 
 // DrainHousekeepingQueueFromConfig loads the pipeline config, creates an
 // IssueCoordinator, and drains the housekeeping queue.
-func DrainHousekeepingQueueFromConfig(configDir string) error {
+// Pass aiMode=true to respect the auto_issue_management gate in --ai mode.
+func DrainHousekeepingQueueFromConfig(configDir string, aiMode bool) error {
 	loaded, err := LoadPipelineConfig(configDir)
 	if err != nil {
 		return fmt.Errorf("loading config: %w", err)
 	}
+
+	// AUTO_ISSUE_MANAGEMENT GATE: In --ai mode, skip remote issue operations
+	// when auto_issue_management is disabled.
+	if aiMode && !loaded.Config.AutoIssueManagement {
+		return nil
+	}
+
 	if loaded.Config.GitHub == nil || loaded.Config.GitHub.Token == "" || loaded.Config.GitHub.Owner == "" || loaded.Config.GitHub.Repo == "" {
 		// Reconcile ledger from spec files even without remote access
 		if ledger, loadErr := LoadLedger(configDir); loadErr == nil {

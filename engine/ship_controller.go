@@ -102,7 +102,7 @@ func (sc *ShipController) Run() {
 	// Drain the queue immediately so shipped specs transition to "closed"
 	// without requiring a separate ff sync.
 	fmt.Println("Processing housekeeping (close issues, sync metadata)...")
-	if err := DrainHousekeepingQueueFromConfig(sc.configDir); err != nil {
+	if err := DrainHousekeepingQueueFromConfig(sc.configDir, sc.aiMode); err != nil {
 		fmt.Fprintf(os.Stderr, "Warning: housekeeping drain failed: %v\n", err)
 	} else {
 		fmt.Println("Housekeeping complete.")
