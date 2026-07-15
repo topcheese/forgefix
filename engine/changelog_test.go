@@ -124,6 +124,123 @@ func TestAppendChangelogEntry_NonConventionalIsNoOp(t *testing.T) {
 	}
 }
 
+func TestFinalizeChangelogForRelease_MergesUnreleased(t *testing.T) {
+	tmpDir := t.TempDir()
+	existing := `## [Unreleased] - 2026-07-12
+
+### 🚀 Release Summary
+- feat: first day change (SPEC-1)
+
+## [Unreleased] - 2026-07-13
+
+### 🚀 Release Summary
+- fix: second day change (SPEC-2)
+- chore: third change (SPEC-3)
+
+## [Unreleased] - 2026-07-14
+
+### 🚀 Release Summary
+- feat: latest change (SPEC-4)
+`
+	if err := os.WriteFile(filepath.Join(tmpDir, "CHANGELOG.md"), []byte(existing), 0644); err != nil {
+		t.Fatal(err)
+	}
+	if err := FinalizeChangelogForRelease(tmpDir, "0.9.6"); err != nil {
+		t.Fatalf("FinalizeChangelogForRelease: %v", err)
+	}
+	data, _ := os.ReadFile(filepath.Join(tmpDir, "CHANGELOG.md"))
+	content := string(data)
+
+	// Exactly one versioned section, no Unreleased left.
+	if n := strings.Count(content, "## [v0.9.6]"); n != 1 {
+		t.Errorf("expected exactly 1 [v0.9.6] section, got %d:\n%s", n, content)
+	}
+	if strings.Contains(content, "## [Unreleased]") {
+		t.Errorf("Unreleased sections should be gone:\n%s", content)
+	}
+	for _, want := range []string{
+		"- feat: first day change (SPEC-1)",
+		"- fix: second day change (SPEC-2)",
+		"- chore: third change (SPEC-3)",
+		"- feat: latest change (SPEC-4)",
+	} {
+		if !strings.Contains(content, want) {
+			t.Errorf("missing bullet %q:\n%s", want, content)
+		}
+	}
+}
+
+func TestFinalizeChangelogForRelease_Idempotent(t *testing.T) {
+	tmpDir := t.TempDir()
+	existing := `## [Unreleased] - 2026-07-14
+
+### 🚀 Release Summary
+- feat: a change (SPEC-9)
+`
+	if err := os.WriteFile(filepath.Join(tmpDir, "CHANGELOG.md"), []byte(existing), 0644); err != nil {
+		t.Fatal(err)
+	}
+	if err := FinalizeChangelogForRelease(tmpDir, "0.9.6"); err != nil {
+		t.Fatal(err)
+	}
+	// Re-run with the same version must not duplicate the section or bullets.
+	if err := FinalizeChangelogForRelease(tmpDir, "0.9.6"); err != nil {
+		t.Fatal(err)
+	}
+	data, _ := os.ReadFile(filepath.Join(tmpDir, "CHANGELOG.md"))
+	content := string(data)
+	if n := strings.Count(content, "## [v0.9.6]"); n != 1 {
+		t.Errorf("expected exactly 1 [v0.9.6] section after re-run, got %d:\n%s", n, content)
+	}
+	if n := strings.Count(content, "- feat: a change (SPEC-9)"); n != 1 {
+		t.Errorf("expected exactly 1 bullet after re-run, got %d:\n%s", n, content)
+	}
+}
+
+func TestFinalizeChangelogForRelease_MissingFile(t *testing.T) {
+	tmpDir := t.TempDir()
+	if err := FinalizeChangelogForRelease(tmpDir, "0.9.6"); err != nil {
+		t.Fatalf("expected no error for missing CHANGELOG.md, got %v", err)
+	}
+	if _, err := os.Stat(filepath.Join(tmpDir, "CHANGELOG.md")); !os.IsNotExist(err) {
+		t.Errorf("expected no CHANGELOG.md to be created")
+	}
+}
+
+func TestFinalizeChangelogForRelease_PreservesVersioned(t *testing.T) {
+	tmpDir := t.TempDir()
+	existing := `## [Unreleased] - 2026-07-14
+
+### 🚀 Release Summary
+- feat: new change (SPEC-5)
+
+## [v0.9.0] - 2026-07-05
+
+### 🚀 Release Summary
+- feat: old release entry (SPEC-1)
+`
+	if err := os.WriteFile(filepath.Join(tmpDir, "CHANGELOG.md"), []byte(existing), 0644); err != nil {
+		t.Fatal(err)
+	}
+	if err := FinalizeChangelogForRelease(tmpDir, "0.9.6"); err != nil {
+		t.Fatal(err)
+	}
+	data, _ := os.ReadFile(filepath.Join(tmpDir, "CHANGELOG.md"))
+	content := string(data)
+	if !strings.Contains(content, "## [v0.9.0]") {
+		t.Errorf("v0.9.0 section should be preserved:\n%s", content)
+	}
+	if !strings.Contains(content, "- feat: old release entry (SPEC-1)") {
+		t.Errorf("v0.9.0 bullet should be preserved:\n%s", content)
+	}
+	// New versioned section must precede the older one.
+	v096Idx := strings.Index(content, "## [v0.9.6]")
+	v090Idx := strings.Index(content, "## [v0.9.0]")
+	if v096Idx < 0 || v090Idx < 0 || v096Idx > v090Idx {
+		t.Errorf("v0.9.6 should precede v0.9.0:\n%s", content)
+	}
+}
+
 func TestAppendChangelogEntry_PrependsToExisting(t *testing.T) {
 	tmpDir := t.TempDir()
 	existing := `## [v0.9.0] - 2026-07-05

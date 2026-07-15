@@ -5,6 +5,7 @@ import (
 	"os"
 	"path/filepath"
 	"regexp"
+	"slices"
 	"strings"
 	"time"
 )
@@ -157,4 +158,115 @@ func appendBulletToSection(content, header, bullet string) string {
 	result = append(result, bullet)
 	result = append(result, lines[insertAt:]...)
 	return strings.Join(result, "\n")
+}
+
+// changelogSection is a single top-level "## " section in CHANGELOG.md.
+type changelogSection struct {
+	header  string // e.g. "## [Unreleased] - 2026-07-14"
+	bullets []string // "- feat: ..." lines within the section
+	raw     string // full section text including the header line
+}
+
+// parseChangelog splits CHANGELOG.md content into its top-level "## " sections
+// plus any leading preamble (text before the first "## " header). Bullets are
+// extracted from each section for easy merging.
+func parseChangelog(content string) (preamble string, sections []changelogSection) {
+	lines := strings.Split(content, "\n")
+	var cur *changelogSection
+	for _, line := range lines {
+		trimmed := strings.TrimSpace(line)
+		if strings.HasPrefix(trimmed, "## ") {
+			if cur != nil {
+				sections = append(sections, *cur)
+			}
+			cur = &changelogSection{header: trimmed, raw: line + "\n"}
+			continue
+		}
+		if cur != nil {
+			cur.raw += line + "\n"
+			if strings.HasPrefix(trimmed, "- ") {
+				cur.bullets = append(cur.bullets, trimmed)
+			}
+		} else {
+			preamble += line + "\n"
+		}
+	}
+	if cur != nil {
+		sections = append(sections, *cur)
+	}
+	return preamble, sections
+}
+
+// FinalizeChangelogForRelease promotes every "## [Unreleased] - <date>" section
+// in CHANGELOG.md to a single "## [v<version>] - <today>" section. All bullets
+// from the Unreleased sections are collected and merged under one versioned header
+// placed at the top of the file; already-versioned sections are preserved below it.
+// The operation is idempotent: re-running with the same version merges any
+// remaining Unreleased bullets into the existing versioned section without
+// duplicating them. A missing CHANGELOG.md is a no-op (returns nil).
+func FinalizeChangelogForRelease(wd, version string) error {
+	changelogPath := filepath.Join(wd, "CHANGELOG.md")
+	existing, err := os.ReadFile(changelogPath)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return nil
+		}
+		return err
+	}
+
+	content := string(existing)
+	versionHeader := fmt.Sprintf("## [v%s]", version)
+
+	preamble, sections := parseChangelog(content)
+	var unreleasedBullets []string
+	var versioned []string
+	var existingVersionBullets []string
+	hasVersionSection := false
+
+	for _, sec := range sections {
+		switch {
+		case strings.HasPrefix(sec.header, "## [Unreleased]"):
+			unreleasedBullets = append(unreleasedBullets, sec.bullets...)
+		case sec.header == versionHeader:
+			hasVersionSection = true
+			existingVersionBullets = append(existingVersionBullets, sec.bullets...)
+		default:
+			versioned = append(versioned, sec.raw)
+		}
+	}
+
+	if len(unreleasedBullets) == 0 && !hasVersionSection {
+		return nil // nothing to finalize
+	}
+
+	// Merge: existing version-section bullets first, then any new Unreleased
+	// bullets, de-duplicated so re-running is safe.
+	merged := append([]string{}, existingVersionBullets...)
+	for _, b := range unreleasedBullets {
+		if !slices.Contains(merged, b) {
+			merged = append(merged, b)
+		}
+	}
+
+	today := time.Now().Format("2006-01-02")
+	var sb strings.Builder
+	sb.WriteString(fmt.Sprintf("## [v%s] - %s\n", version, today))
+	sb.WriteString("\n")
+	sb.WriteString("### 🚀 Release Summary\n")
+	for _, b := range merged {
+		sb.WriteString(b + "\n")
+	}
+
+	var out strings.Builder
+	out.WriteString(preamble)
+	out.WriteString(sb.String())
+	out.WriteString("\n")
+	for _, v := range versioned {
+		out.WriteString(v)
+		if !strings.HasSuffix(v, "\n") {
+			out.WriteString("\n")
+		}
+	}
+
+	return os.WriteFile(changelogPath, []byte(out.String()), 0644)
 }

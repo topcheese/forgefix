@@ -3,7 +3,7 @@ spec_id: ""
 status: draft
 repo_issue: ""
 type: feature
-version: "v0.8.0"
+version: "0.9.6"
 root_cause: ""
 resolution: ""
 linked_commits: []

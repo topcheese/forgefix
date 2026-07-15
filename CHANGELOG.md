@@ -1,3 +1,8 @@
+## [Unreleased] - 2026-07-15
+
+### 🚀 Release Summary
+- feat: clean up 6 rogue SPEC-1784089531 duplicate spec files and remove junk DB row (SPEC-1784104910)
+
 ## [Unreleased] - 2026-07-14
 
 ### 🚀 Release Summary

@@ -59,6 +59,19 @@ func (sc *ShipController) Run() {
 	// Version prompt and write
 	shipVersion := sc.vm.HandleShipVersion(sc.aiMode)
 
+	// Finalize the CHANGELOG: promote [Unreleased] sections to the shipped
+	// version so the changelog reflects real releases. Best-effort: a failure
+	// warns but does not abort the ship. Committed before the push so the
+	// finalized changelog rides along in the shipped commit.
+	if err := FinalizeChangelogForRelease(sc.configDir, shipVersion); err != nil {
+		fmt.Fprintf(os.Stderr, "warning: failed to finalize CHANGELOG.md: %v\n", err)
+	} else if _, cErr := execGit(sc.configDir, "add", "CHANGELOG.md"); cErr == nil {
+		if _, cErr := execGit(sc.configDir, "commit", "-m",
+			fmt.Sprintf("chore: finalize CHANGELOG for v%s", shipVersion)); cErr != nil {
+			fmt.Fprintf(os.Stderr, "warning: failed to commit finalized CHANGELOG.md: %v\n", cErr)
+		}
+	}
+
 	// Update version field on all shipped specs
 	for _, id := range shipSpecs {
 		spec, specErr := LoadSpecByID(sc.configDir, id)
