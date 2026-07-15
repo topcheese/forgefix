@@ -22,7 +22,7 @@ func (d *CommandDispatcher) handleCommit(args []string) (CommandResult, error) {
 		msg = ExtractMessageFromArgs(args)
 	}
 
-	commitHash, specID, commitMsg, err := runCommit(d.WorkDir, msg, flags.SpecID, flags.SpecType, flags.SpecVersion, flags.AIMode, d, flags.Body)
+	commitHash, specID, commitMsg, err := runCommit(d.WorkDir, msg, flags.SpecID, flags.SpecType, flags.SpecVersion, flags.AIMode, flags.Review, d, flags.Body)
 	if err != nil {
 		fmt.Fprintf(d.Stderr, "error: %v\n", err)
 		return CommandResult{ExitCode: 1}, nil
@@ -111,7 +111,7 @@ func (d *CommandDispatcher) handleCommit(args []string) (CommandResult, error) {
 
 // runCommit executes the full commit workflow: resolves the spec, stages, commits,
 // and updates the ledger. Returns the commit hash and spec ID.
-func runCommit(wd, msg, flagSpecID, specType, specVersion string, aiMode bool, d *CommandDispatcher, body string) (string, string, string, error) {
+func runCommit(wd, msg, flagSpecID, specType, specVersion string, aiMode, forceReview bool, d *CommandDispatcher, body string) (string, string, string, error) {
 	gitRoot, err := findGitRootWalk(wd)
 	if err != nil {
 		return "", "", "", err
@@ -130,6 +130,18 @@ func runCommit(wd, msg, flagSpecID, specType, specVersion string, aiMode bool, d
 		}
 		if err != nil {
 			return "", "", "", err
+		}
+	}
+
+	// Check for ambiguous auto-detect: if no explicit --spec was given and we're in AI mode,
+	// check if there are multiple recently-modified active specs that could cause ambiguity.
+	// If so, require explicit --spec instead of guessing.
+	explicitSpecGiven := flagSpecID != ""
+	if aiMode && !explicitSpecGiven {
+		if ambiguous, err := checkAmbiguousAutoDetect(wd); err != nil {
+			return "", "", "", err
+		} else if ambiguous {
+			return "", "", "", fmt.Errorf("ambiguous auto-detect: multiple recently-modified active specs found. Use --spec <id> to explicitly bind")
 		}
 	}
 
@@ -243,14 +255,18 @@ func runCommit(wd, msg, flagSpecID, specType, specVersion string, aiMode bool, d
 	if specID != "" {
 		configDir := SpecConfigDir(wd)
 		specDir := filepath.Join(wd, "specs")
-		if specFile, fErr := findSpecFileByID(specDir, specID); fErr == nil {
-			_ = UpdateSpecFileStatus(specFile, "review")
-		}
-		if ledger, lErr := LoadLedger(configDir); lErr == nil {
-			if entry := ledger.GetSpecEntry(specID); entry != nil {
-				entry.Status = "review"
-				ledger.SetSpecEntry(specID, entry)
-				_ = SaveLedger(ledger, configDir)
+		// Only promote to "review" when explicitly requested via --review flag
+		promoteToReview := forceReview
+		if promoteToReview {
+			if specFile, fErr := findSpecFileByID(specDir, specID); fErr == nil {
+				_ = UpdateSpecFileStatus(specFile, "review")
+			}
+			if ledger, lErr := LoadLedger(configDir); lErr == nil {
+				if entry := ledger.GetSpecEntry(specID); entry != nil {
+					entry.Status = "review"
+					ledger.SetSpecEntry(specID, entry)
+					_ = SaveLedger(ledger, configDir)
+				}
 			}
 		}
 	}
@@ -271,9 +287,8 @@ func runCommit(wd, msg, flagSpecID, specType, specVersion string, aiMode bool, d
 	return commitHash, specID, commitMsg, nil
 }
 
-// UpdateLedgerAfterCommit records the commit in the ledger, advances status to
-// "review" on both disk and ledger, and saves both. Once reviewed, ff sync will
-// prompt to advance further.
+// UpdateLedgerAfterCommit records the commit in the ledger and updates linked commits.
+// It does NOT change the spec status (that's handled in runCommit when --review is explicitly requested).
 func UpdateLedgerAfterCommit(configDir, specID, commitHash string) error {
 	ledger, err := LoadLedger(configDir)
 	if err != nil {
@@ -284,7 +299,7 @@ func UpdateLedgerAfterCommit(configDir, specID, commitHash string) error {
 		return fmt.Errorf("spec %s not found in ledger", specID)
 	}
 	entry.LinkedCommits = append(entry.LinkedCommits, commitHash)
-	entry.Status = "review"
+	// Do NOT change status here - status promotion is handled in runCommit when --review is explicitly requested
 	ledger.SetSpecEntry(specID, entry)
 
 	specDir := filepath.Join(configDir, "specs")
@@ -292,9 +307,7 @@ func UpdateLedgerAfterCommit(configDir, specID, commitHash string) error {
 	if err != nil {
 		return fmt.Errorf("spec file not found on disk for %s: %w", specID, err)
 	}
-	if err := UpdateSpecFileStatus(specFile, "review"); err != nil {
-		return fmt.Errorf("updating spec file status: %w", err)
-	}
+	// Do NOT update status here - only update linked commits
 	if err := UpdateSpecFileLinkedCommits(specFile, commitHash); err != nil {
 		return fmt.Errorf("updating spec file linked commits: %w", err)
 	}
@@ -878,6 +891,69 @@ func autoDetectSpecFromWorkingTree(wd string) (string, error) {
 	})
 
 	return pool[0].specID, nil
+}
+
+// checkAmbiguousAutoDetect checks if there are multiple recently-modified active specs
+// that could cause ambiguity in auto-detection. Returns true if ambiguous (multiple
+// active specs modified within a short time window), false otherwise.
+func checkAmbiguousAutoDetect(wd string) (bool, error) {
+	specDir := filepath.Join(wd, "specs")
+	entries, err := os.ReadDir(specDir)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return false, nil
+		}
+		return false, err
+	}
+
+	type candidate struct {
+		specID  string
+		status  string
+		modTime time.Time
+	}
+
+	var active []candidate
+	for _, entry := range entries {
+		if entry.IsDir() || !strings.HasSuffix(entry.Name(), ".md") {
+			continue
+		}
+		if strings.HasPrefix(entry.Name(), "archive_") {
+			continue
+		}
+		path := filepath.Join(specDir, entry.Name())
+		info, infoErr := entry.Info()
+		if infoErr != nil {
+			continue
+		}
+		spec, parseErr := parseSpecFileForCommit(path)
+		if parseErr != nil {
+			continue
+		}
+		if spec.SpecID == "" {
+			continue
+		}
+		if spec.Status != "ship" && spec.Status != "closed" {
+			active = append(active, candidate{specID: spec.SpecID, status: spec.Status, modTime: info.ModTime()})
+		}
+	}
+
+	if len(active) < 2 {
+		return false, nil
+	}
+
+	// Sort by modification time (most recent first)
+	sort.Slice(active, func(i, j int) bool {
+		return active[i].modTime.After(active[j].modTime)
+	})
+
+	// Check if the top 2 active specs were modified within a short time window (e.g., 5 minutes)
+	// This indicates the user may have been working on multiple specs recently
+	timeWindow := 5 * time.Minute
+	if active[0].modTime.Sub(active[1].modTime) < timeWindow {
+		return true, nil
+	}
+
+	return false, nil
 }
 
 // extractSpecID extracts a SPEC-XXXXXXX ID from a commit message.

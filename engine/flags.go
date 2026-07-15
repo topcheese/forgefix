@@ -29,6 +29,7 @@ type CLIArgs struct {
 	All              bool
 	Delete           bool
 	SearchQuery      string
+	Review           bool // NEW — --review flag to explicitly promote to review
 }
 
 func ParseFlags(args []string) CLIArgs {
@@ -112,6 +113,8 @@ func ParseFlags(args []string) CLIArgs {
 			flags.All = true
 		case "--delete":
 			flags.Delete = true
+		case "--review":
+			flags.Review = true
 		}
 	}
 	return flags

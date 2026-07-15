@@ -8,6 +8,7 @@
 - feat: Fix detonation/defused/timeout issue-handling integration tests failing on GitHub API 404 (SPEC-1784101189)
 - feat: Fix ff -v update no asset found error not captured (SPEC-1784103956)
 - feat: Fix ff archive leaving rogue spec files on disk (SPEC-1784102561)
+- feat: Fix ff commit --ai auto-detect forcing wrong spec to review (SPEC-1784105008)
 
 ## [Unreleased] - 2026-07-14
 

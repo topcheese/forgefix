@@ -1,5 +1,5 @@
 ---
-spec_id: "SPEC-1784143268"
+spec_id: "SPEC-1784146853"
 status: draft
 repo_issue: ""
 type: bug
@@ -19,5 +19,5 @@ Test failed - see failure details below.
 - File: 
 - Line: 0
 - Error: === RUN   TestSpecLifecycle
---- FAIL: TestSpecLifecycle (0.58s)
+--- FAIL: TestSpecLifecycle (0.59s)
 
