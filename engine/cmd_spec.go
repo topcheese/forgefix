@@ -178,6 +178,47 @@ func createSpec(configDir, name, bodyContent string, d *CommandDispatcher, flags
 		return err
 	}
 
+	// Post-creation exact spec_id collision check (SPEC-1784101811)
+	// This catches the case where two specs end up with the same spec_id
+	// (e.g., due to timestamp collision or manual manipulation).
+	existingSpecID, existingTitle, idCollision := FindSpecByID(configDir, specID)
+	if idCollision {
+		// Hard conflict: two files with the same spec_id corrupts the ledger
+		// In AI mode, auto-link to existing spec (consistent with promptForDuplicateAction behavior)
+		// In interactive mode, prompt user
+		if flags.AIMode {
+			fmt.Fprintf(d.Stdout, "Exact spec_id collision detected: %s already exists as %s. Auto-linking.\n", specID, existingTitle)
+			// Remove the newly created file since we're linking to existing
+			_ = os.Remove(filePath)
+			return nil
+		}
+
+		reader := bufio.NewReader(os.Stdin)
+		fmt.Printf("\n⚠ Exact spec_id collision detected!\n")
+		fmt.Printf("  New spec:      %s (%s)\n", title, specID)
+		fmt.Printf("  Existing spec: %s (%s)\n", existingTitle, existingSpecID)
+		fmt.Printf("\nOptions:\n")
+		fmt.Printf("  1. Link to existing spec (remove new file)\n")
+		fmt.Printf("  2. Keep both (not recommended - corrupts ledger)\n")
+		fmt.Printf("Choice [1-2]: ")
+
+		for {
+			input, _ := reader.ReadString('\n')
+			input = strings.TrimSpace(input)
+			switch input {
+			case "1", "link", "l":
+				fmt.Fprintf(d.Stdout, "Linking to existing spec %s (%s). Removing new file.\n", existingSpecID, existingTitle)
+				_ = os.Remove(filePath)
+				return nil
+			case "2", "keep", "k":
+				fmt.Fprintf(d.Stdout, "Keeping both specs. WARNING: This will corrupt the ledger.\n")
+				// Continue with ledger update (will overwrite)
+			default:
+				fmt.Printf("Invalid choice. Enter 1 or 2: ")
+			}
+		}
+	}
+
 	fmt.Fprintf(d.Stdout, "Created spec: %s\n", filePath)
 	ledger, lerr := LoadLedger(configDir)
 	if lerr == nil {

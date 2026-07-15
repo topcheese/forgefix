@@ -2,6 +2,7 @@
 
 ### 🚀 Release Summary
 - feat: clean up 6 rogue SPEC-1784089531 duplicate spec files and remove junk DB row (SPEC-1784104910)
+- feat: Add post-creation duplicate scan to ff spec (SPEC-1784101811) (SPEC-1784101811)
 
 ## [Unreleased] - 2026-07-14
 

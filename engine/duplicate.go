@@ -115,6 +115,22 @@ func FindDuplicateSpec(configDir, newTitle string) (string, string, bool) {
 	return "", "", false
 }
 
+// FindSpecByID scans all spec files for an exact spec_id match.
+// Returns the existing spec's SpecID, Title, and true if found.
+func FindSpecByID(configDir, specID string) (string, string, bool) {
+	existing, err := listSpecs(configDir)
+	if err != nil || len(existing) == 0 {
+		return "", "", false
+	}
+
+	for _, s := range existing {
+		if s.SpecID == specID {
+			return s.SpecID, s.Title, true
+		}
+	}
+	return "", "", false
+}
+
 func MarkSpecBodyAsDuplicate(body, originalSpecID string) string {
 	ref := fmt.Sprintf("\n\n> This spec has been identified as a duplicate of `%s`.", originalSpecID)
 	return body + ref

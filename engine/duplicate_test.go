@@ -213,3 +213,60 @@ func TestFindDuplicateSpec_PicksBestMatch(t *testing.T) {
 		t.Errorf("expected 'User Login Flow', got %s", origTitle)
 	}
 }
+
+// TestFindSpecByID_ExactMatch tests the exact spec_id collision detection.
+// This is the new guard added in SPEC-1784101811 to catch duplicate spec_ids
+// that escape the title-only detector.
+func TestFindSpecByID_ExactMatch(t *testing.T) {
+	tmpDir := t.TempDir()
+	os.MkdirAll(filepath.Join(tmpDir, "specs"), 0755)
+
+	// Create a spec with a specific spec_id
+	writeSpecWithTitle(t, tmpDir, "SPEC-12345", "Original Feature", "draft")
+
+	// Try to find by exact spec_id
+	foundID, foundTitle, ok := FindSpecByID(tmpDir, "SPEC-12345")
+	if !ok {
+		t.Fatal("expected exact spec_id match to be found")
+	}
+	if foundID != "SPEC-12345" {
+		t.Errorf("expected SPEC-12345, got %s", foundID)
+	}
+	if foundTitle != "Original Feature" {
+		t.Errorf("expected 'Original Feature', got %s", foundTitle)
+	}
+}
+
+// TestFindSpecByID_NoMatch tests that non-existent spec_id returns no match.
+func TestFindSpecByID_NoMatch(t *testing.T) {
+	tmpDir := t.TempDir()
+	os.MkdirAll(filepath.Join(tmpDir, "specs"), 0755)
+
+	writeSpecWithTitle(t, tmpDir, "SPEC-12345", "Original Feature", "draft")
+
+	_, _, ok := FindSpecByID(tmpDir, "SPEC-99999")
+	if ok {
+		t.Fatal("expected no match for non-existent spec_id")
+	}
+}
+
+// TestFindSpecByID_EmptyDirectory tests that empty directory returns no match.
+func TestFindSpecByID_EmptyDirectory(t *testing.T) {
+	tmpDir := t.TempDir()
+	os.MkdirAll(filepath.Join(tmpDir, "specs"), 0755)
+
+	_, _, ok := FindSpecByID(tmpDir, "SPEC-12345")
+	if ok {
+		t.Fatal("expected no match in empty directory")
+	}
+}
+
+// TestFindSpecByID_NoSpecsDir tests that missing specs dir returns no match.
+func TestFindSpecByID_NoSpecsDir(t *testing.T) {
+	tmpDir := t.TempDir()
+
+	_, _, ok := FindSpecByID(tmpDir, "SPEC-12345")
+	if ok {
+		t.Fatal("expected no match when specs dir doesn't exist")
+	}
+}
