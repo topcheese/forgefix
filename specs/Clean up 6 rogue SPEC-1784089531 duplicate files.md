@@ -6,7 +6,7 @@ type: bug
 version: "0.9.6"
 root_cause: "Six specs/*.md files all declare spec_id SPEC-1784089531 (a duplicate-ID collision traced in SPEC-1784101804). The DB has exactly one junk row for that id (status=draft, title='SPEC-1784089531' — a placeholder). These files are leftovers from a prior broken session and were never archived, so ff archive left them on disk. They are rogue duplicates that must be removed so specs/ holds only active drafts."
 resolution: "Deleted the 6 rogue SPEC-1784089531 .md files and removed the single junk DB row (spec_id SPEC-1784089531) so the spec table no longer carries the placeholder. Legitimate ship-status specs (SPEC-1783784714, SPEC-1783788768) were preserved."
-linked_commits: []
+linked_commits: ["0ddffb9"]
 ---
 
 # Clean Up 6 Rogue SPEC-1784089531 Duplicate Spec Files
