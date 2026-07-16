@@ -278,10 +278,7 @@ func handleDetonationIssues(d *Dashboard, configDir string) {
 			body := fmt.Sprintf("## Objective\nAutomatically created from failing test %s during ff --ai run.\n\n## Root Cause\nTest failed - see failure details below.\n\n## Failure Details\n- Test: %s\n- File: %s\n- Line: %d\n- Error: %s",
 				info.Name, info.Name, info.FilePath, info.FailureLine, info.ErrorTrace)
 
-			specVersion := Version
-			if pv := NewVersionManager(configDir).CurrentVersion(); pv != "0.0.0" {
-				specVersion = pv
-			}
+			specVersion := CurrentVersion(configDir)
 			sid, specPath, werr := writeSpecFromTemplate(configDir, title, title, body, "bug", specVersion, "")
 			if werr != nil {
 				d.AddSystemError(fmt.Sprintf("failed to create spec for %s: %v", info.Name, werr))

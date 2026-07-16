@@ -1,3 +1,8 @@
+## [Unreleased] - 2026-07-16
+
+### 🚀 Release Summary
+- feat: unify version display on CurrentVersion(); add regression test (SPEC-1784102178)
+
 ## [Unreleased] - 2026-07-15
 
 ### 🚀 Release Summary

@@ -7,7 +7,26 @@ import (
 	"strings"
 )
 
+// Version is the compile-time fallback, used ONLY as the last-resort value by
+// CurrentVersion() when no project context (DB/ledger) is available. No display
+// or update-check path may reference this const directly — call
+// CurrentVersion(configDir) instead so every command reports the same version.
 const Version = "0.9.0"
+
+// CurrentVersion returns the canonical ForgeFix version for a project.
+// Resolution order: project DB meta.version -> legacy ledger version -> the
+// compile-time Version const (last-resort fallback only). Pass an empty configDir to
+// skip the DB/ledger lookup and return the const directly (non-project context).
+func CurrentVersion(configDir string) string {
+	if configDir != "" {
+		if vm := NewVersionManager(configDir); vm != nil {
+			if pv := vm.CurrentVersion(); pv != "" && pv != "0.0.0" {
+				return pv
+			}
+		}
+	}
+	return Version
+}
 
 type CLIArgs struct {
 	AIMode           bool
@@ -156,5 +175,5 @@ Examples:
 }
 
 func PrintVersion(w io.Writer) {
-	fmt.Fprintf(w, "ForgeFix %s\n", Version)
+	fmt.Fprintf(w, "ForgeFix %s\n", CurrentVersion(""))
 }

@@ -108,7 +108,7 @@ func (d *CommandDispatcher) handleHelp() CommandResult {
 // The displayed version comes from the project DB (the canonical source),
 // falling back to the compile-time const when no project context exists.
 func (d *CommandDispatcher) handleVersion() CommandResult {
-	version := Version
+	version := CurrentVersion(d.ConfigDir)
 	if vm := NewVersionManager(d.ConfigDir); vm != nil {
 		if pv := vm.CurrentVersion(); pv != "0.0.0" {
 			version = pv
@@ -141,10 +141,10 @@ func checkAndPromptUpdate(configDir string, stdout, stderr io.Writer, aiMode boo
 	if release.TagName == "" {
 		return
 	}
-	if semver.Compare(release.TagName, "v"+Version) <= 0 {
+	if semver.Compare(release.TagName, "v"+CurrentVersion(configDir)) <= 0 {
 		return
 	}
-	fmt.Fprintf(stdout, "New version available: %s (current: %s)\n", release.TagName, Version)
+	fmt.Fprintf(stdout, "New version available: %s (current: %s)\n", release.TagName, CurrentVersion(configDir))
 	if aiMode {
 		return
 	}

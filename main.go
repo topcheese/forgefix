@@ -59,7 +59,7 @@ func main() {
 	}
 
 	if cmd != "version" && cmd != "-v" && cmd != "--version" && cmd != "help" && cmd != "--help" && cmd != "" {
-		fmt.Fprintf(os.Stderr, "ForgeFix %s\n", engine.Version)
+		fmt.Fprintf(os.Stderr, "ForgeFix %s\n", engine.CurrentVersion(projectRoot))
 	}
 
 	disp := engine.NewCommandDispatcher(projectRoot, wd, os.Stdout, os.Stderr)

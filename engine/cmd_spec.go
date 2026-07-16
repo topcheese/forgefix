@@ -154,10 +154,7 @@ func createSpec(configDir, name, bodyContent string, d *CommandDispatcher, flags
 	}
 
 	// Resolve version from DB (not the compile-time const).
-	specVersion := Version
-	if pv := NewVersionManager(configDir).CurrentVersion(); pv != "0.0.0" {
-		specVersion = pv
-	}
+	specVersion := CurrentVersion(configDir)
 	if flags.SpecVersion != "" {
 		specVersion = flags.SpecVersion
 	}
