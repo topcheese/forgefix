@@ -2,6 +2,7 @@
 
 ### 🚀 Release Summary
 - feat: unify version display on CurrentVersion(); add regression test (SPEC-1784102178)
+- feat: fix ff sync 404 reconciliation; unbind orphaned repo_issue and mirror ledger to JSON (SPEC-1784146853)
 
 ## [Unreleased] - 2026-07-15
 

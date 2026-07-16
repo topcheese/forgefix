@@ -494,6 +494,7 @@ func processSyncQueue(coord *IssueCoordinator, configDir string, ledger *LedgerE
 				// Proactively clean up the spec's repo_issue field so no further
 				// operations are enqueued for this deleted issue.
 				if op.SpecID != "" {
+					fmt.Fprintf(os.Stderr, "unbinding spec %s from deleted remote issue #%d (404/410)\n", op.SpecID, op.IssueNum)
 					clearRepoIssueForSpec(configDir, op.SpecID, coord)
 				} else if op.IssueNum > 0 {
 					clearRepoIssueByNumber(configDir, op.IssueNum, coord)
@@ -647,7 +648,7 @@ func syncSingleSpec(coord *IssueCoordinator, configDir, specID string, cfg *Conf
 			if err != nil {
 				if errors.Is(err, ErrResourceNotFound) {
 					// Issue was deleted from remote — clear the reference so next sync recreates it
-					fmt.Fprintf(os.Stderr, "warning: issue #%d for spec %q not found (deleted), clearing reference\n", spec.RepoIssue, spec.Title)
+					fmt.Fprintf(os.Stderr, "unbinding spec %q from deleted remote issue #%d (404): clearing local reference\n", spec.Title, spec.RepoIssue)
 					updateSpecFileRepoIssue(filePath, 0)
 					spec.RepoIssue = 0
 				} else {

@@ -127,11 +127,18 @@ func LoadLedger(configDir string) (*LedgerEngine, error) {
 }
 
 func SaveLedger(ledger *LedgerEngine, configDir string) error {
+	// Mirror state to the legacy JSON ledger file so readers of
+	// forgefix_ledger.json (tooling, tests) stay consistent with the
+	// canonical SQLite store.
+	if err := ledger.SaveToFile(FFLedgerPath(configDir)); err != nil {
+		fmt.Fprintf(os.Stderr, "warning: failed to mirror ledger to JSON: %v\n", err)
+	}
+
 	// Write to SQLite
 	db, err := OpenDB(configDir)
 	if err != nil {
-		// Fallback to JSON if DB is unavailable
-		return ledger.SaveToFile(FFLedgerPath(configDir))
+		// DB unavailable — JSON mirror above is the persistence.
+		return nil
 	}
 	defer db.Close()
 

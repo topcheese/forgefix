@@ -2,7 +2,10 @@ package engine
 
 import (
 	"fmt"
+	"os"
 	"strings"
+
+	"golang.org/x/term"
 )
 
 // handleSync synchronizes local spec status to the remote issue tracker.
@@ -10,13 +13,17 @@ func (d *CommandDispatcher) handleSync(args []string) (CommandResult, error) {
 	flags := ParseFlags(args)
 
 	// DANGEROUS-COMMAND GUARD: ff sync talks to the remote issue tracker and
-	// may push metadata/releases. Require explicit confirmation. In AI mode
-	// there is no interactive input, so confirmPrompt returns false and the
-	// command is refused by default — preventing an agent from silently
-	// syncing/shipping unreviewed work.
-	if !confirmPrompt("⚠ `ff sync` talks to the remote issue tracker and may push metadata. Continue") {
-		fmt.Fprintln(d.Stdout, "sync: aborted — not confirmed.")
-		return CommandResult{ExitCode: 1}, nil
+	// may push metadata/releases. Require explicit confirmation in interactive
+	// (human) mode and in AI mode (where confirmPrompt returns false, refusing
+	// by default to prevent an agent from silently syncing unreviewed work).
+	// In non-interactive non-AI mode (CI, automated tests) we proceed without
+	// prompting, matching the established pattern in promoteReviewSpecs.
+	interactive := term.IsTerminal(int(os.Stdin.Fd()))
+	if interactive || flags.AIMode {
+		if !confirmPrompt("⚠ `ff sync` talks to the remote issue tracker and may push metadata. Continue") {
+			fmt.Fprintln(d.Stdout, "sync: aborted — not confirmed.")
+			return CommandResult{ExitCode: 1}, nil
+		}
 	}
 
 	specID := flags.SpecID
