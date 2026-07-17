@@ -1,4 +1,4 @@
-## [Unreleased] - 2026-07-16
+## [v0.9.7] - 2026-07-16
 
 ### 🚀 Release Summary
 - feat: unify version display on CurrentVersion(); add regression test (SPEC-1784102178)
@@ -9,10 +9,6 @@
 - feat: Fix stale TestRunCommitWithFlagSpecID: plain commit does not auto-promote to review (use --review) (SPEC-1784255528)
 - feat: fix: flag-value leak and self-match collision in ff spec --ai (SPEC-1784257550)
 - feat: Verify SPEC-1784101804: spec_id collision fix confirmed working (SPEC-1784101804)
-
-## [Unreleased] - 2026-07-15
-
-### 🚀 Release Summary
 - feat: clean up 6 rogue SPEC-1784089531 duplicate spec files and remove junk DB row (SPEC-1784104910)
 - feat: Add post-creation duplicate scan to ff spec (SPEC-1784101811) (SPEC-1784101811)
 - feat: Remove test-specs directory from commit (SPEC-1784101811)
@@ -21,10 +17,6 @@
 - feat: Fix ff -v update no asset found error not captured (SPEC-1784103956)
 - feat: Fix ff archive leaving rogue spec files on disk (SPEC-1784102561)
 - feat: Fix ff commit --ai auto-detect forcing wrong spec to review (SPEC-1784105008)
-
-## [Unreleased] - 2026-07-14
-
-### 🚀 Release Summary
 - feat: test (SPEC-1783983677)
 - feat: restore and fix auto-spec-creation on test failure (SPEC-1783975469)
 - feat: The auto-spec-on-failure feature already existed in handleDetonationIssues but had a critical linkage bug: QueueCreateIssue was called with empty specID so the created issue number could never be linked back to the spec in processCreateIssue. Additionally, the specID from writeSpecFromTemplate was discarded (captured as _) and the ledger entry used the sanitized title instead of the real auto-generated specID.Restructured handleDetonationIssues so spec creation happens first — captures the real specID, registers it in the ledger, then passes it to QueueCreateIssue. On duplicate spec detection the specID is set to empty string so the remote issue still gets created without force-linking. On spec creation failure, the continue skips the test entirely to avoid queuing an orphaned remote issue with no local spec. (SPEC-1783975469)
@@ -36,10 +28,6 @@
 - feat: docs: fill in root_cause, resolution, and linked_commits for shell injection fix (SPEC-1783820660)
 - feat: docs: fill in root_cause, resolution, and linked_commits for dead nil-check removal (SPEC-1783975440)
 - feat: test: add ValidateSpecFrontmatter to catch empty root_cause/resolution/linked_commits before status transitions (SPEC-1783820660)
-
-## [Unreleased] - 2026-07-13
-
-### 🚀 Release Summary
 - feat: enforce ForgeFix-native workflow: remote-target safeguard, sync/ship permission prompts, and agent workflow skill update (SPEC-1783899571)
 - feat: rewrite LoadLedger/SaveLedger to use SQLite as primary store instead of forgefix_ledger.json (SPEC-1783929475)
 - feat: harden agent workflow: pre-commit summary enforcement, one-spec-at-a-time rule, acceptance criteria review at commit time, and duplicate search workflow (SPEC-1783933843)
@@ -48,10 +36,6 @@
 - feat: spec: add SPEC-1783942277 - remove redundant spec-exists validation from ff commit --spec (SPEC-1783942277)
 - feat: remove redundant spec-exists validation from ff commit --specThe specExists check (loadActiveSpecs + specExists) was redundant.When --spec is explicitly provided, trust the caller — the spec file ondisk is canonical. findSpecFileByID still handles linked_commits update.Linked: SPEC-1783942277 (SPEC-1783942277)
 - feat: fix(update): use golang.org/x/mod/semver instead of hand-rolled compare, alert on missing tokenThe real bug was no alert when update check can't run (no GitHub token).Version comparison now uses Go's standard semver library instead ofa hand-written string-split function. SPEC-1783784714. (SPEC-1783942277)
-
-## [Unreleased] - 2026-07-12
-
-### 🚀 Release Summary
 - feat: automatically update CHANGELOG.md on commit to keep it in sync with changes (SPEC-1783898268)
 
 ## [v0.9.0] - 2026-07-05
@@ -91,4 +75,5 @@
 
 ### 🚀 Release Summary
 - release: initialize stable v0.7.0 architecture with atomic dashboard dirty flag, custom command args, and issue-aware changelog automation
+
 
