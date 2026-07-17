@@ -13,21 +13,7 @@ import (
 // handleSpec creates, deletes, or manages spec files.
 func (d *CommandDispatcher) handleSpec(args []string) (CommandResult, error) {
 	flags := ParseFlags(args)
-
-	var positional []string
-	for _, arg := range args {
-		if !strings.HasPrefix(arg, "-") {
-			positional = append(positional, arg)
-		}
-	}
-	specName := ""
-	specBody := ""
-	if len(positional) > 0 {
-		specName = positional[0]
-	}
-	if len(positional) > 1 {
-		specBody = positional[1]
-	}
+	specName, specBody := parseSpecPositional(args)
 
 	if flags.Delete {
 		if specName == "" {
@@ -178,8 +164,8 @@ func createSpec(configDir, name, bodyContent string, d *CommandDispatcher, flags
 	// Post-creation exact spec_id collision check (SPEC-1784101811)
 	// This catches the case where two specs end up with the same spec_id
 	// (e.g., due to timestamp collision or manual manipulation).
-	existingSpecID, existingTitle, idCollision := FindSpecByID(configDir, specID)
-	if idCollision {
+	existingSpecID, existingTitle, existingPath, idCollision := FindSpecByID(configDir, specID)
+	if idCollision && existingPath != filePath {
 		// Hard conflict: two files with the same spec_id corrupts the ledger
 		// In AI mode, auto-link to existing spec (consistent with promptForDuplicateAction behavior)
 		// In interactive mode, prompt user
@@ -299,6 +285,35 @@ func deleteSpec(configDir, specID string) error {
 	}
 
 	return nil
+}
+
+// parseSpecPositional extracts the spec name and body from args, correctly
+// skipping flag values (e.g., --type feature) so the value "feature" is not
+// treated as a positional arg.
+func parseSpecPositional(args []string) (name, body string) {
+	var positional []string
+	for i := 0; i < len(args); i++ {
+		arg := args[i]
+		if !strings.HasPrefix(arg, "-") {
+			positional = append(positional, arg)
+			continue
+		}
+		// Flags that consume the next arg — skip both the flag and its value.
+		switch arg {
+		case "--message", "-m", "--failure-decay", "-d", "--run", "-r",
+			"--spec", "-s", "--type", "-t", "--ver", "--objective", "-o",
+			"--requirements", "--req", "--acceptance", "-a",
+			"--body", "--root-cause", "--search", "--task-title":
+			i++ // skip the flag's value
+		}
+	}
+	if len(positional) > 0 {
+		name = positional[0]
+	}
+	if len(positional) > 1 {
+		body = positional[1]
+	}
+	return
 }
 
 // sanitizeSpecTitle normalizes a raw spec name (e.g. from `ff spec --ai "fix --ai null

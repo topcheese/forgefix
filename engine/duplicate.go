@@ -54,8 +54,9 @@ func NormalizeTitle(title string) string {
 }
 
 type SpecInfo struct {
-	SpecID string
-	Title  string
+	SpecID   string
+	Title    string
+	FilePath string
 }
 
 func listSpecs(configDir string) ([]SpecInfo, error) {
@@ -81,7 +82,7 @@ func listSpecs(configDir string) ([]SpecInfo, error) {
 		if spec.SpecID == "" || spec.Title == "" {
 			continue
 		}
-		specs = append(specs, SpecInfo{SpecID: spec.SpecID, Title: spec.Title})
+		specs = append(specs, SpecInfo{SpecID: spec.SpecID, Title: spec.Title, FilePath: filePath})
 	}
 	return specs, nil
 }
@@ -116,19 +117,19 @@ func FindDuplicateSpec(configDir, newTitle string) (string, string, bool) {
 }
 
 // FindSpecByID scans all spec files for an exact spec_id match.
-// Returns the existing spec's SpecID, Title, and true if found.
-func FindSpecByID(configDir, specID string) (string, string, bool) {
+// Returns the matching spec's SpecID, Title, file path, and true if found.
+func FindSpecByID(configDir, specID string) (string, string, string, bool) {
 	existing, err := listSpecs(configDir)
 	if err != nil || len(existing) == 0 {
-		return "", "", false
+		return "", "", "", false
 	}
 
 	for _, s := range existing {
 		if s.SpecID == specID {
-			return s.SpecID, s.Title, true
+			return s.SpecID, s.Title, s.FilePath, true
 		}
 	}
-	return "", "", false
+	return "", "", "", false
 }
 
 func MarkSpecBodyAsDuplicate(body, originalSpecID string) string {

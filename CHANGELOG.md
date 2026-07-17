@@ -7,6 +7,7 @@
 - feat: Update spec SPEC-1784143268 with root cause and resolution for TestHandleDetonationIssues fix (SPEC-1784143268)
 - feat: Update spec SPEC-1784143269 with root cause and resolution for TestIntegration_MultiplePipelinesFailures fix (SPEC-1784143269)
 - feat: Fix stale TestRunCommitWithFlagSpecID: plain commit does not auto-promote to review (use --review) (SPEC-1784255528)
+- feat: fix: flag-value leak and self-match collision in ff spec --ai (SPEC-1784257550)
 
 ## [Unreleased] - 2026-07-15
 

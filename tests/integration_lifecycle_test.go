@@ -60,7 +60,7 @@ func TestSpecLifecycle(t *testing.T) {
 	// -------------------------------------------------------------------------
 	t.Run("Step 1: ff spec creates spec file", func(t *testing.T) {
 		specBody := "# Test Feature\n\n## Objective\n\nTest the lifecycle\n\n## Requirements\n\nMust work"
-		cmd := exec.Command(ffBin, "spec", "--ai", "test-feature", specBody)
+		cmd := exec.Command(ffBin, "spec", "--ai", "--type", "feature", "test-feature", specBody)
 		cmd.Dir = dir
 		out, err := cmd.CombinedOutput()
 		if err != nil {

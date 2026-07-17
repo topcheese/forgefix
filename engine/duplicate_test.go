@@ -225,7 +225,7 @@ func TestFindSpecByID_ExactMatch(t *testing.T) {
 	writeSpecWithTitle(t, tmpDir, "SPEC-12345", "Original Feature", "draft")
 
 	// Try to find by exact spec_id
-	foundID, foundTitle, ok := FindSpecByID(tmpDir, "SPEC-12345")
+	foundID, foundTitle, _, ok := FindSpecByID(tmpDir, "SPEC-12345")
 	if !ok {
 		t.Fatal("expected exact spec_id match to be found")
 	}
@@ -244,7 +244,7 @@ func TestFindSpecByID_NoMatch(t *testing.T) {
 
 	writeSpecWithTitle(t, tmpDir, "SPEC-12345", "Original Feature", "draft")
 
-	_, _, ok := FindSpecByID(tmpDir, "SPEC-99999")
+	_, _, _, ok := FindSpecByID(tmpDir, "SPEC-99999")
 	if ok {
 		t.Fatal("expected no match for non-existent spec_id")
 	}
@@ -255,7 +255,7 @@ func TestFindSpecByID_EmptyDirectory(t *testing.T) {
 	tmpDir := t.TempDir()
 	os.MkdirAll(filepath.Join(tmpDir, "specs"), 0755)
 
-	_, _, ok := FindSpecByID(tmpDir, "SPEC-12345")
+	_, _, _, ok := FindSpecByID(tmpDir, "SPEC-12345")
 	if ok {
 		t.Fatal("expected no match in empty directory")
 	}
@@ -265,7 +265,7 @@ func TestFindSpecByID_EmptyDirectory(t *testing.T) {
 func TestFindSpecByID_NoSpecsDir(t *testing.T) {
 	tmpDir := t.TempDir()
 
-	_, _, ok := FindSpecByID(tmpDir, "SPEC-12345")
+	_, _, _, ok := FindSpecByID(tmpDir, "SPEC-12345")
 	if ok {
 		t.Fatal("expected no match when specs dir doesn't exist")
 	}
