@@ -1,5 +1,5 @@
 ---spec_id: "SPEC-1784143269"
-status: draft
+status: review
 repo_issue: ""
 type: bug
 version: "0.9.6"
@@ -63,4 +63,3 @@ The issue was fixed in commit f84bb9c (SPEC-1784101189). The root cause was that
 2. Changed `handleDetonationIssues(d, "")` to `handleDetonationIssues(d, tmpDir)` to pass the correct config directory
 
 The test `TestIntegration_MultiplePipelinesFailures` in `execute_test.go` already had the correct template setup and passed `tmpDir` correctly, so it passes after the fix.
-

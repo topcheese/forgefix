@@ -6,6 +6,7 @@
 - feat: fix SPEC-1784143269: document root cause/resolution for TestDeleteSpec_FullIntegration repoID mismatch (SPEC-1784143269)
 - feat: Update spec SPEC-1784143268 with root cause and resolution for TestHandleDetonationIssues fix (SPEC-1784143268)
 - feat: Update spec SPEC-1784143269 with root cause and resolution for TestIntegration_MultiplePipelinesFailures fix (SPEC-1784143269)
+- feat: Fix stale TestRunCommitWithFlagSpecID: plain commit does not auto-promote to review (use --review) (SPEC-1784255528)
 
 ## [Unreleased] - 2026-07-15
 

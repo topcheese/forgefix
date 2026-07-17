@@ -352,14 +352,14 @@ created: 2024-01-01
 	if specEntry == nil {
 		t.Fatal("SPEC-123 not found in ledger")
 	}
-	if specEntry.Status != "review" {
-		t.Errorf("expected review status after commit, got: %s", specEntry.Status)
+	if specEntry.Status != "in-progress" {
+		t.Errorf("expected status to remain in-progress after plain commit (promotion requires --review), got: %s", specEntry.Status)
 	}
 
-	// Verify spec file on disk was also updated
+	// Verify spec file on disk was also updated (status unchanged; promotion requires --review flag)
 	if data, err := os.ReadFile(specFile); err == nil {
-		if !strings.Contains(string(data), "status: review") {
-			t.Errorf("expected spec file to contain status: review, got:\n%s", string(data))
+		if strings.Contains(string(data), "status: review") {
+			t.Errorf("spec file should NOT be promoted to review on a plain commit (use --review), got:\n%s", string(data))
 		}
 	} else {
 		t.Errorf("reading spec file: %v", err)
