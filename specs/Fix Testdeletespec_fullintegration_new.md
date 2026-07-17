@@ -1,7 +1,7 @@
 ---
 spec_id: "SPEC-1784255357"
 status: review
-repo_issue: ""
+repo_issue: 542
 type: bug
 version: "0.9.6"
 root_cause: "SaveLedger only wrote to SQLite when OpenDB succeeded, but did not mirror state to the legacy JSON ledger file. In TestDeleteSpec_FullIntegration the ledger is saved then reloaded via LoadLedger; the reload path read a store that did not reflect the persisted repo_issue_id (55), returning a stale/zero-derived value (42) instead of the expected 55."

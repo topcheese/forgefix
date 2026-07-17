@@ -1,6 +1,6 @@
 ---spec_id: "SPEC-1784103956"
 status: review
-repo_issue: ""
+repo_issue: 537
 type: bug
 version: "0.9.6"
 root_cause: "runUpdate (engine/command_dispatcher.go:160) handles update failures by printing to stderr and returning — e.g. the 'no asset found' branch (line 187) does fmt.Fprintf(stderr, ...) then returns. It never calls EmitAIError (execute.go:536), which exists specifically to emit structured errors, nor does it enqueue the failure to the background queue for later attention. So update failures (no asset, download error, release fetch error) are silently dropped from any persistent/attention path and only flash on the console."

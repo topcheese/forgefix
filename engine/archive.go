@@ -36,7 +36,7 @@ func ArchiveResolvedSpecs(configDir string) (string, int, error) {
 		if specType == "" {
 			specType = "feature"
 		}
-		if err := db.ArchiveSpec(specID, entry.SpecID, specType, entry.RepoIssueID); err != nil {
+		if err := db.ArchiveSpec(specID, entry.SpecID, specType, entry.RepoIssueID, entry.Version, entry.RootCause, entry.Resolution, entry.Body); err != nil {
 			fmt.Fprintf(os.Stderr, "warning: failed to archive spec %s: %v\n", specID, err)
 			continue
 		}

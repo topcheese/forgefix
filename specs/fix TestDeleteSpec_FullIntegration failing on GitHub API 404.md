@@ -1,7 +1,7 @@
 ---
 spec_id: "SPEC-1784101371"
 status: review
-repo_issue: ""
+repo_issue: 531
 type: bug
 version: "0.9.6"
 root_cause: "TestDeleteSpec_FullIntegration is a purely local test (NewLedgerEngine/SaveLedger/LoadLedger/DeleteSpec) with no GitHub API call. The 'GitHub API 404' failures referenced in the title were already fixed in commit f84bb9c (SPEC-1784101189), which addressed the detonation/defused/timeout issue-handling integration tests in execute_test.go and issue_coordinator_test.go — not this test."

@@ -1,6 +1,6 @@
 ---spec_id: "SPEC-1784102178"
 status: review
-repo_issue: ""
+repo_issue: 535
 type: bug
 version: "0.9.6"
 root_cause: "main.go:62 prints engine.Version (the compile-time const flags.Version = \"0.9.0\" from flags.go:10) as the banner on EVERY command except version/help. ff -v instead calls handleVersion() which reads the canonical version from the DB via VersionManager.CurrentVersion() (0.9.6). So the per-command banner uses a stale hardcoded constant while the version command uses the real DB value. checkAndPromptUpdate (command_dispatcher.go:144,147) also compares against the const, so the update checker uses the wrong baseline too."

@@ -1,7 +1,7 @@
 ---
 spec_id: "SPEC-1784101379"
 status: draft
-repo_issue: ""
+repo_issue: 532
 type: bug
 version: "0.9.6"
 root_cause: ""

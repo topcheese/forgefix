@@ -1,7 +1,7 @@
 ---
 spec_id: "SPEC-1784255477"
 status: review
-repo_issue: ""
+repo_issue: 544
 type: bug
 version: "0.9.6"
 root_cause: "handleDetonationIssues was called with an empty configDir string in some tests, causing writeSpecFromTemplate to fail silently (template file not found). The spec creation failed, so no issue was queued and IssueRefs stayed empty."

@@ -1,6 +1,6 @@
 ---spec_id: "SPEC-1784255528"
 status: draft
-repo_issue: ""
+repo_issue: 545
 type: bug
 version: "0.9.6"
 root_cause: "TestRunCommitWithFlagSpecID asserted that a plain ff commit auto-promotes a spec to status: review. The intended design (established in commit db296db) is that a plain commit does NOT auto-promote — promotion to review is explicit/human-gated via the --review flag (ff commit --ai --review). The test's assertions were stale and contradicted the intended lifecycle."

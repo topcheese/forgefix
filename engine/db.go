@@ -224,10 +224,10 @@ func (db *DB) GetLinkedCommits(specID string) ([]string, error) {
 // ArchiveSpec sets a spec's status to "archived" in the DB and deletes its file.
 // The file is deleted ONLY after the DB update succeeds.
 // Returns an error if the DB update fails or if the file can't be removed after successful archive.
-func (db *DB) ArchiveSpec(specID, title, specType string, repoIssueID int) error {
+func (db *DB) ArchiveSpec(specID, title, specType string, repoIssueID int, version, rootCause, resolution, body string) error {
 	specDir := filepath.Join(db.configDir, "specs")
 	// First, update the DB to mark as archived
-	if err := db.UpsertSpec(specID, title, "archived", specType, "", repoIssueID, "", "", ""); err != nil {
+	if err := db.UpsertSpec(specID, title, "archived", specType, version, repoIssueID, rootCause, resolution, body); err != nil {
 		return fmt.Errorf("failed to archive spec in DB: %w", err)
 	}
 

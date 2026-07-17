@@ -1,7 +1,7 @@
 ---
 spec_id: "SPEC-1784255439"
 status: review
-repo_issue: ""
+repo_issue: 543
 type: bug
 version: "0.9.6"
 root_cause: "handleTimeoutIssues delegates to handleDetonationIssues, which was called with an empty configDir string in some tests, causing writeSpecFromTemplate to fail silently (template file not found). The spec creation failed, so no issue was queued. The fix was to ensure the template directory exists and pass the correct configDir."

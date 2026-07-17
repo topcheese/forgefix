@@ -1,6 +1,6 @@
 ---spec_id: "SPEC-1784101804"
 status: draft
-repo_issue: ""
+repo_issue: 533
 type: bug
 version: "0.9.6"
 root_cause: "FindDuplicateSpec (engine/duplicate.go) matches ONLY by normalized title similarity (Levenshtein, DuplicateThreshold=0.7). It never compares spec_id. Two spec files with identical spec_id but different titles (e.g. 'Fix Test404reconciliation' vs 'Fix Testspeclifecycle') score low title similarity, so the detector reports isDup=false and both files are written with the same SPEC-1784089531 id. No code path (writeSpecFromTemplate, createSpec, handleSpec) ever checks spec_id uniqueness."

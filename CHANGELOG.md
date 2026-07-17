@@ -1,3 +1,8 @@
+## [Unreleased] - 2026-07-16
+
+### 🚀 Release Summary
+- feat: fix: preserve version/root_cause/resolution/body when archiving specs to DBArchiveResolvedSpecs was calling db.ArchiveSpec() without passingVersion, RootCause, Resolution, or Body from the ledger entry.ArchiveSpec then called UpsertSpec with empty strings for all four,which overwrote existing DB values via ON CONFLICT DO UPDATE.Fixes SPEC-1784263151 (SPEC-1784263151)
+
 ## [v0.9.7] - 2026-07-16
 
 ### 🚀 Release Summary

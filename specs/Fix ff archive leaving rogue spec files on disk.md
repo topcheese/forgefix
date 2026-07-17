@@ -1,6 +1,6 @@
 ---spec_id: "SPEC-1784102561"
 status: review
-repo_issue: ""
+repo_issue: 536
 type: bug
 version: "0.9.6"
 root_cause: "ArchiveResolvedSpecs (engine/archive.go) leaves rogue .md files on disk. db.ArchiveSpec (db.go:226) DOES remove the file via findSpecFileByID + os.Remove, but only when the file can be located by spec_id; if findSpecFileByID fails (filename/parse mismatch) the removal is skipped and the file lingers. The deferred cleanupOrphanFiles (archive.go:72) also skips any file where parseSpecFileForCommit errors or yields an empty spec_id (lines 88-89), so malformed files become permanent rogue files. The archive path is overcomplicated (ledger + orphan sweep + DB import) and re-does checks that already happened earlier in the chain."

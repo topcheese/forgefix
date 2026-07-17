@@ -1,6 +1,6 @@
 ---spec_id: "SPEC-1784101189"
 status: review
-repo_issue: ""
+repo_issue: 530
 type: bug
 version: "0.9.6"
 root_cause: ""
