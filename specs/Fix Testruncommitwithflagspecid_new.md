@@ -1,5 +1,5 @@
 ---
-spec_id: "SPEC-1784255834"
+spec_id: "SPEC-1784255528"
 status: draft
 repo_issue: ""
 type: bug
@@ -19,13 +19,13 @@ Test failed - see failure details below.
 - File: main_test.go
 - Line: 0
 - Error: === RUN   TestRunCommitWithFlagSpecID
-[main (root-commit) 52459f1] feat: [SPEC-123] test commit message
- 5 files changed, 23 insertions(+)
- create mode 100644 .ff/forgefix_ledger.json
- create mode 100644 001_ff.yaml
- create mode 100755 ff
- create mode 100644 specs/SPEC-123.md
- create mode 100644 test.txt
+[main (root-commit) b20454c] feat: [SPEC-123] test commit message
+  5 files changed, 23 insertions(+)
+  create mode 100644 .ff/forgefix_ledger.json
+  create mode 100644 001_ff.yaml
+  create mode 100755 ff
+  create mode 100644 specs/SPEC-123.md
+  create mode 100644 test.txt
     main_test.go:356: expected review status after commit, got: in-progress
     main_test.go:362: expected spec file to contain status: review, got:
         ---
@@ -34,8 +34,7 @@ Test failed - see failure details below.
         type: feature
         repo_issue: ""
         created: 2024-01-01
-        linked_commits: ["52459f1"]
-        linked_commits: ["52459f1"]
+        linked_commits: ["b20454c"]
+        linked_commits: ["b20454c"]
         # Test Spec
---- FAIL: TestRunCommitWithFlagSpecID (0.34s)
-
+--- FAIL: TestRunCommitWithFlagSpecID (0.35s)
