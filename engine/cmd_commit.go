@@ -22,7 +22,7 @@ func (d *CommandDispatcher) handleCommit(args []string) (CommandResult, error) {
 		msg = ExtractMessageFromArgs(args)
 	}
 
-	commitHash, specID, commitMsg, err := runCommit(d.WorkDir, msg, flags.SpecID, flags.SpecType, flags.SpecVersion, flags.AIMode, flags.Review, d, flags.Body)
+	commitHash, specID, commitMsg, err := runCommit(d.WorkDir, msg, flags.SpecID, flags.SpecType, flags.SpecVersion, flags.AIMode, d, flags.Body)
 	if err != nil {
 		fmt.Fprintf(d.Stderr, "error: %v\n", err)
 		return CommandResult{ExitCode: 1}, nil
@@ -111,7 +111,7 @@ func (d *CommandDispatcher) handleCommit(args []string) (CommandResult, error) {
 
 // runCommit executes the full commit workflow: resolves the spec, stages, commits,
 // and updates the ledger. Returns the commit hash and spec ID.
-func runCommit(wd, msg, flagSpecID, specType, specVersion string, aiMode, forceReview bool, d *CommandDispatcher, body string) (string, string, string, error) {
+func runCommit(wd, msg, flagSpecID, specType, specVersion string, aiMode bool, d *CommandDispatcher, body string) (string, string, string, error) {
 	gitRoot, err := findGitRootWalk(wd)
 	if err != nil {
 		return "", "", "", err
@@ -255,18 +255,19 @@ func runCommit(wd, msg, flagSpecID, specType, specVersion string, aiMode, forceR
 	if specID != "" {
 		configDir := SpecConfigDir(wd)
 		specDir := filepath.Join(wd, "specs")
-		// Only promote to "review" when explicitly requested via --review flag
-		promoteToReview := forceReview
-		if promoteToReview {
-			if specFile, fErr := findSpecFileByID(specDir, specID); fErr == nil {
-				_ = UpdateSpecFileStatus(specFile, "review")
-			}
-			if ledger, lErr := LoadLedger(configDir); lErr == nil {
-				if entry := ledger.GetSpecEntry(specID); entry != nil {
-					entry.Status = "review"
-					ledger.SetSpecEntry(specID, entry)
-					_ = SaveLedger(ledger, configDir)
-				}
+		// ff commit (human) sets status to "review", ff commit --ai sets status to "draft"
+		targetStatus := "draft"
+		if !aiMode {
+			targetStatus = "review"
+		}
+		if specFile, fErr := findSpecFileByID(specDir, specID); fErr == nil {
+			_ = UpdateSpecFileStatus(specFile, targetStatus)
+		}
+		if ledger, lErr := LoadLedger(configDir); lErr == nil {
+			if entry := ledger.GetSpecEntry(specID); entry != nil {
+				entry.Status = targetStatus
+				ledger.SetSpecEntry(specID, entry)
+				_ = SaveLedger(ledger, configDir)
 			}
 		}
 	}
@@ -288,7 +289,7 @@ func runCommit(wd, msg, flagSpecID, specType, specVersion string, aiMode, forceR
 }
 
 // UpdateLedgerAfterCommit records the commit in the ledger and updates linked commits.
-// It does NOT change the spec status (that's handled in runCommit when --review is explicitly requested).
+// It does NOT change the spec status (that's handled in runCommit based on human vs --ai mode).
 func UpdateLedgerAfterCommit(configDir, specID, commitHash string) error {
 	ledger, err := LoadLedger(configDir)
 	if err != nil {
@@ -299,7 +300,7 @@ func UpdateLedgerAfterCommit(configDir, specID, commitHash string) error {
 		return fmt.Errorf("spec %s not found in ledger", specID)
 	}
 	entry.LinkedCommits = append(entry.LinkedCommits, commitHash)
-	// Do NOT change status here - status promotion is handled in runCommit when --review is explicitly requested
+	// Do NOT change status here - status promotion is handled in runCommit based on human vs --ai mode
 	ledger.SetSpecEntry(specID, entry)
 
 	specDir := filepath.Join(configDir, "specs")

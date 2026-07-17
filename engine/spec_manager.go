@@ -132,6 +132,7 @@ var validSpecStatuses = map[string]bool{
 	"closed":      true,
 	"fixed":       true,
 	"resolved":    true,
+	"backlog":     true,
 }
 
 // isValidSpecStatus checks whether the given status is a known spec status.

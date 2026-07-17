@@ -15,6 +15,7 @@ func (d *CommandDispatcher) handleSpec(args []string) (CommandResult, error) {
 	flags := ParseFlags(args)
 	specName, specBody := parseSpecPositional(args)
 
+	// --delete handling (unchanged)
 	if flags.Delete {
 		if specName == "" {
 			fmt.Fprintln(d.Stderr, "error: --delete requires a spec ID")
@@ -29,15 +30,147 @@ func (d *CommandDispatcher) handleSpec(args []string) (CommandResult, error) {
 	}
 
 	if specName == "" {
-		fmt.Fprintln(d.Stderr, "error: spec command requires a name")
-		fmt.Fprintln(d.Stderr, "usage: ff spec <name>")
+		fmt.Fprintln(d.Stderr, "error: spec command requires a name or spec ID")
+		fmt.Fprintln(d.Stderr, "usage: ff spec <name|spec_id> [--status <status>] [--delete]")
 		return CommandResult{ExitCode: 1}, nil
 	}
 
+	// --status flag: set status on existing spec
+	if flags.SpecStatus != "" {
+		if !isValidSpecStatus(flags.SpecStatus) {
+			valid := []string{"backlog", "draft", "in-progress", "review", "ship", "closed"}
+			fmt.Fprintf(d.Stderr, "error: invalid status %q — valid values: %s\n", flags.SpecStatus, strings.Join(valid, ", "))
+			return CommandResult{ExitCode: 1}, nil
+		}
+		return d.setSpecStatus(specName, flags.SpecStatus)
+	}
+
+	// Check if spec exists (by spec_id) — if so, show interactive menu
+	specDir := filepath.Join(d.ConfigDir, "specs")
+	specFile, err := findSpecFileByID(specDir, specName)
+	if err == nil {
+		ledger, lErr := LoadLedger(d.ConfigDir)
+		if lErr != nil {
+			fmt.Fprintf(d.Stderr, "error: loading ledger: %v\n", lErr)
+			return CommandResult{ExitCode: 1}, nil
+		}
+		entry := ledger.GetSpecEntry(specName)
+		return d.promptAdvancement(specName, specFile, entry, ledger)
+	}
+
+	// Spec doesn't exist — create new (existing logic)
 	if err := createSpec(d.ConfigDir, specName, specBody, d, flags); err != nil {
 		fmt.Fprintf(d.Stderr, "error: %v\n", err)
 		return CommandResult{ExitCode: 1}, nil
 	}
+	return CommandResult{ExitCode: 0}, nil
+}
+
+// setSpecStatus sets the status of an existing spec by ID.
+func (d *CommandDispatcher) setSpecStatus(specID, status string) (CommandResult, error) {
+	specDir := filepath.Join(d.ConfigDir, "specs")
+	specFile, err := findSpecFileByID(specDir, specID)
+	if err != nil {
+		fmt.Fprintf(d.Stderr, "error: spec %s not found\n", specID)
+		return CommandResult{ExitCode: 1}, nil
+	}
+
+	currentStatus, err := readSpecFileStatus(specFile)
+	if err != nil {
+		fmt.Fprintf(d.Stderr, "error: reading spec status: %v\n", err)
+		return CommandResult{ExitCode: 1}, nil
+	}
+
+	terminal := map[string]bool{"ship": true, "closed": true, "resolved": true, "deprecated": true}
+	if terminal[currentStatus] {
+		fmt.Fprintf(d.Stderr, "error: spec %s is %s — cannot change status\n", specID, currentStatus)
+		return CommandResult{ExitCode: 1}, nil
+	}
+
+	if err := UpdateSpecFileStatus(specFile, status); err != nil {
+		fmt.Fprintf(d.Stderr, "error: updating spec file: %v\n", err)
+		return CommandResult{ExitCode: 1}, nil
+	}
+
+	ledger, lErr := LoadLedger(d.ConfigDir)
+	if lErr == nil {
+		entry := ledger.GetSpecEntry(specID)
+		if entry != nil {
+			entry.Status = status
+			ledger.SetSpecEntry(specID, entry)
+			_ = SaveLedger(ledger, d.ConfigDir)
+		}
+	}
+
+	fmt.Fprintf(d.Stdout, "✓ Spec %s set to %s\n", specID, status)
+	queueSpecBackgroundSync(d.ConfigDir, specID, d.Stdout, d.Stderr)
+	return CommandResult{ExitCode: 0}, nil
+}
+
+// promptAdvancement shows an interactive menu for advancing an existing spec's status.
+func (d *CommandDispatcher) promptAdvancement(specID, specFile string, entry *SpecEntry, ledger *LedgerEngine) (CommandResult, error) {
+	if entry != nil {
+		terminal := map[string]bool{"ship": true, "closed": true, "resolved": true, "deprecated": true}
+		if terminal[entry.Status] {
+			fmt.Fprintf(d.Stderr, "error: spec %s is %s — cannot change status\n", specID, entry.Status)
+			return CommandResult{ExitCode: 1}, nil
+		}
+	}
+
+	currentStatus := "unknown"
+	if entry != nil {
+		currentStatus = entry.Status
+	}
+	fmt.Fprintf(d.Stderr, "Spec %s (status: %s). Select advancement:\n", specID, currentStatus)
+	fmt.Fprintln(d.Stderr, "  1. in-progress")
+	fmt.Fprintln(d.Stderr, "  2. review")
+	fmt.Fprintln(d.Stderr, "  3. ship")
+	fmt.Fprintln(d.Stderr, "  4. close")
+	fmt.Fprintln(d.Stderr, "  5. delete")
+	fmt.Fprintln(d.Stderr, "  q. quit")
+	fmt.Fprint(d.Stderr, "Choice: ")
+
+	reader := bufio.NewReader(os.Stdin)
+	input, _ := reader.ReadString('\n')
+	input = strings.TrimSpace(input)
+
+	var newStatus string
+	switch input {
+	case "1":
+		newStatus = "in-progress"
+	case "2":
+		newStatus = "review"
+	case "3":
+		newStatus = "ship"
+	case "4":
+		newStatus = "closed"
+	case "5":
+		if err := deleteSpec(d.ConfigDir, specID); err != nil {
+			fmt.Fprintf(d.Stderr, "error: %v\n", err)
+			return CommandResult{ExitCode: 1}, nil
+		}
+		fmt.Fprintf(d.Stdout, "✓ Deleted spec %s\n", specID)
+		return CommandResult{ExitCode: 0}, nil
+	case "q", "":
+		return CommandResult{ExitCode: 0}, nil
+	default:
+		fmt.Fprintln(d.Stderr, "Invalid choice")
+		return CommandResult{ExitCode: 1}, nil
+	}
+
+	if err := UpdateSpecFileStatus(specFile, newStatus); err != nil {
+		fmt.Fprintf(d.Stderr, "error: updating spec file: %v\n", err)
+		return CommandResult{ExitCode: 1}, nil
+	}
+
+	if entry != nil {
+		entry.Status = newStatus
+		ledger.SetSpecEntry(specID, entry)
+		_ = SaveLedger(ledger, d.ConfigDir)
+	}
+
+	fmt.Fprintf(d.Stdout, "✓ Spec %s advanced to %s\n", specID, newStatus)
+	queueSpecBackgroundSync(d.ConfigDir, specID, d.Stdout, d.Stderr)
 	return CommandResult{ExitCode: 0}, nil
 }
 
@@ -303,7 +436,7 @@ func parseSpecPositional(args []string) (name, body string) {
 		case "--message", "-m", "--failure-decay", "-d", "--run", "-r",
 			"--spec", "-s", "--type", "-t", "--ver", "--objective", "-o",
 			"--requirements", "--req", "--acceptance", "-a",
-			"--body", "--root-cause", "--search", "--task-title":
+			"--body", "--root-cause", "--search", "--task-title", "--status":
 			i++ // skip the flag's value
 		}
 	}

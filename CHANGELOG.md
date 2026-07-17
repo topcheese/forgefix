@@ -1,3 +1,8 @@
+## [Unreleased] - 2026-07-17
+
+### 🚀 Release Summary
+- feat: Collapse ff backlog into ff spec with --status flag (SPEC-1784262174)
+
 ## [Unreleased] - 2026-07-16
 
 ### 🚀 Release Summary
