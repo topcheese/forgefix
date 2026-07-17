@@ -189,9 +189,9 @@ func QueueDeleteIssue(configDir, specID string, issueNumber int) error {
 // This ensures update failures (no asset found, download error, etc.) are not silently dropped.
 func QueueUpdateFailure(configDir, errorCode, detail string) error {
 	return EnqueueSyncOp(configDir, SyncOperation{
-		Type:   SyncOpUpdateFailure,
-		Title:  errorCode,
-		Body:   detail,
+		Type:  SyncOpUpdateFailure,
+		Title: errorCode,
+		Body:  detail,
 	})
 }
 

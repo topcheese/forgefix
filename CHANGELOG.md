@@ -4,6 +4,8 @@
 - feat: Collapse ff backlog into ff spec with --status flag (SPEC-1784262174)
 - feat: Update linked_commits to correct commit SHA (SPEC-1784262174)
 - feat: Fix corrupted spec frontmatter (linked_commits, resolution format) (SPEC-1784262174)
+- feat: Write Swarm Integration exploration spec and register in ledger (SPEC-1784275332)
+- feat: refactor: (SPEC-1784264619)
 
 ## [Unreleased] - 2026-07-16
 

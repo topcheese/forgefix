@@ -71,11 +71,6 @@ func generateSpecBody(spec *SpecFile) string {
 		b.WriteString(spec.RootCause)
 		b.WriteString("\n\n")
 	}
-	if spec.Resolution != "" {
-		b.WriteString("**Resolution:** ")
-		b.WriteString(spec.Resolution)
-		b.WriteString("\n\n")
-	}
 	b.WriteString("_This spec is tracked in ForgeFix. Fill in the spec file body for full details._\n")
 	return b.String()
 }

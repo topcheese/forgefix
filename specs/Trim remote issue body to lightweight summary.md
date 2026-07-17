@@ -6,7 +6,8 @@ version: "0.9.7"
 root_cause: ""
 resolution: ""
 linked_commits: []
----
+linked_commits: ["64c802c"]
+linked_commits: ["64c802c"]
 
 # Trim Remote Issue Body To Lightweight Summary
 

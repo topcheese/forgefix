@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"io"
 	"os"
-	"os/exec"
 	"path/filepath"
 	"regexp"
 	"sort"
@@ -37,55 +36,6 @@ func (d *CommandDispatcher) handleCommit(args []string) (CommandResult, error) {
 		if err := UpdateLedgerAfterCommit(ledgerDir, specID, commitHash); err != nil {
 			fmt.Fprintf(d.Stderr, "error: %v\n", err)
 			return CommandResult{ExitCode: 1}, nil
-		}
-
-		// Step 5 — Capture git diff in spec file's resolution field (FR-5)
-		if specID != "" && commitHash != "" {
-			gitRoot, err := findGitRootWalk(d.WorkDir)
-			if err == nil {
-				diffCmd := exec.Command("git", "-C", gitRoot, "diff", "HEAD~1..HEAD")
-				diffOut, diffErr := diffCmd.Output()
-				if diffErr != nil {
-					// Fallback: first commit on branch, diff HEAD~1 doesn't exist
-					diffCmd2 := exec.Command("git", "-C", gitRoot, "diff", "--cached")
-					diffOut, _ = diffCmd2.Output()
-				}
-				diffText := strings.TrimSpace(string(diffOut))
-				if diffText != "" {
-					// Truncate at 10KB
-					if len(diffText) > 10240 {
-						diffText = diffText[:10240] + "... [truncated at 10KB]"
-					}
-					// Write into spec file's resolution frontmatter
-					specDir := filepath.Join(d.WorkDir, "specs")
-					if specFile, fErr := findSpecFileByID(specDir, specID); fErr == nil {
-						// Read, modify frontmatter, write back
-						if data, rErr := os.ReadFile(specFile); rErr == nil {
-							content := string(data)
-							parts := strings.SplitN(content, "---", 3)
-							if len(parts) >= 3 {
-								// Remove existing resolution block (header + any indented continuation lines)
-								existingFrontmatter := parts[1]
-								re := regexp.MustCompile(`(?m)^resolution:(\n[ \t]+.*)*`)
-								cleanedFrontmatter := re.ReplaceAllString(existingFrontmatter, "")
-								newFrontmatter := strings.TrimSpace(cleanedFrontmatter) + "\nresolution: |\n  " + strings.ReplaceAll(diffText, "\n", "\n  ") + "\n"
-								newContent := parts[0] + "---" + newFrontmatter + "---" + parts[2]
-								_ = os.WriteFile(specFile, []byte(newContent), 0644)
-
-								// Also update the ledger entry
-								ledgerDir := SpecConfigDir(d.WorkDir)
-								if ledger, lErr := LoadLedger(ledgerDir); lErr == nil {
-									if entry := ledger.GetSpecEntry(specID); entry != nil {
-										entry.Resolution = diffText
-										ledger.SetSpecEntry(specID, entry)
-										_ = SaveLedger(ledger, ledgerDir)
-									}
-								}
-							}
-						}
-					}
-				}
-			}
 		}
 
 		// Fold the metadata changes into the previous commit so they're not left
