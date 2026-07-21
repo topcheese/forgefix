@@ -5,6 +5,7 @@
 - feat: Fix auto-created specs missing title heading (SPEC-1784225300)
 - feat: Fix malformed spec frontmatter and stale linked_commits (SPEC-1784660285)
 - feat: Fix Swarm Integration spec frontmatter and update SPEC-1784660285 linked_commits (SPEC-1784660285)
+- feat: Fix type and linked_commits on SPEC-1784660285 after commit metadata overwrite (SPEC-1784660285)
 
 ## [Unreleased] - 2026-07-17
 
