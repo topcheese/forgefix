@@ -6,7 +6,7 @@ type: bug
 version: "0.9.7"
 root_cause: ""
 resolution: ""
-linked_commits: ["dc9cd43"]
+linked_commits: ["5e6c3cf", "5429d22"]
 ---
 # Fix finalizeCommitAfterAmend spec path and duplicate linked_commits
 

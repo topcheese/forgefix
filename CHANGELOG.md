@@ -8,6 +8,7 @@
 - feat: Fix type and linked_commits on SPEC-1784660285 after commit metadata overwrite (SPEC-1784660285)
 - feat: Restore effd4a1 to SPEC-1784660285 linked_commits after amend overwrote it (SPEC-1784660285)
 - feat: Fix finalizeCommitAfterAmend spec path and duplicate linked_commits (SPEC-1784672632)
+- feat: Fix linked_commits after amend produced final hash (SPEC-1784672632)
 
 ## [Unreleased] - 2026-07-17
 
