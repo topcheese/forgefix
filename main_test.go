@@ -392,6 +392,8 @@ func TestUpdateLedgerAfterCommit_SpecFileNotFound(t *testing.T) {
 	}
 
 	// Do NOT create spec file on disk — should get an error
+	// Create a .git dir so findGitRootWalk succeeds
+	os.MkdirAll(filepath.Join(tmpDir, ".git"), 0755)
 	err := engine.UpdateLedgerAfterCommit(tmpDir, "SPEC-123", "abc123")
 	if err == nil {
 		t.Fatal("expected error when spec file not found, got nil")

@@ -6,7 +6,7 @@
       "total_passed": 449,
       "total_failed": 0,
       "historical_floor": 449,
-      "last_update": "2026-07-21 22:37:43"
+      "last_update": "2026-07-21 22:42:40"
     }
   },
   "spec_mappings": {
@@ -479,8 +479,9 @@
       "repo_issue_id": 0,
       "status": "review",
       "linked_commits": [
-        "5e6c3cf",
-        "5429d22"
+        "5429d22",
+        "c823dc8",
+        "0dffe78"
       ],
       "type": "bug",
       "body": "# Fix finalizeCommitAfterAmend spec path and duplicate linked_commits\n\nTwo bugs in finalizeCommitAfterAmend (cmd_commit.go):\n\n1. **Wrong spec directory path.** Line 312 constructs `specDir` from `configDir` (.ff/) instead of the repo root, so `findSpecFileByID` always fails and linked_commits is never updated after amend.\n\n2. **Duplicate linked_commits on re-amend.** When the last linked_commit already equals the final hash, the code skips replacement but falls through to append, creating a duplicate entry. Fix: check if finalHash exists anywhere in the list before modifying.",

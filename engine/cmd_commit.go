@@ -255,7 +255,11 @@ func UpdateLedgerAfterCommit(configDir, specID, commitHash string) error {
 	// Do NOT change status here - status promotion is handled in runCommit based on human vs --ai mode
 	ledger.SetSpecEntry(specID, entry)
 
-	specDir := filepath.Join(configDir, "specs")
+	gitRoot, gErr := findGitRootWalk(configDir)
+	if gErr != nil {
+		return fmt.Errorf("failed to find git root: %w", gErr)
+	}
+	specDir := filepath.Join(gitRoot, "specs")
 	specFile, err := findSpecFileByID(specDir, specID)
 	if err != nil {
 		return fmt.Errorf("spec file not found on disk for %s: %w", specID, err)
