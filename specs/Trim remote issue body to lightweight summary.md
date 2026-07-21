@@ -1,13 +1,11 @@
 ---spec_id: "SPEC-1784264619"
-status: draft
+status: closed
 repo_issue: ""
 type: refactor
 version: "0.9.7"
 root_cause: ""
 resolution: ""
-linked_commits: []
-linked_commits: ["64c802c"]
-linked_commits: ["64c802c"]
+linked_commits: ["feab430"]
 
 # Trim Remote Issue Body To Lightweight Summary
 

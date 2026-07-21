@@ -340,10 +340,7 @@ func specFileWebURL(apiBase, owner, repo, filePath string) string {
 	return NewSpecManager().SpecWebURL(apiBase, owner, repo, filePath)
 }
 
-// validateSpecFrontmatter wraps SpecManager.ValidateSpecFrontmatter for backward compatibility.
-func validateSpecFrontmatter(spec *SpecFile) []string {
-	return NewSpecManager().ValidateSpecFrontmatter(spec)
-}
+
 
 // SpecWebURL converts an API base URL and local spec file path into a
 // web URL for the file on the remote (GitHub/Gitea). It handles both

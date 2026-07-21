@@ -4,36 +4,8 @@ repo_issue: ""
 type: bug
 version: "0.9.6"
 root_cause: "handleDetonationIssues was called with an empty configDir string, causing writeSpecFromTemplate to fail silently (template file not found). The spec creation failed, so no issue was queued. The fix was to ensure the template directory exists and pass the correct configDir to handleDetonationIssues."
- "Fixed in commit f84bb9c (SPEC-1784101189) by adding template directory creation and passing the correct configDir to handleDetonationIssues. The test now passes."
 linked_commits: ["f84bb9c", "60507de"]
-resolution: |
-  diff --git a/CHANGELOG.md b/CHANGELOG.md
-  index 177df1a..41f52a6 100644
-  --- a/CHANGELOG.md
-  +++ b/CHANGELOG.md
-  @@ -4,6 +4,7 @@
-   - feat: unify version display on CurrentVersion(); add regression test (SPEC-1784102178)
-   - feat: fix ff sync 404 reconciliation; unbind orphaned repo_issue and mirror ledger to JSON (SPEC-1784146853)
-   - feat: fix SPEC-1784143269: document root cause/resolution for TestDeleteSpec_FullIntegration repoID mismatch (SPEC-1784143269)
-  +- feat: Update spec SPEC-1784143268 with root cause and resolution for TestHandleDetonationIssues fix (SPEC-1784143268)
-   
-   ## [Unreleased] - 2026-07-15
-   
-  diff --git a/specs/Fix Testhandledetonationissues.md b/specs/Fix Testhandledetonationissues.md
-  index 4a3c096..bf73055 100644
-  --- a/specs/Fix Testhandledetonationissues.md	
-  +++ b/specs/Fix Testhandledetonationissues.md	
-  @@ -4,9 +4,9 @@ status: draft
-   repo_issue: ""
-   type: bug
-   version: "0.9.6"
-  -root_cause: ""
-  -resolution: ""
-  -linked_commits: []
-  +root_cause: "handleDetonationIssues was called with an empty configDir string, causing writeSpecFromTemplate to fail silently (template file not found). The spec creation failed, so no issue was queued. The fix was to ensure the template directory exists and pass the correct configDir to handleDetonationIssues."
-  +resolution: "Fixed in commit f84bb9c (SPEC-1784101189) by adding template directory creation and passing the correct configDir to handleDetonationIssues. The test now passes."
-  +linked_commits: ["f84bb9c"]
-   ---
+---
    ## Objective
    Automatically created from failing test TestHandleDetonationIssues during ff --ai run.
   @@ -24,3 +24,10 @@ Test failed - see failure details below.

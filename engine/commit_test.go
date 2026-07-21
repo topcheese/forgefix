@@ -399,6 +399,123 @@ created: 2024-01-01
 	}
 }
 
+func TestConsolidateLinkedCommits_DuplicateKeys(t *testing.T) {
+	input := `---
+spec_id: "SPEC-TEST"
+status: draft
+linked_commits: ["aaa1111"]
+linked_commits: ["bbb2222"]
+linked_commits: ["ccc3333"]
+---
+# Body
+`
+	got, err := consolidateLinkedCommits(input)
+	if err != nil {
+		t.Fatalf("consolidateLinkedCommits failed: %v", err)
+	}
+
+	lines := strings.Split(got, "\n")
+	count := 0
+	for _, line := range lines {
+		if strings.HasPrefix(strings.TrimSpace(line), "linked_commits:") {
+			count++
+		}
+	}
+	if count != 1 {
+		t.Errorf("expected exactly 1 linked_commits key, got %d:\n%s", count, got)
+	}
+	if !strings.Contains(got, `"aaa1111"`) || !strings.Contains(got, `"bbb2222"`) || !strings.Contains(got, `"ccc3333"`) {
+		t.Errorf("expected all hashes preserved in consolidated key:\n%s", got)
+	}
+}
+
+func TestConsolidateLinkedCommits_NoDuplicateKeys(t *testing.T) {
+	input := `---
+spec_id: "SPEC-TEST"
+status: draft
+linked_commits: ["aaa1111"]
+---
+# Body
+`
+	got, err := consolidateLinkedCommits(input)
+	if err != nil {
+		t.Fatalf("consolidateLinkedCommits failed: %v", err)
+	}
+	if !strings.Contains(got, `linked_commits: ["aaa1111"]`) {
+		t.Errorf("expected single linked_commits preserved:\n%s", got)
+	}
+}
+
+func TestUpdateSpecFileLinkedCommits_NoExistingKey(t *testing.T) {
+	tmpDir := t.TempDir()
+	specFile := filepath.Join(tmpDir, "SPEC-TEST.md")
+	content := `---
+spec_id: "SPEC-TEST"
+status: draft
+---
+# Body
+`
+	if err := os.WriteFile(specFile, []byte(content), 0644); err != nil {
+		t.Fatal(err)
+	}
+
+	if err := UpdateSpecFileLinkedCommits(specFile, "abc1234"); err != nil {
+		t.Fatalf("UpdateSpecFileLinkedCommits failed: %v", err)
+	}
+
+	data, _ := os.ReadFile(specFile)
+	got := string(data)
+	if !strings.Contains(got, `linked_commits: ["abc1234"]`) {
+		t.Errorf("expected linked_commits to be created:\n%s", got)
+	}
+	count := 0
+	for _, line := range strings.Split(got, "\n") {
+		if strings.HasPrefix(strings.TrimSpace(line), "linked_commits:") {
+			count++
+		}
+	}
+	if count != 1 {
+		t.Errorf("expected exactly 1 linked_commits key, got %d:\n%s", count, got)
+	}
+}
+
+func TestReplaceSpecFileLastLinkedCommit_ReplacesNotAppends(t *testing.T) {
+	tmpDir := t.TempDir()
+	specFile := filepath.Join(tmpDir, "SPEC-TEST.md")
+	content := `---
+spec_id: "SPEC-TEST"
+status: draft
+linked_commits: ["pre-amend-hash"]
+---
+# Body
+`
+	if err := os.WriteFile(specFile, []byte(content), 0644); err != nil {
+		t.Fatal(err)
+	}
+
+	if err := ReplaceSpecFileLastLinkedCommit(specFile, "final-hash"); err != nil {
+		t.Fatalf("ReplaceSpecFileLastLinkedCommit failed: %v", err)
+	}
+
+	data, _ := os.ReadFile(specFile)
+	got := string(data)
+	if strings.Contains(got, "pre-amend-hash") {
+		t.Errorf("pre-amend hash should have been replaced:\n%s", got)
+	}
+	if !strings.Contains(got, `"final-hash"`) {
+		t.Errorf("expected final-hash in linked_commits:\n%s", got)
+	}
+	count := 0
+	for _, line := range strings.Split(got, "\n") {
+		if strings.HasPrefix(strings.TrimSpace(line), "linked_commits:") {
+			count++
+		}
+	}
+	if count != 1 {
+		t.Errorf("expected exactly 1 linked_commits key, got %d:\n%s", count, got)
+	}
+}
+
 func initGitRepo(t *testing.T, dir string) {
 	t.Helper()
 	runGit(t, dir, "init")

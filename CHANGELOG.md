@@ -1,3 +1,8 @@
+## [Unreleased] - 2026-07-21
+
+### 🚀 Release Summary
+- feat: Fix malformed spec frontmatter and stale linked_commits (SPEC-1784280001)
+
 ## [Unreleased] - 2026-07-17
 
 ### 🚀 Release Summary

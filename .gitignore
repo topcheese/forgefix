@@ -30,3 +30,8 @@ forgefix_ff.yaml
 
 # Swarm agent runtime state
 .swarm/
+bak.opencode/
+bak.swarm/
+repair_specs_tmp.py
+test_spec_id.txt
+specs/Fix ff commit malformed spec frontmatter and stale linked_commits.md

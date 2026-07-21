@@ -56,6 +56,15 @@ func (g *GitHelper) Amend() error {
 	return g.run("commit", "--amend", "--no-edit")
 }
 
+// CurrentHash returns the short SHA of the current HEAD commit.
+func (g *GitHelper) CurrentHash() (string, error) {
+	out, err := exec.Command("git", "-C", g.gitRoot, "rev-parse", "--short", "HEAD").Output()
+	if err != nil {
+		return "", fmt.Errorf("git rev-parse HEAD: %w", err)
+	}
+	return strings.TrimSpace(string(out)), nil
+}
+
 func (g *GitHelper) run(args ...string) error {
 	cmd := exec.Command("git", args...)
 	cmd.Dir = g.gitRoot

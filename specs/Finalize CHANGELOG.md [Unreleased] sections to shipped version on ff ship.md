@@ -4,32 +4,8 @@ repo_issue: ""
 type: bug
 version: "0.9.6"
 root_cause: ""
- "Implemented FinalizeChangelogForRelease in engine/changelog.go and wired it into ShipController.Run() in engine/ship_controller.go. The function promotes all '## [Unreleased] - <date>' sections to a single '## [v<version>] - <today>' section, merges bullets, preserves existing versioned sections, and is idempotent. Called after version determination and before git push so the finalized changelog rides along in the shipped commit. Best-effort: failure warns but does not abort ship."
 linked_commits: ["0ddffb9", "f168118"]
-resolution: |
-  diff --git a/CHANGELOG.md b/CHANGELOG.md
-  index 7f6622b..8a4fb15 100644
-  --- a/CHANGELOG.md
-  +++ b/CHANGELOG.md
-  @@ -4,6 +4,7 @@
-   - feat: clean up 6 rogue SPEC-1784089531 duplicate spec files and remove junk DB row (SPEC-1784104910)
-   - feat: Add post-creation duplicate scan to ff spec (SPEC-1784101811) (SPEC-1784101811)
-   - feat: Remove test-specs directory from commit (SPEC-1784101811)
-  +- feat: Update spec SPEC-1784100187 to review status with linked commit (SPEC-1784100187)
-   
-   ## [Unreleased] - 2026-07-14
-   
-  diff --git a/specs/Clean up 6 rogue SPEC-1784089531 duplicate files.md b/specs/Clean up 6 rogue SPEC-1784089531 duplicate files.md
-  index f01244a..6a0c5da 100644
-  --- a/specs/Clean up 6 rogue SPEC-1784089531 duplicate files.md	
-  +++ b/specs/Clean up 6 rogue SPEC-1784089531 duplicate files.md	
-  @@ -6,7 +6,7 @@ type: bug
-   version: "0.9.6"
-   root_cause: "Six specs/*.md files all declare spec_id SPEC-1784089531 (a duplicate-ID collision traced in SPEC-1784101804). The DB has exactly one junk row for that id (status=draft, title='SPEC-1784089531' — a placeholder). These files are leftovers from a prior broken session and were never archived, so ff archive left them on disk. They are rogue duplicates that must be removed so specs/ holds only active drafts."
-   resolution: "Deleted the 6 rogue SPEC-1784089531 .md files and removed the single junk DB row (spec_id SPEC-1784089531) so the spec table no longer carries the placeholder. Legitimate ship-status specs (SPEC-1783784714, SPEC-1783788768) were preserved."
-  -linked_commits: []
-  +linked_commits: ["0ddffb9"]
-   ---
+---
    
    # Clean Up 6 Rogue SPEC-1784089531 Duplicate Spec Files
   diff --git a/specs/Finalize CHANGELOG.md [Unreleased] sections to shipped version on ff ship.md b/specs/Finalize CHANGELOG.md [Unreleased] sections to shipped version on ff ship.md

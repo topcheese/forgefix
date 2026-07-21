@@ -44,6 +44,11 @@ func (d *CommandDispatcher) handleCommit(args []string) (CommandResult, error) {
 			fmt.Fprintf(d.Stderr, "warning: failed to amend metadata into commit: %v\n", err)
 		}
 
+		// After amend, we need to update the ledger and spec file with the correct hash
+		if err := finalizeCommitAfterAmend(ledgerDir, specID); err != nil {
+			fmt.Fprintf(d.Stderr, "warning: failed to update ledger after amend: %v\n", err)
+		}
+
 		if err := SpawnBackgroundSync(ledgerDir, specID); err != nil {
 			fmt.Fprintf(d.Stderr, "warning: failed to spawn background sync: %v\n", err)
 		}
@@ -205,11 +210,8 @@ func runCommit(wd, msg, flagSpecID, specType, specVersion string, aiMode bool, d
 	if specID != "" {
 		configDir := SpecConfigDir(wd)
 		specDir := filepath.Join(wd, "specs")
-		// ff commit (human) sets status to "review", ff commit --ai sets status to "draft"
-		targetStatus := "draft"
-		if !aiMode {
-			targetStatus = "review"
-		}
+		// Both ff commit and ff commit --ai advance status to "review".
+		targetStatus := "review"
 		if specFile, fErr := findSpecFileByID(specDir, specID); fErr == nil {
 			_ = UpdateSpecFileStatus(specFile, targetStatus)
 		}
@@ -261,6 +263,60 @@ func UpdateLedgerAfterCommit(configDir, specID, commitHash string) error {
 	// Do NOT update status here - only update linked commits
 	if err := UpdateSpecFileLinkedCommits(specFile, commitHash); err != nil {
 		return fmt.Errorf("updating spec file linked commits: %w", err)
+	}
+
+	return SaveLedger(ledger, configDir)
+}
+
+// finalizeCommitAfterAmend re-reads the HEAD SHA after an amend operation
+// and updates the ledger and spec file with the final (correct) hash.
+func finalizeCommitAfterAmend(configDir, specID string) error {
+	gitRoot, err := findGitRootWalk(configDir)
+	if err != nil {
+		return fmt.Errorf("failed to find git root: %w", err)
+	}
+	git := NewGitHelper(gitRoot)
+	finalHash, err := git.CurrentHash()
+	if err != nil {
+		return fmt.Errorf("failed to get current HEAD hash: %w", err)
+	}
+
+	// Load the ledger
+	ledger, err := LoadLedger(configDir)
+	if err != nil {
+		return fmt.Errorf("failed to load ledger: %w", err)
+	}
+	entry := ledger.GetSpecEntry(specID)
+	if entry == nil {
+		return fmt.Errorf("spec %s not found in ledger", specID)
+	}
+
+	// Find and replace the pre-amend hash with the final hash
+	found := false
+	for i, h := range entry.LinkedCommits {
+		// Check if this is the most recently added commit (should be at the end)
+		if i == len(entry.LinkedCommits)-1 && h != finalHash {
+			entry.LinkedCommits[i] = finalHash
+			found = true
+		}
+	}
+
+	if !found {
+		// If we didn't find a matching hash, append the final hash
+		entry.LinkedCommits = append(entry.LinkedCommits, finalHash)
+	}
+
+	ledger.SetSpecEntry(specID, entry)
+
+	// Update the spec file
+	specDir := filepath.Join(configDir, "specs")
+	specFile, err := findSpecFileByID(specDir, specID)
+	if err != nil {
+		return fmt.Errorf("spec file not found on disk for %s: %w", specID, err)
+	}
+
+	if err := ReplaceSpecFileLastLinkedCommit(specFile, finalHash); err != nil {
+		return fmt.Errorf("replacing spec file linked commits after amend: %w", err)
 	}
 
 	return SaveLedger(ledger, configDir)
