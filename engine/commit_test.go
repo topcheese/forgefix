@@ -516,6 +516,184 @@ linked_commits: ["pre-amend-hash"]
 	}
 }
 
+func TestConsolidateLinkedCommits_EmptyList(t *testing.T) {
+	input := `---
+spec_id: "SPEC-TEST"
+status: draft
+linked_commits: []
+---
+# Body
+`
+	got, err := consolidateLinkedCommits(input)
+	if err != nil {
+		t.Fatalf("consolidateLinkedCommits failed: %v", err)
+	}
+	count := 0
+	for _, line := range strings.Split(got, "\n") {
+		if strings.HasPrefix(strings.TrimSpace(line), "linked_commits:") {
+			count++
+		}
+	}
+	if count != 1 {
+		t.Errorf("expected exactly 1 linked_commits key, got %d:\n%s", count, got)
+	}
+}
+
+func TestConsolidateLinkedCommits_MixedEmptyAndValues(t *testing.T) {
+	input := `---
+spec_id: "SPEC-TEST"
+status: draft
+linked_commits: []
+linked_commits: ["aaa1111"]
+---
+# Body
+`
+	got, err := consolidateLinkedCommits(input)
+	if err != nil {
+		t.Fatalf("consolidateLinkedCommits failed: %v", err)
+	}
+	count := 0
+	for _, line := range strings.Split(got, "\n") {
+		if strings.HasPrefix(strings.TrimSpace(line), "linked_commits:") {
+			count++
+		}
+	}
+	if count != 1 {
+		t.Errorf("expected exactly 1 linked_commits key, got %d:\n%s", count, got)
+	}
+	if !strings.Contains(got, `"aaa1111"`) {
+		t.Errorf("expected aaa1111 preserved in consolidated key:\n%s", got)
+	}
+}
+
+func TestReplaceSpecFileLastLinkedCommit_NoExistingLinkedCommits(t *testing.T) {
+	tmpDir := t.TempDir()
+	specFile := filepath.Join(tmpDir, "SPEC-TEST.md")
+	content := `---
+spec_id: "SPEC-TEST"
+status: draft
+---
+# Body
+`
+	if err := os.WriteFile(specFile, []byte(content), 0644); err != nil {
+		t.Fatal(err)
+	}
+
+	if err := ReplaceSpecFileLastLinkedCommit(specFile, "new-hash"); err != nil {
+		t.Fatalf("ReplaceSpecFileLastLinkedCommit failed: %v", err)
+	}
+
+	data, _ := os.ReadFile(specFile)
+	got := string(data)
+	if !strings.Contains(got, `"new-hash"`) {
+		t.Errorf("expected new-hash in linked_commits:\n%s", got)
+	}
+	count := 0
+	for _, line := range strings.Split(got, "\n") {
+		if strings.HasPrefix(strings.TrimSpace(line), "linked_commits:") {
+			count++
+		}
+	}
+	if count != 1 {
+		t.Errorf("expected exactly 1 linked_commits key, got %d:\n%s", count, got)
+	}
+}
+
+func TestFinalizeCommitAfterAmend_ReplacesPreAmendHash(t *testing.T) {
+	tmpDir := t.TempDir()
+	initGitRepo(t, tmpDir)
+
+	// Create initial commit so we have a base
+	initialFile := filepath.Join(tmpDir, "test.txt")
+	if err := os.WriteFile(initialFile, []byte("initial"), 0644); err != nil {
+		t.Fatal(err)
+	}
+	runGit(t, tmpDir, "add", ".")
+	runGit(t, tmpDir, "commit", "-m", "initial commit")
+
+	// Create .ff directory with minimal ledger
+	ffDir := filepath.Join(tmpDir, ".ff")
+	if err := os.MkdirAll(ffDir, 0755); err != nil {
+		t.Fatal(err)
+	}
+
+	// Create a staged change to commit (simulating the user's code change)
+	if err := os.WriteFile(initialFile, []byte("code change"), 0644); err != nil {
+		t.Fatal(err)
+	}
+
+	// This creates the first commit — returns hash_A
+	hash1, err := AutoStageAndCommit(tmpDir, "feat: [SPEC-TEST] test commit")
+	if err != nil {
+		t.Fatalf("AutoStageAndCommit failed: %v", err)
+	}
+
+	// Now simulate UpdateLedgerAfterCommit: write a spec file with hash_A
+	// This modification is UNSTAGED (just like in the real flow)
+	specDir := filepath.Join(tmpDir, "specs")
+	if err := os.MkdirAll(specDir, 0755); err != nil {
+		t.Fatal(err)
+	}
+	specFile := filepath.Join(specDir, "SPEC-TEST.md")
+	specContent := `---
+spec_id: "SPEC-TEST"
+status: draft
+linked_commits: ["` + hash1 + `"]
+---
+# Test Spec
+`
+	if err := os.WriteFile(specFile, []byte(specContent), 0644); err != nil {
+		t.Fatal(err)
+	}
+
+	// Create a ledger entry for the spec (required by finalizeCommitAfterAmend)
+	ledger, lerr := LoadLedger(ffDir)
+	if lerr != nil {
+		t.Fatalf("LoadLedger failed: %v", lerr)
+	}
+	ledger.SetSpecEntry("SPEC-TEST", &SpecEntry{
+		SpecID:        "SPEC-TEST",
+		Status:        "draft",
+		LinkedCommits: []string{hash1},
+	})
+	if serr := SaveLedger(ledger, ffDir); serr != nil {
+		t.Fatalf("SaveLedger failed: %v", serr)
+	}
+
+	// Amend the commit — folds the spec file into it, creating hash_B
+	if err := amendLastCommit(tmpDir); err != nil {
+		t.Fatalf("amendLastCommit failed: %v", err)
+	}
+
+	// Get the final hash after amend
+	git := NewGitHelper(tmpDir)
+	hash2, err := git.CurrentHash()
+	if err != nil {
+		t.Fatalf("CurrentHash failed: %v", err)
+	}
+
+	// The hashes must differ (amend included the spec file change)
+	if hash1 == hash2 {
+		t.Fatal("expected different hashes after amend, but they are equal")
+	}
+
+	// The spec file still has hash_A — run finalizeCommitAfterAmend to fix it
+	// configDir is the repo root (where specs/ lives), same as SpecConfigDir returns
+	if err := finalizeCommitAfterAmend(tmpDir, "SPEC-TEST"); err != nil {
+		t.Fatalf("finalizeCommitAfterAmend failed: %v", err)
+	}
+
+	// Verify the spec file now has hash_B
+	data, _ := os.ReadFile(specFile)
+	got := string(data)
+	if strings.Contains(got, hash1) {
+		t.Errorf("pre-amend hash %s should have been replaced, got:\n%s", hash1, got)
+	}
+	if !strings.Contains(got, hash2) {
+		t.Errorf("expected final hash %s in linked_commits:\n%s", hash2, got)
+	}
+}
+
 func initGitRepo(t *testing.T, dir string) {
 	t.Helper()
 	runGit(t, dir, "init")

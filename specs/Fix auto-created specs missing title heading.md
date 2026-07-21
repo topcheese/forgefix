@@ -6,7 +6,7 @@ type: bug
 version: "0.9.6"
 root_cause: ""
 resolution: ""
-linked_commits: ["c41f038"]
+linked_commits: ["9068fa7"]
 ---
 # Fix auto-created specs missing title heading
 

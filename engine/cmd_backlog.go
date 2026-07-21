@@ -129,6 +129,7 @@ func consolidateLinkedCommits(content string) (string, error) {
 	var newLines []string
 	inFrontmatter := false
 	collectedValues := make([]string, 0)
+	foundLinkedCommits := false
 
 	// First pass: collect all values from all linked_commits keys
 	for _, line := range lines {
@@ -141,6 +142,7 @@ func consolidateLinkedCommits(content string) (string, error) {
 			break
 		}
 		if inFrontmatter && strings.HasPrefix(trimmed, "linked_commits:") {
+			foundLinkedCommits = true
 			// Parse this occurrence
 			start := strings.Index(trimmed, "[")
 			end := strings.LastIndex(trimmed, "]")
@@ -160,9 +162,9 @@ func consolidateLinkedCommits(content string) (string, error) {
 		}
 	}
 
-	// Build the final linked_commits line if we have any values
+	// Build the final linked_commits line — preserve empty [] if key existed
 	linkedCommitsLine := ""
-	if len(collectedValues) > 0 {
+	if foundLinkedCommits {
 		var sb strings.Builder
 		sb.WriteString("linked_commits: [")
 		for i, val := range collectedValues {
