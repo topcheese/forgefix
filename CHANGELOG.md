@@ -6,6 +6,7 @@
 - feat: Fix malformed spec frontmatter and stale linked_commits (SPEC-1784660285)
 - feat: Fix Swarm Integration spec frontmatter and update SPEC-1784660285 linked_commits (SPEC-1784660285)
 - feat: Fix type and linked_commits on SPEC-1784660285 after commit metadata overwrite (SPEC-1784660285)
+- feat: Restore effd4a1 to SPEC-1784660285 linked_commits after amend overwrote it (SPEC-1784660285)
 
 ## [Unreleased] - 2026-07-17
 
