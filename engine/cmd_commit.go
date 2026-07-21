@@ -293,23 +293,27 @@ func finalizeCommitAfterAmend(configDir, specID string) error {
 
 	// Find and replace the pre-amend hash with the final hash
 	found := false
-	for i, h := range entry.LinkedCommits {
-		// Check if this is the most recently added commit (should be at the end)
-		if i == len(entry.LinkedCommits)-1 && h != finalHash {
-			entry.LinkedCommits[i] = finalHash
+	for _, h := range entry.LinkedCommits {
+		if h == finalHash {
 			found = true
+			break
 		}
 	}
 
 	if !found {
-		// If we didn't find a matching hash, append the final hash
-		entry.LinkedCommits = append(entry.LinkedCommits, finalHash)
+		// Replace the last entry (pre-amend hash) with the final hash,
+		// or append if the list is empty.
+		if len(entry.LinkedCommits) > 0 {
+			entry.LinkedCommits[len(entry.LinkedCommits)-1] = finalHash
+		} else {
+			entry.LinkedCommits = append(entry.LinkedCommits, finalHash)
+		}
 	}
 
 	ledger.SetSpecEntry(specID, entry)
 
 	// Update the spec file
-	specDir := filepath.Join(configDir, "specs")
+	specDir := filepath.Join(gitRoot, "specs")
 	specFile, err := findSpecFileByID(specDir, specID)
 	if err != nil {
 		return fmt.Errorf("spec file not found on disk for %s: %w", specID, err)
