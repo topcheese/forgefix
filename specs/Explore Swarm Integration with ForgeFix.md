@@ -1,5 +1,6 @@
----spec_id: "SPEC-1784275332"
-status: closed
+---
+spec_id: "SPEC-1784275332"
+status: backlog
 repo_issue: ""
 type: feature
 version: "0.9.7"
