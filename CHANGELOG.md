@@ -2,6 +2,7 @@
 
 ### 🚀 Release Summary
 - feat: Fix malformed spec frontmatter and stale linked_commits (SPEC-1784280001)
+- feat: Fix auto-created specs missing title heading (SPEC-1784225300)
 
 ## [Unreleased] - 2026-07-17
 

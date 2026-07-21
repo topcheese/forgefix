@@ -229,7 +229,7 @@ func writeSpecFromTemplate(configDir, name, title, body, specType, specVersion, 
 	}
 	frontmatter := parts[1]
 
-	content := fmt.Sprintf("---%s---\n%s\n", frontmatter, body)
+	content := fmt.Sprintf("---%s---\n# %s\n%s\n", frontmatter, title, body)
 
 	specDir := filepath.Join(configDir, "specs")
 	if err := os.MkdirAll(specDir, 0755); err != nil {

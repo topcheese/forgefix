@@ -390,3 +390,50 @@ func TestValidateSpecFrontmatter(t *testing.T) {
 		})
 	}
 }
+
+func TestWriteSpecFromTemplate_IncludesTitleHeading(t *testing.T) {
+	tmpDir := t.TempDir()
+
+	tmplDir := filepath.Join(tmpDir, "templates")
+	if err := os.MkdirAll(tmplDir, 0755); err != nil {
+		t.Fatal(err)
+	}
+	tmplContent := `---
+spec_id: ""
+status: draft
+repo_issue: ""
+type: feature
+version: "v0.9.0"
+root_cause: ""
+resolution: ""
+linked_commits: []
+---
+`
+	if err := os.WriteFile(filepath.Join(tmplDir, "spec_template.md"), []byte(tmplContent), 0644); err != nil {
+		t.Fatal(err)
+	}
+
+	_, filePath, err := writeSpecFromTemplate(tmpDir, "my-test-spec", "My Test Spec", "## Objective\nFix the bug", "bug", "v0.9.0", "")
+	if err != nil {
+		t.Fatalf("writeSpecFromTemplate failed: %v", err)
+	}
+
+	data, err := os.ReadFile(filePath)
+	if err != nil {
+		t.Fatalf("reading generated spec: %v", err)
+	}
+	content := string(data)
+
+	if !strings.Contains(content, "# My Test Spec") {
+		t.Errorf("expected '# My Test Spec' H1 heading in generated spec, got:\n%s", content)
+	}
+
+	parts := strings.SplitN(content, "---", 3)
+	if len(parts) < 3 {
+		t.Fatalf("malformed spec content: %s", content)
+	}
+	body := strings.TrimSpace(parts[2])
+	if !strings.HasPrefix(body, "# My Test Spec") {
+		t.Errorf("expected body to start with '# My Test Spec' H1 heading, got:\n%s", body)
+	}
+}

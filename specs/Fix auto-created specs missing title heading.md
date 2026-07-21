@@ -1,12 +1,12 @@
 ---
 spec_id: "SPEC-1784225300"
-status: draft
+status: review
 repo_issue: 540
 type: bug
 version: "0.9.6"
 root_cause: ""
 resolution: ""
-linked_commits: []
+linked_commits: ["c41f038"]
 ---
 # Fix auto-created specs missing title heading
 
