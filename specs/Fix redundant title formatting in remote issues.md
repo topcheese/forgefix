@@ -7,8 +7,9 @@ version: "0.9.8"
 root_cause: ""
 
 
-resolution: fixed in c7d7f6b
-linked_commits: ["25724ea", "66a78ae", "32d2265"]
+
+resolution: fixed in 32d2265
+linked_commits: ["25724ea", "66a78ae", "a633f01", "8531d08"]
 ---
 # Fix Redundant Title Formatting In Remote Issues
 
