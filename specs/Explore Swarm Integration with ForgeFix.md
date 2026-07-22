@@ -3,10 +3,10 @@ spec_id: "SPEC-1784275332"
 status: backlog
 repo_issue: ""
 type: feature
-version: "0.9.7"
+version: "1.1.0"
 root_cause: ""
 resolution: ""
-linked_commits: ["24c12a3"]
+linked_commits: []
 
 # Explore Swarm Integration with ForgeFix
 
