@@ -1,12 +1,12 @@
 ---
 spec_id: "SPEC-1784101811"
-status: review
+status: draft
 repo_issue: 534
-type: chore
+type: feature
 version: "0.9.6"
 root_cause: ""
 resolution: ""
-linked_commits: ["ae8b838"]
+linked_commits: []
 ---
 
 # Add Post-Creation Duplicate Scan To `ff spec`
