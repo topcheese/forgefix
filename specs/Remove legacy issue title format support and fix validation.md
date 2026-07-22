@@ -1,12 +1,13 @@
 ---
 spec_id: "SPEC-1784744046"
-status: review
+status: ship
 repo_issue: 650
 type: bug
 version: "0.9.8"
 root_cause: "issue_validator.go retained legacy 'type/component: Title' regex branch alongside new '[type][status] Title' format, and tests used old format titles; CreateIssue validated error-detection titles against spec format"
-resolution: "Updated issueTitleRegex to only accept [type][status] Title format, removed allowedTypes and maxOldTitleLength, removed validation from CreateIssue, updated all tests to use new format"
-linked_commits: ["62634a6", "382d2ab", "1cbc61f"]
+
+resolution: fixed in 1cbc61f
+linked_commits: ["62634a6", "382d2ab", "8410bbf", "38eac89"]
 ---
 # Remove Legacy Issue Title Format Support And Fix Validation
 ## Objective
