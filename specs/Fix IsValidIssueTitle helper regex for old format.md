@@ -7,8 +7,9 @@ version: "0.9.8"
 root_cause: ""
 
 
-resolution: fixed in 0553610
-linked_commits: ["558901b", "fdee604", "f995178"]
+
+linked_commits: ["558901b", "fdee604", "8dead67"]
+resolution: fixed in f995178
 ---
 # Fix Isvalidissuetitle Helper Regex For Old Format
 ## Objective
