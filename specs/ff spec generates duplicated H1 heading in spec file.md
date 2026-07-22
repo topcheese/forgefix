@@ -6,7 +6,7 @@ type: bug
 version: "0.9.7"
 root_cause: ""
 resolution: ""
-linked_commits: []
+linked_commits: ["6f5005c"]
 ---
 
 # ff spec generates duplicated H1 heading in spec file

@@ -6,7 +6,7 @@ type: bug
 version: "0.9.7"
 root_cause: ""
 resolution: ""
-linked_commits: ["07f33dc", "2ebba65", "9b5cbd3"]
+linked_commits: ["07f33dc", "2ebba65", "75fd80c"]
 ---
 
 # ff commit produces malformed spec frontmatter and stale linked_commits

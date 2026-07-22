@@ -20,6 +20,7 @@
 - feat: set status to review, add root_cause and resolution referencing SPEC-1784672632 fix (SPEC-1784678104)
 - feat: fix resolveTargetStatus to never downgrade status, add statusRank guard (SPEC-1784678104)
 - feat: Fix duplicated H1 heading in spec files (SPEC-1784280001)
+- feat: Fix duplicated H1 heading in spec files (SPEC-1784679765)
 
 ## [Unreleased] - 2026-07-17
 
