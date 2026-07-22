@@ -13,6 +13,7 @@
 - feat: Final sync 2 (SPEC-1784742186)
 - feat: Sync spec file and ledger (SPEC-1784742186)
 - feat: Final sync 3 (SPEC-1784742186)
+- feat: Final sync 4 (SPEC-1784742186)
 
 ## [Unreleased] - 2026-07-21
 
