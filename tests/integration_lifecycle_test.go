@@ -527,3 +527,91 @@ func extractSpecIDFromFile(t *testing.T, dir string) string {
 	}
 	return ""
 }
+
+// TestSyncPromotesReviewToShip verifies that ff sync --ai promotes specs
+// from "review" status to "ship" in both the spec file and DB.
+func TestSyncPromotesReviewToShip(t *testing.T) {
+	dir := t.TempDir()
+
+	ffBin := buildFF(t)
+	createTemplate(t, dir)
+	mockSrv, yamlContent, _ := createMockRepo(t)
+	defer mockSrv.Close()
+
+	yamlPath := filepath.Join(dir, "test_ff.yaml")
+	if err := os.WriteFile(yamlPath, []byte(yamlContent), 0644); err != nil {
+		t.Fatal(err)
+	}
+	initGitRepo(t, dir)
+
+	// Create a spec at review status
+	specDir := filepath.Join(dir, "specs")
+	if err := os.MkdirAll(specDir, 0755); err != nil {
+		t.Fatal(err)
+	}
+	specContent := `---
+spec_id: "SPEC-PROMO-TEST"
+status: review
+type: feature
+version: "v0.9.8"
+repo_issue: 0
+---
+# Test Promotion
+## Objective
+Verify promotion works
+`
+	specPath := filepath.Join(specDir, "test-promo.md")
+	if err := os.WriteFile(specPath, []byte(specContent), 0644); err != nil {
+		t.Fatal(err)
+	}
+
+	// Seed the DB with the review entry
+	ledger := engine.NewLedgerEngine()
+	ledger.SetSpecEntry("SPEC-PROMO-TEST", &engine.SpecEntry{
+		SpecID:        "Test Promotion",
+		Status:        "review",
+		RepoIssueID:   0,
+		LinkedCommits: []string{},
+		Type:          "feature",
+	})
+	if err := engine.SaveLedger(ledger, dir); err != nil {
+		t.Fatalf("SaveLedger: %v", err)
+	}
+
+	// Run ff sync (without --ai) — should auto-promote in non-terminal mode
+	cmd := exec.Command(ffBin, "sync")
+	cmd.Dir = dir
+	out, err := cmd.CombinedOutput()
+	if err != nil {
+		t.Fatalf("ff sync failed: %v\n%s", err, out)
+	}
+	output := string(out)
+
+	// Verify promotion happened
+	if !strings.Contains(output, "Auto-promoting") || !strings.Contains(output, "ship") {
+		t.Errorf("expected sync to auto-promote to ship, got:\n%s", output)
+	}
+
+	// Verify spec file was updated to ship
+	data, err := os.ReadFile(specPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	specStr := string(data)
+	if !strings.Contains(specStr, "status: ship") {
+		t.Errorf("spec file should have status: ship after sync --ai, got:\n%s", specStr)
+	}
+
+	// Verify DB was updated to ship
+	dbLedger, err := engine.LoadLedger(dir)
+	if err != nil {
+		t.Fatalf("LoadLedger: %v", err)
+	}
+	entry := dbLedger.GetSpecEntry("SPEC-PROMO-TEST")
+	if entry == nil {
+		t.Fatal("spec entry should exist after sync")
+	}
+	if entry.Status != "ship" {
+		t.Errorf("DB status = %q, want %q", entry.Status, "ship")
+	}
+}

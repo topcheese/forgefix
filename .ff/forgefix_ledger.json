@@ -2,11 +2,11 @@
   "entries": {
     "forgefix": {
       "pipeline_id": "forgefix",
-      "total_ran": 460,
-      "total_passed": 460,
+      "total_ran": 463,
+      "total_passed": 463,
       "total_failed": 0,
-      "historical_floor": 460,
-      "last_update": "2026-07-22 19:50:40"
+      "historical_floor": 463,
+      "last_update": "2026-07-22 20:51:15"
     }
   },
   "spec_mappings": {
@@ -523,9 +523,12 @@
       "spec_id": "Remove JSON ledger, make DB canonical, add post-ship integrity gate",
       "repo_issue_id": 553,
       "status": "draft",
-      "linked_commits": null,
+      "linked_commits": [
+        "653ccfa"
+      ],
       "type": "feature",
       "body": "# Remove JSON ledger, make DB canonical, add post-ship integrity gate\n\n## Objective\n\nEnsure local DB, spec files, and remote repo are always in sync, with a verification gate before shipping.\n\n## Problem\n\nThe system has three sources of truth that can drift:\n1. Spec files on disk (`.md` with frontmatter)\n2. SQLite DB (`specs` table + `linked_commits`)\n3. Remote issues (GitHub/Gitea)\n\nAdditionally, a legacy JSON ledger (`forgefix_ledger.json`) duplicates DB data, adding confusion and corruption risk. The current `SyncFromSpecsDir` scans every spec file on every `LoadLedger()` call, parsing frontmatter by hand to reconcile three stores. This circular flow (DB → JSON → spec files → DB) is fragile.\n\n**Failure modes observed:**\n- Agent edits spec file directly → `ff sync` fails or doesn't run → DB is stale\n- `ff commit` amend cycle corrupts `linked_commits` in JSON and DB\n- Post-ship: no verification that DB state matches remote repo\n- JSON ledger drifts from DB because `SaveLedger` does DELETE-all + re-INSERT every time\n\n## Requirements\n\n### 1. Remove JSON ledger as source of truth\n- `forgefix_ledger.json` becomes an optional export/debug artifact, not in the read/write path\n- `LoadLedger` reads from SQLite only (no JSON fallback except for one-time migration)\n- `SaveLedger` writes to SQLite only (JSON export is opt-in via `ff ledger export`)\n- `SyncFromSpecsDir` writes changes directly to SQLite, not into an in-memory JSON mirror\n\n### 2. DB is the canonical spec store\n- All spec metadata (status, type, version, linked_commits, repo_issue) lives in SQLite\n- Spec files on disk are the source of truth for body/content only\n- Frontmatter in spec files is a mirror of DB state (written by ff commands, not read as authority)\n- `ff spec`, `ff commit`, `ff ship` write to DB first, then update spec file frontmatter\n\n### 3. Pre-ship consistency gate\nBefore `ff ship` proceeds, verify:\n- All specs in `ship` status have a valid `repo_issue` linked\n- All `linked_commits` hashes exist in the local git repo\n- No spec in `ship` status has unsynced changes (DB version matches spec file version)\n- Gate fails with clear error listing inconsistent specs\n\n### 4. Post-ship integrity verification\nAfter `ff ship` pushes to remote, verify:\n- For each shipped spec, fetch the remote issue and compare body/title/status\n- Compare DB `linked_commits` against git log for the shipped version tag\n- Report any drift as warnings (non-blocking for first release, blocking after)\n- Write verification result to `ff ship --report` output\n\n### 5. Sync flow cleanup\n- `ff sync` writes spec file changes to DB (not just DB to remote)\n- `ff sync` reconciles remote issue state with DB (not with spec files directly)\n- Remove `SyncFromSpecsDir` as the primary sync mechanism; replace with targeted DB writes\n- Keep `SyncFromSpecsDir` only as a recovery/catch-up tool for when DB is corrupted\n\n## Acceptance Criteria\n- `forgefix_ledger.json` is not read or written during normal `ff commit`, `ff sync`, or `ff ship` operations\n- `ff ship` fails if pre-ship consistency gate finds issues\n- `ff ship` outputs a post-ship verification report comparing DB vs remote\n- Existing tests pass (449 tests, 0 failures)\n- Unit test: create spec, commit, sync, ship, verify DB matches remote issue body\n- Unit test: corrupt DB entry, run ship, verify gate catches inconsistency\n\n## Out of Scope\n- Removing the JSON file entirely (keep as optional export)\n- Changing the remote issue tracker API (GitHub/Gitea)\n- Modifying the kanban board functionality",
+      "resolution": "fixed in e21ae2f",
       "version": "0.9.7"
     },
     "SPEC-1784679743": {
@@ -584,9 +587,9 @@
         "62634a6"
       ],
       "type": "bug",
-      "body": "# Fix Ff Sync Not Promoting Review Specs To Ship\n## Objective\nff sync is supposed to promote specs from 'review' status to 'ship' status after successfully synchronizing with the remote issue tracker. Currently, specs are remaining in 'review' status even after a successful sync.\n\n## Root Cause\n`resolveTargetStatus` in `engine/cmd_commit.go` returned `\"draft\"` for AI non-chore commits (line 1109). This meant `ff commit --ai` set the spec to `\"draft\"` instead of `\"review\"`. When `ff sync --ai` later ran, `promoteReviewSpecs` in `engine/sync.go` searched the ledger for `\"review\"` entries and found none, so no specs were promoted to `\"ship\"`.\n\n## Work Done\n1. **Fixed `resolveTargetStatus`** in `engine/cmd_commit.go`: changed `target = \"draft\"` to `target = \"review\"` for AI non-chore commits.\n2. **Updated docstring**: reflected that all AI commits now target `\"review\"`.\n3. **Updated test**: `TestRunCommit_AIFeature_NoDowngradeFromInProgress` expects `\"review\"` (upgrade) instead of `\"in-progress\"` (no-change).\n\n## Verification\n- All tests pass: `go test ./...`\n- `resolveTargetStatus` now returns `\"review\"` for all AI commits\n- The `promoteReviewSpecs` function will find specs at `\"review\"` in the ledger and promote them to `\"ship\"`",
-      "root_cause": "resolveTargetStatus in cmd_commit.go returned 'draft' for AI non-chore commits (line 1109), so ff commit --ai never promoted specs to 'review'. promoteReviewSpecs in sync.go then found no 'review' entries in the ledger to promote to 'ship'.",
-      "resolution": "Changed resolveTargetStatus to return 'review' instead of 'draft' for AI non-chore commits. Updated docstring and test.",
+      "body": "# Fix Ff Sync Not Promoting Review Specs To Ship\n## Objective\nff sync is supposed to promote specs from 'review' status to 'ship' status after successfully synchronizing with the remote issue tracker. Currently, specs are remaining in 'review' status even after a successful sync.\n\n## Root Cause\n`promoteReviewSpecs` in `engine/sync.go` was placed at line 401 of `RunBackgroundSync` — **after** the `AutoIssueManagement` gate at line 343. When `auto_issue_management` was `false` (the default), the function returned early before ever reaching `promoteReviewSpecs`. The promotion code was effectively dead in the default config.\n\nSeparately, `syncSingleSpec` handled 404s from deleted remote issues by clearing `repo_issue` in the spec file, but never saved the change to the DB. The DB retained stale `repo_issue_id` values.\n\n## Work Done\n1. **Moved `promoteReviewSpecs`** before the `AutoIssueManagement` gate in `RunBackgroundSync`. This is a local operation (updates spec files + DB) and doesn't touch the remote, so it should not be gated by `AutoIssueManagement`.\n2. **Added DB save in 404 path** in `syncSingleSpec`: after clearing `repo_issue` from the spec file, also updates the DB entry and calls `SaveLedger`.\n3. **Wrote tests**: `TestPromoteReviewSpecs_PromotesReviewToShipInAiMode`, `TestPromoteReviewSpecs_SkipsNonReview`, `TestPromoteReviewSpecs_SkipsNonTerminal`.\n\n## Verification\n- All tests pass: `go test ./...`\n- `promoteReviewSpecs` now runs before any gates, so `ff sync --ai` promotes review → ship regardless of `auto_issue_management` setting\n- 404 reconciliation persists the cleared `repo_issue` to both spec file and DB",
+      "root_cause": "promoteReviewSpecs in sync.go was called AFTER the AutoIssueManagement gate in RunBackgroundSync. When auto_issue_management was false (default), the function returned before reaching promoteReviewSpecs, so specs at 'review' were never promoted to 'ship'. Additionally, syncSingleSpec didn't save the cleared repo_issue to the DB on 404, leaving stale references.",
+      "resolution": "Moved promoteReviewSpecs before the AutoIssueManagement gate so it always runs. Added SaveLedger call in syncSingleSpec 404 path to persist cleared repo_issue to DB.",
       "version": "0.9.8"
     },
     "SPEC-1784742186": {

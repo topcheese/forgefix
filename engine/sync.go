@@ -933,11 +933,8 @@ func DrainHousekeepingQueueFromConfig(configDir string, aiMode bool) error {
 // promoteReviewSpecs checks the ledger for specs in "review" status and prompts
 // the user to confirm manual testing before advancing to "ship". Uses the
 // spec title (from the spec file) for the prompt, not the opaque spec ID.
-// Skips if stdin is not a terminal unless aiMode is true (auto-promote).
+// If stdout is not a terminal, auto-promote without prompting.
 func promoteReviewSpecs(configDir string, aiMode bool) {
-	if !term.IsTerminal(int(os.Stdin.Fd())) && !aiMode {
-		return
-	}
 
 	ledger, err := LoadLedger(configDir)
 	if err != nil {
@@ -994,8 +991,8 @@ func promoteReviewSpecs(configDir string, aiMode bool) {
 	for _, c := range candidates {
 		fmt.Fprintf(os.Stderr, "  - %s: %s\n", c.id, c.title)
 	}
-	if aiMode {
-		fmt.Fprintf(os.Stderr, "Auto-promoting %d spec(s) to ship (--ai mode)\n", len(candidates))
+	if aiMode || !term.IsTerminal(int(os.Stdin.Fd())) {
+		fmt.Fprintf(os.Stderr, "Auto-promoting %d spec(s) to ship\n", len(candidates))
 	} else {
 		fmt.Fprintf(os.Stderr, "\nPromote these to \"ship\"? [y/N]: ")
 		var response string

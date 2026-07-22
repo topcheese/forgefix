@@ -5,8 +5,9 @@ repo_issue: 553
 type: feature
 version: "0.9.7"
 root_cause: ""
-resolution: ""
-linked_commits: ["e21ae2f"]
+
+linked_commits: ["653ccfa"]
+resolution: fixed in e21ae2f
 ---
 
 # Remove JSON ledger, make DB canonical, add post-ship integrity gate
