@@ -15,6 +15,7 @@
 - feat: Final sync 3 (SPEC-1784742186)
 - feat: Final sync 4 (SPEC-1784742186)
 - feat: Fix ff sync not promoting review specs to ship - resolveTargetStatus now returns review instead of draft for AI commits (SPEC-1784742157)
+- feat: Remove JSON ledger, make DB canonical spec store, fix sync promotion gate (SPEC-1784679435)
 
 ## [Unreleased] - 2026-07-21
 

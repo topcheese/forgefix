@@ -6,7 +6,7 @@ type: feature
 version: "0.9.7"
 root_cause: ""
 resolution: ""
-linked_commits: []
+linked_commits: ["e21ae2f"]
 ---
 
 # Remove JSON ledger, make DB canonical, add post-ship integrity gate

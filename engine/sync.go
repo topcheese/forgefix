@@ -338,6 +338,10 @@ func RunBackgroundSync(configDir, specID string, aiMode bool) error {
 		}
 	}
 
+	// Promote review specs to "ship" BEFORE any remote operations or gates,
+	// because this is a local operation (ledger + spec file updates only).
+	promoteReviewSpecs(configDir, aiMode)
+
 	// AUTO_ISSUE_MANAGEMENT GATE: In --ai mode without auto_issue_management,
 	// skip all remote issue operations. Reconcile ledger from spec files locally.
 	if aiMode && !loaded.Config.AutoIssueManagement {
@@ -395,10 +399,6 @@ func RunBackgroundSync(configDir, specID string, aiMode bool) error {
 	if err != nil {
 		return fmt.Errorf("checking sync schedule: %w", err)
 	}
-
-	// Promote review specs to "ship" BEFORE syncing with remote, so the sync
-	// doesn't prematurely close them when it sees a previously-closed remote issue.
-	promoteReviewSpecs(configDir, aiMode)
 
 	var syncErr error
 	if specID != "" {
@@ -658,6 +658,13 @@ func syncSingleSpec(coord *IssueCoordinator, configDir, specID string, cfg *Conf
 					fmt.Fprintf(os.Stderr, "unbinding spec %q from deleted remote issue #%d (404): clearing local reference\n", spec.Title, spec.RepoIssue)
 					updateSpecFileRepoIssue(filePath, 0)
 					spec.RepoIssue = 0
+					if ledger != nil {
+						if entry := ledger.GetSpecEntry(spec.SpecID); entry != nil {
+							entry.RepoIssueID = 0
+							ledger.SetSpecEntry(spec.SpecID, entry)
+							_ = SaveLedger(ledger, configDir)
+						}
+					}
 				} else {
 					return fmt.Errorf("fetching issue #%d: %w", spec.RepoIssue, err)
 				}

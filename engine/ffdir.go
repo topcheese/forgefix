@@ -195,13 +195,10 @@ func EnsureDevBinary(configDir string) error {
 
 func MigrateToFF(configDir string) error {
 	projectRoot := FindProjectRoot(configDir)
-	if err := migrateFileToFF(projectRoot, legacyLedgerFile, ffLedgerFile); err != nil {
-		return err
-	}
-	if err := migrateFileToFF(projectRoot, legacyHistoryFile, ffHistoryFile); err != nil {
-		return err
-	}
-	return NewBinaryManager().EnsureDev(configDir)
+	// Pre-release: just ensure the .ff/ directory exists.
+	// Legacy file migration and binary management are deferred
+	// until after the first stable release.
+	return ensureFFDir(projectRoot)
 }
 
 func Bootstrap(configDir string) error {

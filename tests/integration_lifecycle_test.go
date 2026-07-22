@@ -116,15 +116,15 @@ func TestSpecLifecycle(t *testing.T) {
 			t.Errorf("commit message missing spec prefix.\nhave: %s\nwant substring: %s", commitOut, expectedPrefix)
 		}
 
-		ledgerData, err := os.ReadFile(filepath.Join(dir, ".ff", "forgefix_ledger.json"))
-		if err != nil {
-			t.Fatal(err)
+		ledger, lErr := engine.LoadLedger(dir)
+		if lErr != nil {
+			t.Fatalf("LoadLedger: %v", lErr)
 		}
-		if !strings.Contains(string(ledgerData), specID) {
+		entry := ledger.GetSpecEntry(specID)
+		if entry == nil {
 			t.Error("ledger does not contain spec entry after commit")
-		}
-		if !strings.Contains(string(ledgerData), "linked_commits") {
-			t.Log("ledger missing linked_commits field; commit may not have updated ledger")
+		} else if len(entry.LinkedCommits) == 0 {
+			t.Log("ledger has no linked_commits; commit may not have updated ledger")
 		}
 	})
 
@@ -149,20 +149,20 @@ func TestSpecLifecycle(t *testing.T) {
 			t.Logf("sync output (may be expected if spec already synced): %s", output)
 		}
 
-		ledgerData, err := os.ReadFile(filepath.Join(dir, ".ff", "forgefix_ledger.json"))
-		if err != nil {
-			t.Fatal(err)
+		ledger, lErr := engine.LoadLedger(dir)
+		if lErr != nil {
+			t.Fatalf("LoadLedger: %v", lErr)
 		}
-		ledgerStr := string(ledgerData)
-
-		if !strings.Contains(ledgerStr, specID) {
+		entry := ledger.GetSpecEntry(specID)
+		if entry == nil {
 			t.Error("ledger missing spec entry after sync")
-		}
-		if !strings.Contains(ledgerStr, `"repo_issue_id"`) {
-			t.Logf("ledger missing repo_issue_id — sync may not have completed (expected without network mock)")
-		}
-		if strings.Contains(ledgerStr, `"status": "in-progress"`) || strings.Contains(ledgerStr, `"status": "draft"`) {
-			t.Log("ledger spec entry has a valid status")
+		} else {
+			if entry.RepoIssueID == 0 {
+				t.Logf("ledger has repo_issue_id=0 — sync may not have completed (expected without network mock)")
+			}
+			if entry.Status != "" {
+				t.Logf("ledger spec entry has status: %s", entry.Status)
+			}
 		}
 	})
 
@@ -184,19 +184,16 @@ func TestSpecLifecycle(t *testing.T) {
 		}
 
 		// Update ledger to "ship"
-		ledgerPath := filepath.Join(dir, ".ff", "forgefix_ledger.json")
-		ledgerData, err := os.ReadFile(ledgerPath)
-		if err != nil {
-			t.Fatal(err)
+		ledger, lErr := engine.LoadLedger(dir)
+		if lErr != nil {
+			t.Fatalf("LoadLedger: %v", lErr)
 		}
-		ledgerStr := string(ledgerData)
-		// Promote the ledger entry to "ship" to match the spec file. After
-		// `ff commit --spec` the ledger sits at "review" and after `ff sync`
-		// it stays "review", so handle both "review" and "draft" → "ship".
-		ledgerStr = strings.ReplaceAll(ledgerStr, `"status": "review"`, `"status": "ship"`)
-		ledgerStr = strings.ReplaceAll(ledgerStr, `"status": "draft"`, `"status": "ship"`)
-		if err := os.WriteFile(ledgerPath, []byte(ledgerStr), 0644); err != nil {
-			t.Fatal(err)
+		if entry := ledger.GetSpecEntry(specID); entry != nil {
+			entry.Status = "ship"
+			ledger.SetSpecEntry(specID, entry)
+		}
+		if err := engine.SaveLedger(ledger, dir); err != nil {
+			t.Fatalf("SaveLedger: %v", err)
 		}
 
 		// Now run ship — this should trigger SyncMetadata via housekeeping
@@ -218,14 +215,13 @@ func TestSpecLifecycle(t *testing.T) {
 		}
 		specStr2 := string(specData2)
 
-		ledgerData2, err := os.ReadFile(ledgerPath)
-		if err != nil {
-			t.Fatal(err)
+		ledger2, lErr2 := engine.LoadLedger(dir)
+		if lErr2 != nil {
+			t.Fatalf("LoadLedger: %v", lErr2)
 		}
-		ledgerStr2 := string(ledgerData2)
-
+		ledgerEntry2 := ledger2.GetSpecEntry(specID)
+		ledgerHasClosed := ledgerEntry2 != nil && ledgerEntry2.Status == "closed"
 		diskHasClosed := strings.Contains(specStr2, "status: closed")
-		ledgerHasClosed := strings.Contains(ledgerStr2, `"status": "closed"`)
 		if !diskHasClosed && !ledgerHasClosed {
 			t.Log("SyncMetadata may not have run (expected when no remote configured)")
 		}
@@ -247,11 +243,10 @@ func TestSpecLifecycle(t *testing.T) {
 		}
 		specContent := string(specData)
 
-		ledgerData, err := os.ReadFile(filepath.Join(dir, ".ff", "forgefix_ledger.json"))
-		if err != nil {
-			t.Fatal(err)
+		ledger, lErr := engine.LoadLedger(dir)
+		if lErr != nil {
+			t.Fatalf("LoadLedger: %v", lErr)
 		}
-		ledgerStr := string(ledgerData)
 
 		specID := ""
 		for _, line := range strings.Split(specContent, "\n") {
@@ -265,7 +260,8 @@ func TestSpecLifecycle(t *testing.T) {
 		if specID == "" {
 			t.Fatal("spec file has no spec_id")
 		}
-		if !strings.Contains(ledgerStr, specID) {
+		ledgerEntry := ledger.GetSpecEntry(specID)
+		if ledgerEntry == nil {
 			t.Error("spec_id in spec file not found in ledger — files are out of sync")
 		}
 
@@ -280,23 +276,10 @@ func TestSpecLifecycle(t *testing.T) {
 			}
 		}
 
-		// Extract status from ledger (JSON parsing)
+		// Extract status from ledger
 		ledgerStatus := ""
-		// Simple extract — works for the known format
-		for _, line := range strings.Split(ledgerStr, "\n") {
-			line = strings.TrimSpace(line)
-			if strings.Contains(line, `"status"`) {
-				parts := strings.SplitN(line, ":", 3)
-				if len(parts) >= 3 {
-					val := strings.TrimSpace(parts[2])
-					val = strings.Trim(val, `",`)
-					ledgerStatus = val
-				} else if len(parts) == 2 {
-					val := strings.TrimSpace(parts[1])
-					val = strings.Trim(val, `",`)
-					ledgerStatus = val
-				}
-			}
+		if ledgerEntry != nil {
+			ledgerStatus = ledgerEntry.Status
 		}
 
 		if diskStatus != "" && ledgerStatus != "" && diskStatus != ledgerStatus {
@@ -313,8 +296,8 @@ func TestSpecLifecycle(t *testing.T) {
 		}
 
 		if giteaIssue != "" && giteaIssue != `""` {
-			if !strings.Contains(ledgerStr, fmt.Sprintf(`"repo_issue_id": %s`, giteaIssue)) {
-				t.Logf("repo_issue %s in spec file but ledger may use different format; not necessarily out of sync", giteaIssue)
+			if ledgerEntry == nil || ledgerEntry.RepoIssueID == 0 {
+				t.Logf("repo_issue %s in spec file but ledger has no matching repo_issue_id; not necessarily out of sync", giteaIssue)
 			}
 		}
 	})
@@ -480,24 +463,15 @@ repo_issue: 999
 	}
 
 	// Pre-seed the ledger with a SpecEntry pointing at the orphaned issue
-	ledgerContent := `{
-  "version": "0.8.0",
-  "entries": null,
-  "spec_mappings": {
-    "SPEC-404-TEST": {
-      "spec_id": "SPEC-404-TEST",
-      "repo_issue_id": 999,
-      "status": "draft",
-      "linked_commits": []
-    }
-  }
-}`
-	ledgerPath := filepath.Join(dir, ".ff", "forgefix_ledger.json")
-	if err := os.MkdirAll(filepath.Dir(ledgerPath), 0755); err != nil {
-		t.Fatal(err)
-	}
-	if err := os.WriteFile(ledgerPath, []byte(ledgerContent), 0644); err != nil {
-		t.Fatal(err)
+	ledger := engine.NewLedgerEngine()
+	ledger.SetSpecEntry("SPEC-404-TEST", &engine.SpecEntry{
+		SpecID:        "SPEC-404-TEST",
+		RepoIssueID:   999,
+		Status:        "draft",
+		LinkedCommits: []string{},
+	})
+	if err := engine.SaveLedger(ledger, dir); err != nil {
+		t.Fatalf("SaveLedger: %v", err)
 	}
 
 	// Run ff sync — mock server returns 404 for /issues/999
@@ -517,12 +491,12 @@ repo_issue: 999
 	}
 
 	// Assert the stale 999 is gone from the ledger
-	ledgerData, err := os.ReadFile(ledgerPath)
-	if err != nil {
-		t.Fatal(err)
+	ledger2, lErr := engine.LoadLedger(dir)
+	if lErr != nil {
+		t.Fatalf("LoadLedger: %v", lErr)
 	}
-	ledgerStr := string(ledgerData)
-	if strings.Contains(ledgerStr, `"repo_issue_id": 999`) {
+	entry2 := ledger2.GetSpecEntry("SPEC-404-TEST")
+	if entry2 != nil && entry2.RepoIssueID == 999 {
 		t.Error("ledger still contains stale repo_issue_id 999 after 404 reconciliation")
 	}
 

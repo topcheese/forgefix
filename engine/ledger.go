@@ -60,9 +60,10 @@ func LoadLedger(configDir string) (*LedgerEngine, error) {
 	ledger := NewLedgerEngine()
 	ledger.WorkflowConfig = LoadWorkflowConfig(configDir)
 
-	// Try loading from SQLite
-	db, dbErr := OpenDB(configDir)
-	if dbErr == nil {
+	db, err := OpenDB(configDir)
+	if err != nil {
+		ledger.WorkflowConfig = LoadWorkflowConfig(configDir)
+	} else {
 		defer db.Close()
 
 		// Read project version from meta
@@ -86,17 +87,19 @@ func LoadLedger(configDir string) (*LedgerEngine, error) {
 			}
 		}
 
-		// Read specs from DB — query all non-archived rows with their linked commits.
-		// Archived specs live only in the DB for query/reference; they are not
-		// loaded into the in-memory LedgerEngine, which mirrors the old JSON
-		// file behavior where archived entries were removed from the JSON file.
-		rows, err := db.Conn().Query("SELECT spec_id, title, status, type, repo_issue_id FROM specs WHERE status != 'archived'")
+		// Read specs from DB with all fields.
+		// The DB is the canonical store; the in-memory ledger is a cache.
+		rows, err := db.Conn().Query(`
+			SELECT spec_id, title, status, type, repo_issue_id,
+			       COALESCE(version, ''), COALESCE(root_cause, ''), COALESCE(resolution, ''), COALESCE(body, '')
+			FROM specs WHERE status != 'archived'`)
 		if err == nil {
 			defer rows.Close()
 			for rows.Next() {
-				var specID, title, st, specType string
+				var specID, title, st, specType, version, rootCause, resolution, body string
 				var repoIssueID int
-				if err := rows.Scan(&specID, &title, &st, &specType, &repoIssueID); err != nil {
+				if err := rows.Scan(&specID, &title, &st, &specType, &repoIssueID,
+					&version, &rootCause, &resolution, &body); err != nil {
 					continue
 				}
 				linkedCommits, _ := db.GetLinkedCommits(specID)
@@ -106,39 +109,33 @@ func LoadLedger(configDir string) (*LedgerEngine, error) {
 					Status:        st,
 					LinkedCommits: linkedCommits,
 					Type:          specType,
+					Version:       version,
+					RootCause:     rootCause,
+					Resolution:    resolution,
+					Body:          body,
 				}
 			}
 		}
-	} else {
-		// DB not available — fall back to JSON file for legacy migration
-		jsonLedger, jErr := loadLedgerFromJSONFile(configDir)
-		if jErr == nil && jsonLedger != nil {
-			ledger = jsonLedger
-			ledger.WorkflowConfig = LoadWorkflowConfig(configDir)
-		}
 	}
 
-	// Always sync from filesystem to catch newly-created specs not yet in DB
-	// and to reconcile status changes made by editing spec files directly.
+	// SyncFromSpecsDir reconciles newly-created specs not yet in DB.
+	// In normal operation the DB has complete data and this is a no-op.
 	if err := ledger.SyncFromSpecsDir(configDir); err != nil {
 		return nil, fmt.Errorf("syncing ledger from specs dir: %w", err)
 	}
+
+	// Persist any changes from SyncFromSpecsDir to the DB
+	if err := SaveLedger(ledger, configDir); err != nil {
+		return nil, fmt.Errorf("persisting synced ledger: %w", err)
+	}
+
 	return ledger, nil
 }
 
 func SaveLedger(ledger *LedgerEngine, configDir string) error {
-	// Mirror state to the legacy JSON ledger file so readers of
-	// forgefix_ledger.json (tooling, tests) stay consistent with the
-	// canonical SQLite store.
-	if err := ledger.SaveToFile(FFLedgerPath(configDir)); err != nil {
-		fmt.Fprintf(os.Stderr, "warning: failed to mirror ledger to JSON: %v\n", err)
-	}
-
-	// Write to SQLite
 	db, err := OpenDB(configDir)
 	if err != nil {
-		// DB unavailable — JSON mirror above is the persistence.
-		return nil
+		return fmt.Errorf("opening DB: %w", err)
 	}
 	defer db.Close()
 

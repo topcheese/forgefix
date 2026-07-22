@@ -22,7 +22,7 @@ func writeSpecFile(t *testing.T, dir, specID, status string, issueNum int, bodyC
 	title := validTestTitle(specID)
 	content := fmt.Sprintf(`---
 spec_id: "%s"
-status: "%s"
+status: %s
 type: "%s"
 version: "version/v0.8.0"
 repo_issue: %d
@@ -1222,5 +1222,164 @@ func TestSyncIssueBodyUpdatesOnEffectiveBodyChange(t *testing.T) {
 	}
 	if strings.Contains(payload.Body, "Stale content") {
 		t.Error("PATCH body should not contain the old mock body")
+	}
+}
+
+func writeSpecWithStatus(t *testing.T, dir, specID, status string) string {
+	t.Helper()
+	content := fmt.Sprintf(`---
+spec_id: "%s"
+status: %s
+type: feature
+version: "v0.9.8"
+repo_issue: 0
+---
+
+# %s
+Body content
+`, specID, status, specID)
+	path := filepath.Join(dir, specID+".md")
+	if err := os.WriteFile(path, []byte(content), 0644); err != nil {
+		t.Fatal(err)
+	}
+	return path
+}
+
+func TestPromoteReviewSpecs_PromotesReviewToShipInAiMode(t *testing.T) {
+	tmpDir := t.TempDir()
+	os.MkdirAll(filepath.Join(tmpDir, "specs"), 0755)
+	os.MkdirAll(filepath.Join(tmpDir, ".ff"), 0755)
+
+	specPath := writeSpecWithStatus(t, filepath.Join(tmpDir, "specs"), "SPEC-REVIEW-TEST", "review")
+
+	ledger := &LedgerEngine{
+		specMappings: make(map[string]*SpecEntry),
+	}
+	ledger.SetSpecEntry("SPEC-REVIEW-TEST", &SpecEntry{
+		SpecID:        "SPEC-REVIEW-TEST",
+		Status:        "review",
+		RepoIssueID:   0,
+		LinkedCommits: []string{},
+	})
+	if err := SaveLedger(ledger, tmpDir); err != nil {
+		t.Fatal(err)
+	}
+
+	// Reload to verify it was saved correctly
+	loaded, err := LoadLedger(tmpDir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	entry := loaded.GetSpecEntry("SPEC-REVIEW-TEST")
+	if entry == nil {
+		t.Fatal("spec entry should exist after save")
+	}
+	if entry.Status != "review" {
+		t.Fatalf("expected review, got %s", entry.Status)
+	}
+
+	promoteReviewSpecs(tmpDir, true)
+
+	loaded2, err := LoadLedger(tmpDir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	entry2 := loaded2.GetSpecEntry("SPEC-REVIEW-TEST")
+	if entry2 == nil {
+		t.Fatal("spec entry should exist after promote")
+	}
+	if entry2.Status != "ship" {
+		t.Errorf("ledger status = %q, want %q", entry2.Status, "ship")
+	}
+
+	data, err := os.ReadFile(specPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(string(data), "status: ship") {
+		t.Errorf("spec file should have status: ship, got:\n%s", string(data))
+	}
+}
+
+func TestPromoteReviewSpecs_SkipsNonReview(t *testing.T) {
+	tmpDir := t.TempDir()
+	os.MkdirAll(filepath.Join(tmpDir, "specs"), 0755)
+	os.MkdirAll(filepath.Join(tmpDir, ".ff"), 0755)
+
+	writeSpecWithStatus(t, filepath.Join(tmpDir, "specs"), "SPEC-DRAFT", "draft")
+	writeSpecWithStatus(t, filepath.Join(tmpDir, "specs"), "SPEC-SHIP", "ship")
+
+	ledger := &LedgerEngine{
+		specMappings: make(map[string]*SpecEntry),
+	}
+	ledger.SetSpecEntry("SPEC-DRAFT", &SpecEntry{
+		SpecID:        "SPEC-DRAFT",
+		Status:        "draft",
+		RepoIssueID:   0,
+		LinkedCommits: []string{},
+	})
+	ledger.SetSpecEntry("SPEC-SHIP", &SpecEntry{
+		SpecID:        "SPEC-SHIP",
+		Status:        "ship",
+		RepoIssueID:   0,
+		LinkedCommits: []string{},
+	})
+	if err := SaveLedger(ledger, tmpDir); err != nil {
+		t.Fatal(err)
+	}
+
+	promoteReviewSpecs(tmpDir, true)
+
+	loaded, err := LoadLedger(tmpDir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, id := range []string{"SPEC-DRAFT", "SPEC-SHIP"} {
+		entry := loaded.GetSpecEntry(id)
+		if entry == nil {
+			t.Fatalf("entry %s should exist", id)
+		}
+		expected := strings.ToLower(id[len("SPEC-"):])
+		if entry.Status != expected {
+			t.Errorf("entry %s status = %q, want %q (should not have changed)", id, entry.Status, expected)
+		}
+	}
+}
+
+func TestPromoteReviewSpecs_SkipsNonTerminal(t *testing.T) {
+	tmpDir := t.TempDir()
+	os.MkdirAll(filepath.Join(tmpDir, "specs"), 0755)
+	os.MkdirAll(filepath.Join(tmpDir, ".ff"), 0755)
+
+	// Simulate non-terminal stdin — function should skip unless aiMode=true
+	// This test verifies the terminal check is bypassed in aiMode.
+	writeSpecWithStatus(t, filepath.Join(tmpDir, "specs"), "SPEC-REVIEW-2", "review")
+
+	ledger := &LedgerEngine{
+		specMappings: make(map[string]*SpecEntry),
+	}
+	ledger.SetSpecEntry("SPEC-REVIEW-2", &SpecEntry{
+		SpecID:        "SPEC-REVIEW-2",
+		Status:        "review",
+		RepoIssueID:   0,
+		LinkedCommits: []string{},
+	})
+	if err := SaveLedger(ledger, tmpDir); err != nil {
+		t.Fatal(err)
+	}
+
+	// In aiMode, should promote even with non-terminal stdin
+	promoteReviewSpecs(tmpDir, true)
+
+	loaded, err := LoadLedger(tmpDir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	entry := loaded.GetSpecEntry("SPEC-REVIEW-2")
+	if entry == nil {
+		t.Fatal("entry should exist")
+	}
+	if entry.Status != "ship" {
+		t.Errorf("aiMode should promote even without terminal, status = %q, want %q", entry.Status, "ship")
 	}
 }

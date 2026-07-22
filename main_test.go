@@ -103,7 +103,7 @@ func TestPromptForSpecSelectionNewBug(t *testing.T) {
 	if err := os.MkdirAll(ledgerDir, 0755); err != nil {
 		t.Fatalf("creating ledger dir: %v", err)
 	}
-	ledgerPath := filepath.Join(ledgerDir, "forgefix_ledger.json")
+
 	ledger := engine.NewLedgerEngine()
 	// Add a dummy spec so we go through categorical selection
 	entry := &engine.SpecEntry{
@@ -114,7 +114,7 @@ func TestPromptForSpecSelectionNewBug(t *testing.T) {
 		Type:          "feature",
 	}
 	ledger.SetSpecEntry("SPEC-EXISTING", entry)
-	if err := ledger.SaveToFile(ledgerPath); err != nil {
+	if err := engine.SaveLedger(ledger, tmpDir); err != nil {
 		t.Fatalf("saving ledger: %v", err)
 	}
 
@@ -163,7 +163,7 @@ func TestPromptForSpecSelectionExisting(t *testing.T) {
 	if err := os.MkdirAll(ledgerDir, 0755); err != nil {
 		t.Fatalf("creating ledger dir: %v", err)
 	}
-	ledgerPath := filepath.Join(ledgerDir, "forgefix_ledger.json")
+
 	ledger := engine.NewLedgerEngine()
 	entry := &engine.SpecEntry{
 		SpecID:        "SPEC-123",
@@ -173,7 +173,7 @@ func TestPromptForSpecSelectionExisting(t *testing.T) {
 		Type:          "feature",
 	}
 	ledger.SetSpecEntry("SPEC-123", entry)
-	if err := ledger.SaveToFile(ledgerPath); err != nil {
+	if err := engine.SaveLedger(ledger, tmpDir); err != nil {
 		t.Fatalf("saving ledger: %v", err)
 	}
 
@@ -214,7 +214,7 @@ func TestPromptForSpecSelectionSkip(t *testing.T) {
 	if err := os.MkdirAll(ledgerDir, 0755); err != nil {
 		t.Fatalf("creating ledger dir: %v", err)
 	}
-	ledgerPath := filepath.Join(ledgerDir, "forgefix_ledger.json")
+
 	ledger := engine.NewLedgerEngine()
 	entry := &engine.SpecEntry{
 		SpecID:        "SPEC-123",
@@ -224,7 +224,7 @@ func TestPromptForSpecSelectionSkip(t *testing.T) {
 		Type:          "feature",
 	}
 	ledger.SetSpecEntry("SPEC-123", entry)
-	if err := ledger.SaveToFile(ledgerPath); err != nil {
+	if err := engine.SaveLedger(ledger, tmpDir); err != nil {
 		t.Fatalf("saving ledger: %v", err)
 	}
 
@@ -266,7 +266,7 @@ func TestRunCommitWithFlagSpecID(t *testing.T) {
 	if err := os.MkdirAll(ledgerDir, 0755); err != nil {
 		t.Fatalf("creating ledger dir: %v", err)
 	}
-	ledgerPath := filepath.Join(ledgerDir, "forgefix_ledger.json")
+
 	ledger := engine.NewLedgerEngine()
 	entry := &engine.SpecEntry{
 		SpecID:        "SPEC-123",
@@ -276,7 +276,7 @@ func TestRunCommitWithFlagSpecID(t *testing.T) {
 		Type:          "feature",
 	}
 	ledger.SetSpecEntry("SPEC-123", entry)
-	if err := ledger.SaveToFile(ledgerPath); err != nil {
+	if err := engine.SaveLedger(ledger, tmpDir); err != nil {
 		t.Fatalf("saving ledger: %v", err)
 	}
 
@@ -377,7 +377,7 @@ func TestUpdateLedgerAfterCommit_SpecFileNotFound(t *testing.T) {
 	if err := os.MkdirAll(ledgerDir, 0755); err != nil {
 		t.Fatalf("creating ledger dir: %v", err)
 	}
-	ledgerPath := filepath.Join(ledgerDir, "forgefix_ledger.json")
+
 	ledger := engine.NewLedgerEngine()
 	entry := &engine.SpecEntry{
 		SpecID:        "SPEC-123",
@@ -387,7 +387,7 @@ func TestUpdateLedgerAfterCommit_SpecFileNotFound(t *testing.T) {
 		Type:          "feature",
 	}
 	ledger.SetSpecEntry("SPEC-123", entry)
-	if err := ledger.SaveToFile(ledgerPath); err != nil {
+	if err := engine.SaveLedger(ledger, tmpDir); err != nil {
 		t.Fatalf("saving ledger: %v", err)
 	}
 

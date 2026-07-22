@@ -1,7 +1,7 @@
 ---
 spec_id: "SPEC-1784743523"
 status: draft
-repo_issue: ""
+repo_issue: 649
 type: bug
 version: "0.9.8"
 root_cause: ""
@@ -11,7 +11,7 @@ root_cause: ""
 linked_commits: ["558901b", "fdee604", "8dead67"]
 resolution: fixed in f995178
 ---
-# Fix Isvalidissuetitle Helper Regex For Old Format
+# [bug][draft] Fix Isvalidissuetitle Helper Regex For Old Format
 ## Objective
 TestIsValidIssueTitle_Helper is failing because the updated regex does not correctly match the old 'type/component: Title' format when the component name is long.
 

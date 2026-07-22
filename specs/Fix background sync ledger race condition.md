@@ -1,14 +1,14 @@
 ---
 spec_id: "SPEC-1784744083"
 status: draft
-repo_issue: ""
+repo_issue: 651
 type: bug
 version: "0.9.8"
 root_cause: ""
 resolution: ""
 linked_commits: []
 ---
-# Fix Background Sync Ledger Race Condition
+# [bug][draft] Fix Background Sync Ledger Race Condition
 ## Objective
 The background sync process frequently modifies .ff/forgefix_ledger.json immediately after commits, creating a race condition that leaves the git tree dirty and forces repetitive 'ledger sync' commits.
 

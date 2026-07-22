@@ -47,11 +47,6 @@ func OpenDB(configDir string) (*DB, error) {
 		conn.Close()
 		return nil, fmt.Errorf("running migrations: %w", err)
 	}
-	// Non-fatal: import existing JSON ledger data into the DB if it hasn't
-	// been imported yet. Failures are logged but don't block startup.
-	if err := db.ImportLedger(); err != nil {
-		fmt.Fprintf(os.Stderr, "warning: ledger import: %v\n", err)
-	}
 	return db, nil
 }
 
