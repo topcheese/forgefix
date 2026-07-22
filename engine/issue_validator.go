@@ -10,21 +10,8 @@ import (
 var (
 	ErrInvalidIssueTitle = errors.New("invalid issue title format")
 
-	allowedTypes = map[string]bool{
-		"feat":     true,
-		"fix":      true,
-		"docs":     true,
-		"refactor": true,
-		"ops":      true,
-		"chore":    true,
-	}
-
-	// issueTitleRegex supports both:
-	// 1. [type][status] Title (new format)
-	// 2. type/component: Title (old format)
-	issueTitleRegex = regexp.MustCompile(`^(\[.+\])+ .+|^(feat|fix|docs|refactor|ops|chore)/[a-z0-9-]+: .+$`)
-	maxTitleLength     = 120
-	maxOldTitleLength  = 60
+	issueTitleRegex = regexp.MustCompile(`^(\[[a-z][a-z0-9-]*\])+ .+$`)
+	maxTitleLength  = 120
 )
 
 type IssueTitleValidator struct {
@@ -50,15 +37,8 @@ func (v *IssueTitleValidator) Validate(title string) error {
 		return fmt.Errorf("regex mismatch for %q: %w", title, ErrInvalidIssueTitle)
 	}
 
-	// Apply format-specific length limits
-	if strings.HasPrefix(title, "[") {
-		if len(title) > maxTitleLength {
-			return fmt.Errorf("title too long (%d > %d): %w", len(title), maxTitleLength, ErrInvalidIssueTitle)
-		}
-	} else {
-		if len(title) > maxOldTitleLength {
-			return fmt.Errorf("title too long (%d > %d): %w", len(title), maxOldTitleLength, ErrInvalidIssueTitle)
-		}
+	if len(title) > maxTitleLength {
+		return fmt.Errorf("title too long (%d > %d): %w", len(title), maxTitleLength, ErrInvalidIssueTitle)
 	}
 
 	return nil

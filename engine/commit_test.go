@@ -944,7 +944,7 @@ repo_issue: ""
 	}
 
 	d := &CommandDispatcher{Stdout: io.Discard, Stderr: io.Discard}
-	// AI commit on feature spec at in-progress — should NOT downgrade to draft
+	// AI commit on feature spec at in-progress — should upgrade to review (not downgrade to draft)
 	_, _, _, err := runCommit(tmpDir, "implement feature [SPEC-AIF1]", "SPEC-AIF1", "", "", true, d, "", false)
 	if err != nil {
 		t.Fatalf("runCommit failed: %v", err)
@@ -955,8 +955,8 @@ repo_issue: ""
 		t.Fatal(err)
 	}
 	got := string(data)
-	if !strings.Contains(got, "status: in-progress") {
-		t.Errorf("expected status to remain in-progress (no downgrade), got:\n%s", got)
+	if !strings.Contains(got, "status: review") {
+		t.Errorf("expected status to be review after AI commit (upgrade from in-progress), got:\n%s", got)
 	}
 }
 

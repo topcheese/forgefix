@@ -454,10 +454,6 @@ func (c *IssueCoordinator) CreateIssue(testName string, details *ErrorDetails) (
 		return nil, fmt.Errorf("coordinator inactive: placeholder or empty credentials")
 	}
 
-	if err := c.titleValidator.Validate(testName); err != nil {
-		return nil, fmt.Errorf("issue title validation failed: %w", err)
-	}
-
 	c.mu.RLock()
 	if existing, exists := c.issueCache[testName]; exists {
 		c.mu.RUnlock()

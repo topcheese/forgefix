@@ -23,14 +23,14 @@ func writeSpecFile(t *testing.T, dir, specID, status string, issueNum int, bodyC
 	content := fmt.Sprintf(`---
 spec_id: "%s"
 status: "%s"
-type: "type/bug"
+type: "%s"
 version: "version/v0.8.0"
 repo_issue: %d
 ---
 
 # %s
 %s
-`, specID, status, issueNum, title, bodyContent)
+`, specID, status, "bug", issueNum, title, bodyContent)
 	path := filepath.Join(dir, "specs", specID+".md")
 	if err := os.WriteFile(path, []byte(content), 0644); err != nil {
 		t.Fatal(err)

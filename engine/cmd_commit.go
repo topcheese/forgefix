@@ -1105,9 +1105,8 @@ func amendLastCommit(wd string) error {
 //     - feature/bug/refactor (no --review)   → "" (no change)
 //     - chore                                 → "ship" (skip review)
 //   - AI commit (aiMode=true):
-//     - feature/bug/refactor + --review flag → "review"
-//     - feature/bug/refactor (no --review)   → "draft"
-//     - chore                                 → "review"
+//     - Any spec + --review flag → "review"
+//     - Any spec (no --review)    → "review"
 //
 // Important: never downgrades. If the spec is already at a higher status,
 // the target is ignored to avoid regressions (e.g. review→draft on commit).
@@ -1124,7 +1123,7 @@ func resolveTargetStatus(wd, specID string, aiMode, promoteReview bool) string {
 		if isChore {
 			target = "review"
 		} else {
-			target = "draft"
+			target = "review"
 		}
 	} else {
 		if isChore {

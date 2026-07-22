@@ -1,12 +1,12 @@
 ---
 spec_id: "SPEC-1784742157"
-status: draft
+status: review
 repo_issue: 558
 type: bug
 version: "0.9.8"
-root_cause: ""
-resolution: ""
-linked_commits: []
+root_cause: "resolveTargetStatus in cmd_commit.go returned 'draft' for AI non-chore commits (line 1109), so ff commit --ai never promoted specs to 'review'. promoteReviewSpecs in sync.go then found no 'review' entries in the ledger to promote to 'ship'."
+resolution: "Changed resolveTargetStatus to return 'review' instead of 'draft' for AI non-chore commits. Updated docstring and test for AI feature no-downgrade to expect 'review'."
+linked_commits: ["8ce40be"]
 ---
 # Fix Ff Sync Not Promoting Review Specs To Ship
 ## Objective

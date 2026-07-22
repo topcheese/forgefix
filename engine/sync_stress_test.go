@@ -204,8 +204,8 @@ func TestStressFIFOOrder(t *testing.T) {
 	coord.SetConfigDir(dir)
 
 	enqueueStressOps(t, dir,
-		SyncOperation{Type: SyncOpCreateIssue, TestName: "feat/test: stress-A",
-			Details: &ErrorDetails{TestName: "feat/test: stress-A", ErrorMessage: "err A"}},
+		SyncOperation{Type: SyncOpCreateIssue, TestName: "[feat][draft] stress-A",
+			Details: &ErrorDetails{TestName: "[feat][draft] stress-A", ErrorMessage: "err A"}},
 		SyncOperation{Type: SyncOpPostComment, IssueNum: 1, Body: "comment 1"},
 		SyncOperation{Type: SyncOpCloseIssue, IssueNum: 1},
 	)
@@ -262,8 +262,8 @@ func TestStressPartialSuccess(t *testing.T) {
 	coord.SetConfigDir(dir)
 
 	enqueueStressOps(t, dir,
-		SyncOperation{Type: SyncOpCreateIssue, TestName: "feat/test: stress-B",
-			Details: &ErrorDetails{TestName: "feat/test: stress-B", ErrorMessage: "err B"}},
+		SyncOperation{Type: SyncOpCreateIssue, TestName: "[feat][draft] stress-B",
+			Details: &ErrorDetails{TestName: "[feat][draft] stress-B", ErrorMessage: "err B"}},
 		SyncOperation{Type: SyncOpPostComment, IssueNum: 1, Body: "will fail"},
 		SyncOperation{Type: SyncOpCloseIssue, IssueNum: 99},
 	)
@@ -308,8 +308,8 @@ func TestStressRetryLimit(t *testing.T) {
 	coord.SetConfigDir(dir)
 
 	enqueueStressOps(t, dir,
-		SyncOperation{Type: SyncOpCreateIssue, TestName: "feat/test: stress-C",
-			Details: &ErrorDetails{TestName: "feat/test: stress-C", ErrorMessage: "err C"}},
+		SyncOperation{Type: SyncOpCreateIssue, TestName: "[feat][draft] stress-C",
+			Details: &ErrorDetails{TestName: "[feat][draft] stress-C", ErrorMessage: "err C"}},
 	)
 
 	// Process — retry_count goes 0→1→2 on successive failures.
@@ -433,7 +433,7 @@ func TestStressBurstQueue(t *testing.T) {
 
 	const numOps = 20
 	for i := 0; i < numOps; i++ {
-		name := fmt.Sprintf("feat/test: burst-%d", i)
+		name := fmt.Sprintf("[feat][draft] burst-%d", i)
 		op := SyncOperation{
 			Type:     SyncOpCreateIssue,
 			TestName: name,
@@ -486,11 +486,11 @@ func TestStressMixedBatchFails(t *testing.T) {
 	// close_issue and post_comment use arbitrary issue numbers, so they
 	// should succeed even if create_issue operations fail.
 	enqueueStressOps(t, dir,
-		SyncOperation{Type: SyncOpCreateIssue, TestName: "feat/test: fail-A",
-			Details: &ErrorDetails{TestName: "feat/test: fail-A", ErrorMessage: "err"}},
+		SyncOperation{Type: SyncOpCreateIssue, TestName: "[feat][draft] fail-A",
+			Details: &ErrorDetails{TestName: "[feat][draft] fail-A", ErrorMessage: "err"}},
 		SyncOperation{Type: SyncOpCloseIssue, IssueNum: 99, TestName: "close-99"},
-		SyncOperation{Type: SyncOpCreateIssue, TestName: "feat/test: fail-B",
-			Details: &ErrorDetails{TestName: "feat/test: fail-B", ErrorMessage: "err"}},
+		SyncOperation{Type: SyncOpCreateIssue, TestName: "[feat][draft] fail-B",
+			Details: &ErrorDetails{TestName: "[feat][draft] fail-B", ErrorMessage: "err"}},
 		SyncOperation{Type: SyncOpPostComment, IssueNum: 42, Body: "survivor comment"},
 		SyncOperation{Type: SyncOpUpdateIssueBody, IssueNum: 42, Body: "updated body"},
 	)
