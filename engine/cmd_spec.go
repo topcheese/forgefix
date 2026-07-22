@@ -3,6 +3,7 @@ package engine
 import (
 	"bufio"
 	"fmt"
+	"io"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -14,6 +15,17 @@ import (
 func (d *CommandDispatcher) handleSpec(args []string) (CommandResult, error) {
 	flags := ParseFlags(args)
 	specName, specBody := parseSpecPositional(args)
+
+	// If no body from args, read from piped stdin (heredoc / pipe).
+	if specBody == "" {
+		stat, _ := os.Stdin.Stat()
+		if (stat.Mode() & os.ModeCharDevice) == 0 {
+			data, err := io.ReadAll(os.Stdin)
+			if err == nil {
+				specBody = strings.TrimSpace(string(data))
+			}
+		}
+	}
 
 	// --delete handling (unchanged)
 	if flags.Delete {

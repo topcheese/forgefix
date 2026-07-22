@@ -1,11 +1,11 @@
 ---
 spec_id: "SPEC-1784679765"
-status: draft
+status: review
 repo_issue: ""
 type: bug
-version: "0.9.7"
-root_cause: ""
-resolution: ""
+version: "1.0.0"
+root_cause: "writeSpecFromTemplate always prepends '# <title>' to the body, but promptForSpecBody builds a body that already starts with '# <title>', producing two H1 lines. sanitizeSpecTitle also did not strip leading '# ' from user input."
+resolution: "writeSpecFromTemplate now checks if the body already starts with '# <title>' and skips prepending if so. sanitizeSpecTitle now strips a leading '# ' prefix."
 linked_commits: ["6f5005c"]
 ---
 

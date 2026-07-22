@@ -21,6 +21,7 @@
 - feat: fix resolveTargetStatus to never downgrade status, add statusRank guard (SPEC-1784678104)
 - feat: Fix duplicated H1 heading in spec files (SPEC-1784280001)
 - feat: Fix duplicated H1 heading in spec files (SPEC-1784679765)
+- feat: Fix ff spec truncating multi-line body from piped stdin (SPEC-1784679743)
 
 ## [Unreleased] - 2026-07-17
 

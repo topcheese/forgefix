@@ -6,7 +6,7 @@
       "total_passed": 459,
       "total_failed": 0,
       "historical_floor": 459,
-      "last_update": "2026-07-22 05:54:19"
+      "last_update": "2026-07-22 06:03:28"
     }
   },
   "spec_mappings": {
@@ -543,7 +543,9 @@
       "spec_id": "ff spec truncates multi-line body from heredoc or piped stdin",
       "repo_issue_id": 0,
       "status": "draft",
-      "linked_commits": null,
+      "linked_commits": [
+        "5e2eaf5"
+      ],
       "type": "bug",
       "body": "# ff spec truncates multi-line body from heredoc or piped stdin\n\n## Objective\n\nWhen `ff spec` receives a multi-line body via heredoc (`\u003c\u003c'EOF'`) or piped stdin, only the first paragraph is written to the spec file. The rest of the content is silently dropped.\n\n## Root Cause\n\n`parseSpecPositional` in `cmd_spec.go` reads stdin via `bufio.Scanner` but splits on blank lines, treating the first blank line as the end of input. Heredoc input with blank lines between paragraphs causes the scanner to stop reading after the first paragraph. The interactive prompt flow reads the full body correctly because it uses a different code path.\n\n## Problems This Causes\n\n- Specs created via `ff spec --ai` with piped body content lose all content after the first blank line\n- Detailed requirements, acceptance criteria, and implementation notes are silently dropped\n- The spec appears complete (frontmatter is correct) but the body is truncated\n- Users must manually edit the spec file to restore lost content\n\n## Requirements\n\n### 1. Read full stdin body\n- When body is provided via heredoc or piped stdin, read until actual EOF (not first blank line)\n- Preserve blank lines in the body content\n- Strip only trailing whitespace, not internal blank lines\n\n### 2. Maintain interactive behavior\n- Interactive prompt flow should continue to work as-is\n- Single-paragraph bodies should work unchanged\n\n### 3. Regression prevention\n- Unit test: pipe multi-paragraph body via stdin, verify all paragraphs appear in spec file\n- Unit test: heredoc with blank lines between sections, verify full content preserved\n\n## Acceptance Criteria\n- `echo -e \"## Section 1\\n\\n## Section 2\" | ff spec \"Test spec\" --type feature` produces a spec with both sections\n- `ff spec \"Test spec\" --type feature \u003c\u003c'EOF'` with multi-paragraph body preserves all paragraphs\n- Interactive prompt flow is unchanged\n- Existing tests pass (449 tests, 0 failures)",
       "version": "0.9.7"
@@ -551,13 +553,15 @@
     "SPEC-1784679765": {
       "spec_id": "ff spec generates duplicated H1 heading in spec file",
       "repo_issue_id": 0,
-      "status": "draft",
+      "status": "review",
       "linked_commits": [
-        "6f5005c"
+        "9f894ab"
       ],
       "type": "bug",
       "body": "# ff spec generates duplicated H1 heading in spec file\n\n## Objective\n\nWhen `ff spec` creates a new spec file, the H1 heading is written twice, producing two consecutive `# Title` lines at the top of the body.\n\n## Root Cause\n\n`writeSpecFromTemplate` at `cmd_spec.go:232` generates the body as:\n```go\ncontent := fmt.Sprintf(\"---%s---\\n# %s\\n%s\\n\", frontmatter, title, body)\n```\n\nThe `title` parameter comes from `sanitizeSpecTitle(name)` which does not strip a leading `# ` if the user provides one. Additionally, when the spec name is already a valid title, the `# ` prefix is added unconditionally, but if the body content also starts with `# Title` (from the user or from a previous template), the heading appears twice.\n\nObserved in multiple newly-created spec files where lines 11-12 are identical `# Title` lines.\n\n## Problems This Causes\n\n- Rendered markdown shows the title twice\n- Looks unprofessional in spec listings and web views\n- Violates markdown best practices (single H1 per document)\n\n## Requirements\n\n### 1. Single H1 heading\n- `writeSpecFromTemplate` must emit exactly one `# \u003ctitle\u003e` line\n- If the body already starts with `# \u003ctitle\u003e`, do not add another\n- If the body does not start with `# \u003ctitle\u003e`, prepend it\n\n### 2. Sanitize title input\n- `sanitizeSpecTitle` should strip leading `# ` from user input to prevent double-prefixing\n\n### 3. Regression prevention\n- Unit test: create spec with plain name, verify single H1\n- Unit test: create spec with `# ` prefixed name, verify single H1\n- Unit test: create spec with body starting with `# Title`, verify no duplication\n\n## Acceptance Criteria\n- `ff spec \"My Feature\" --type feature` produces exactly one `# My Feature` line\n- `ff spec \"# My Feature\" --type feature` produces exactly one `# My Feature` line (not `# # My Feature`)\n- Existing tests pass (449 tests, 0 failures)",
-      "version": "0.9.7"
+      "root_cause": "writeSpecFromTemplate always prepends '# \u003ctitle\u003e' to the body, but promptForSpecBody builds a body that already starts with '# \u003ctitle\u003e', producing two H1 lines. sanitizeSpecTitle also did not strip leading '# ' from user input.",
+      "resolution": "writeSpecFromTemplate now checks if the body already starts with '# \u003ctitle\u003e' and skips prepending if so. sanitizeSpecTitle now strips a leading '# ' prefix.",
+      "version": "1.0.0"
     },
     "SPEC-1784690583": {
       "spec_id": "Ff Commit Should Not Set Spec Status By Default",
@@ -567,6 +571,13 @@
       "type": "bug",
       "body": "# Ff Commit Should Not Set Spec Status By Default\nff commit --ai unconditionally sets spec status (draft for feature/bug/refactor, review for chore) even when the spec is already at that status or higher. This causes regressions — e.g. a spec at review gets downgraded to draft on the next commit. Status should only change when --review is explicitly passed. The resolveTargetStatus function should be stripped to only honor --review.",
       "version": "0.9.8"
+    },
+    "SPEC-1784700200": {
+      "spec_id": "Test Stdin Body",
+      "repo_issue_id": 0,
+      "status": "draft",
+      "linked_commits": null,
+      "type": "feature"
     }
   }
 }

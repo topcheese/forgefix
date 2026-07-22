@@ -6,7 +6,7 @@ type: bug
 version: "0.9.7"
 root_cause: ""
 resolution: ""
-linked_commits: []
+linked_commits: ["5e2eaf5"]
 ---
 
 # ff spec truncates multi-line body from heredoc or piped stdin
