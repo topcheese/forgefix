@@ -17,6 +17,7 @@
 - feat: Fix ff sync not promoting review specs to ship - resolveTargetStatus now returns review instead of draft for AI commits (SPEC-1784742157)
 - feat: Remove JSON ledger, make DB canonical spec store, fix sync promotion gate (SPEC-1784679435)
 - feat: Remove aiMode gate from promoteReviewSpecs so ff sync promotes review to ship regardless of --ai flag (SPEC-1784754084)
+- feat: Fix spec title corrupted by sync, document work done, add linked commits (SPEC-1784744046)
 
 ## [Unreleased] - 2026-07-21
 
