@@ -11,6 +11,7 @@
 - feat: Fix linked_commits after amend produced final hash (SPEC-1784672632)
 - feat: Fix UpdateLedgerAfterCommit spec path to use git root (SPEC-1784672632)
 - feat: Clean up corrupted spec, create bug specs for ff spec and ff commit issues (SPEC-1784101811)
+- feat: Write full spec content into 4 truncated spec files (SPEC-1784101811)
 
 ## [Unreleased] - 2026-07-17
 

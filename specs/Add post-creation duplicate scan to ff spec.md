@@ -6,7 +6,7 @@ type: chore
 version: "0.9.6"
 root_cause: ""
 resolution: ""
-linked_commits: ["2371aba"]
+linked_commits: ["2371aba", "b7fa602"]
 ---
 
 # Add Post-Creation Duplicate Scan To `ff spec`

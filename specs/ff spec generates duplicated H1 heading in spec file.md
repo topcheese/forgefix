@@ -8,7 +8,46 @@ root_cause: ""
 resolution: ""
 linked_commits: []
 ---
-# Ff Spec Generates Duplicated H1 Heading In Spec File
-# Ff Spec Generates Duplicated H1 Heading In Spec File
 
-When ff spec creates a new spec file, the H1 heading is written twice. The template at cmd_spec.go:232 generates "# <title>" and the title itself contains the heading prefix, resulting in two consecutive H1 lines (e.g. "# Fix Foo\n# Fix Foo"). This was observed in multiple newly-created spec files. Fix: ensure writeSpecFromTemplate emits the title exactly once, or strip any existing H1 from the body before prepending.
+# ff spec generates duplicated H1 heading in spec file
+
+## Objective
+
+When `ff spec` creates a new spec file, the H1 heading is written twice, producing two consecutive `# Title` lines at the top of the body.
+
+## Root Cause
+
+`writeSpecFromTemplate` at `cmd_spec.go:232` generates the body as:
+```go
+content := fmt.Sprintf("---%s---\n# %s\n%s\n", frontmatter, title, body)
+```
+
+The `title` parameter comes from `sanitizeSpecTitle(name)` which does not strip a leading `# ` if the user provides one. Additionally, when the spec name is already a valid title, the `# ` prefix is added unconditionally, but if the body content also starts with `# Title` (from the user or from a previous template), the heading appears twice.
+
+Observed in multiple newly-created spec files where lines 11-12 are identical `# Title` lines.
+
+## Problems This Causes
+
+- Rendered markdown shows the title twice
+- Looks unprofessional in spec listings and web views
+- Violates markdown best practices (single H1 per document)
+
+## Requirements
+
+### 1. Single H1 heading
+- `writeSpecFromTemplate` must emit exactly one `# <title>` line
+- If the body already starts with `# <title>`, do not add another
+- If the body does not start with `# <title>`, prepend it
+
+### 2. Sanitize title input
+- `sanitizeSpecTitle` should strip leading `# ` from user input to prevent double-prefixing
+
+### 3. Regression prevention
+- Unit test: create spec with plain name, verify single H1
+- Unit test: create spec with `# ` prefixed name, verify single H1
+- Unit test: create spec with body starting with `# Title`, verify no duplication
+
+## Acceptance Criteria
+- `ff spec "My Feature" --type feature` produces exactly one `# My Feature` line
+- `ff spec "# My Feature" --type feature` produces exactly one `# My Feature` line (not `# # My Feature`)
+- Existing tests pass (449 tests, 0 failures)
