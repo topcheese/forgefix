@@ -1,3 +1,8 @@
+## [Unreleased] - 2026-07-22
+
+### 🚀 Release Summary
+- feat: Ledger sync (SPEC-1784703448)
+
 ## [Unreleased] - 2026-07-21
 
 ### 🚀 Release Summary
