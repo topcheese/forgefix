@@ -5,8 +5,9 @@ repo_issue: ""
 type: bug
 version: "0.9.8"
 root_cause: ""
-resolution: ""
-linked_commits: ["114bd49"]
+
+resolution: fixed in 114bd49
+linked_commits: ["558901b", "0553610"]
 ---
 # Fix Isvalidissuetitle Helper Regex For Old Format
 ## Objective

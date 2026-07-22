@@ -6,7 +6,7 @@
       "total_passed": 458,
       "total_failed": 2,
       "historical_floor": 460,
-      "last_update": "2026-07-22 18:05:27"
+      "last_update": "2026-07-22 18:05:42"
     }
   },
   "spec_mappings": {
@@ -620,10 +620,12 @@
       "repo_issue_id": 0,
       "status": "draft",
       "linked_commits": [
-        "114bd49"
+        "558901b",
+        "0553610"
       ],
       "type": "bug",
       "body": "# Fix Isvalidissuetitle Helper Regex For Old Format\n## Objective\nTestIsValidIssueTitle_Helper is failing because the updated regex does not correctly match the old 'type/component: Title' format when the component name is long.\n\n## Root Cause\nThe old format part of the regex was . The issue_validator_test.go has a test case:  which is expected to return false but returns true because the component name 'engine' is short, and the title part is long, and the maxTitleLength check was moved/changed.\n\nActually, the test failure message is:\n\n\nThis means the regex matched, and the length check passed (or failed to fail).\n\n## Requirements\n1. Fix the regex and validation logic to correctly handle both new and old formats.\n2. Ensure the maxTitleLength check (120 for new, likely 60 for old or consistent 120) is enforced correctly.\n3. Fix the failing test case.",
+      "resolution": "fixed in 114bd49",
       "version": "0.9.8"
     }
   }
