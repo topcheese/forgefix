@@ -6,6 +6,7 @@
 - feat: Update spec file and ledger after backlog version update implementation (SPEC-1784672660)
 - feat: Final ledger sync for backlog version update (SPEC-1784672660)
 - feat: Fix redundant title formatting and implement title consistency (SPEC-1784742186)
+- feat: Fix IsValidIssueTitle regex and validation for both formats (SPEC-1784743523)
 
 ## [Unreleased] - 2026-07-21
 

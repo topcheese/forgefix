@@ -6,7 +6,7 @@
       "total_passed": 458,
       "total_failed": 2,
       "historical_floor": 460,
-      "last_update": "2026-07-22 18:05:23"
+      "last_update": "2026-07-22 18:05:27"
     }
   },
   "spec_mappings": {
@@ -590,10 +590,11 @@
       "repo_issue_id": 559,
       "status": "draft",
       "linked_commits": [
-        "b6967e6"
+        "25724ea"
       ],
       "type": "bug",
       "body": "# Fix Redundant Title Formatting In Remote Issues\n\n## Objective\nRemote issue titles currently include a redundant prefix like 'feat/spec: [type][status] Title #123'. The 'feat/spec:' part is unnecessary and clutters the title. Additionally, the spec titles stored in the local database and files should consistently use the same '[type][status] Title' naming scheme to match the remote repository.\n\n## Root Cause\nThe title generation logic in `issue_coordinator.go` and `sync.go` prepends a hardcoded `feat/spec:` label. Local storage (DB/Files) currently stores the raw title without the type/status metadata, leading to inconsistency.\n\n## Requirements\n1. Remove the 'feat/spec:' prefix from remote issue titles.\n2. Ensure the title follows the format: '[type][status] Title'.\n3. Update the local database and spec files so that stored titles include the `[type][status]` prefix, ensuring consistency across local and remote environments.\n4. Verify that all spec types (feat, bug, refactor, chore) are formatted consistently.\n5. Update existing tests to match the new title format and consistency requirements.",
+      "resolution": "fixed in b6967e6",
       "version": "0.9.8"
     },
     "SPEC-1784743251": {
@@ -618,7 +619,9 @@
       "spec_id": "Fix Isvalidissuetitle Helper Regex For Old Format",
       "repo_issue_id": 0,
       "status": "draft",
-      "linked_commits": null,
+      "linked_commits": [
+        "114bd49"
+      ],
       "type": "bug",
       "body": "# Fix Isvalidissuetitle Helper Regex For Old Format\n## Objective\nTestIsValidIssueTitle_Helper is failing because the updated regex does not correctly match the old 'type/component: Title' format when the component name is long.\n\n## Root Cause\nThe old format part of the regex was . The issue_validator_test.go has a test case:  which is expected to return false but returns true because the component name 'engine' is short, and the title part is long, and the maxTitleLength check was moved/changed.\n\nActually, the test failure message is:\n\n\nThis means the regex matched, and the length check passed (or failed to fail).\n\n## Requirements\n1. Fix the regex and validation logic to correctly handle both new and old formats.\n2. Ensure the maxTitleLength check (120 for new, likely 60 for old or consistent 120) is enforced correctly.\n3. Fix the failing test case.",
       "version": "0.9.8"

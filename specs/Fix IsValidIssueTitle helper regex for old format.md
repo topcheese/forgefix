@@ -6,7 +6,7 @@ type: bug
 version: "0.9.8"
 root_cause: ""
 resolution: ""
-linked_commits: []
+linked_commits: ["114bd49"]
 ---
 # Fix Isvalidissuetitle Helper Regex For Old Format
 ## Objective
