@@ -25,6 +25,7 @@
 - feat: Write commit link to spec resolution field instead of full diff (SPEC-1784703448)
 - feat: Update ledger and spec file after commit-link resolution (SPEC-1784703448)
 - feat: Sync ledger state after resolution link update (SPEC-1784703448)
+- feat: Final ledger sync after commit-link resolution implementation (SPEC-1784703448)
 
 ## [Unreleased] - 2026-07-17
 
