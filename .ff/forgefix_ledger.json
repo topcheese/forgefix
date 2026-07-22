@@ -6,7 +6,7 @@
       "total_passed": 459,
       "total_failed": 0,
       "historical_floor": 459,
-      "last_update": "2026-07-22 03:13:06"
+      "last_update": "2026-07-22 03:16:59"
     }
   },
   "spec_mappings": {
@@ -432,8 +432,8 @@
       "repo_issue_id": 0,
       "status": "draft",
       "linked_commits": [
-        "bf5c038",
-        "7640137"
+        "7640137",
+        "8fdcdc5"
       ],
       "type": "bug",
       "body": "# ff archive drops version root_cause resolution and body from DB\n\n## Problem\n\nWhen ff archive runs, it calls db.ArchiveSpec which passes empty strings for version, root_cause, resolution, and body to UpsertSpec. Since UpsertSpec uses ON CONFLICT DO UPDATE, these empty values overwrite whatever was previously stored in the DB. The archived spec record therefore has empty values for all four fields, losing the spec's resolution details permanently.\n\n## Root Cause\n\narchive.go: ArchiveResolvedSpecs() at line 39 calls:\n    db.ArchiveSpec(specID, entry.SpecID, specType, entry.RepoIssueID)\n\nIt doesn't pass entry.Version, entry.RootCause, entry.Resolution, or entry.Body even though the ledger SpecEntry has all four fields populated (populated by SyncFromSpecsDir which reads them from the spec file frontmatter).\n\ndb.go: ArchiveSpec() at line 230 calls:\n    db.UpsertSpec(specID, title, \"archived\", specType, \"\", repoIssueID, \"\", \"\", \"\")\n\nThe empty strings for version, rootCause, resolution, and body blow away existing DB values via the ON CONFLICT DO UPDATE clause.\n\nMeanwhile, the normal sync path (ImportDB at line 637) properly passes all fields:\n    db.UpsertSpec(specID, entry.SpecID, entry.Status, entry.Type, entry.Version, entry.RepoIssueID, entry.RootCause, entry.Resolution, entry.Body)\n\nSo the ledger has the data, the DB supports the columns, but the archive path drops it all.\n\n## Requirements\n\n1. ArchiveResolvedSpecs must pass Version, RootCause, Resolution, and Body from the ledger entry to ArchiveSpec\n2. ArchiveSpec must accept and forward all four fields to UpsertSpec\n3. No regression in the archive flow — archived specs still get status \"archived\" and their files removed\n4. The archived DB record preserves the spec's version, root_cause, resolution, and body as they were before archiving",
@@ -510,9 +510,13 @@
       "spec_id": "ff commit amend cycle corrupts linked_commits across multiple commits",
       "repo_issue_id": 0,
       "status": "draft",
-      "linked_commits": null,
+      "linked_commits": [
+        "199b4b3"
+      ],
       "type": "bug",
       "body": "# ff commit amend cycle corrupts linked_commits across multiple commits\n\n## Objective\n\nThe `ff commit` amend cycle overwrites `linked_commits` in both the ledger and spec file during each commit-amend pair, causing data loss and incorrect commit hashes on rapid successive commits.\n\n## Root Cause\n\n`ff commit` follows this flow:\n1. `AutoStageAndCommit` creates a commit with hash H1\n2. Metadata changes (spec file, ledger) are staged\n3. `amendLastCommit` amends the commit, producing hash H2\n4. `finalizeCommitAfterAmend` tries to replace H1 with H2 in `linked_commits`\n\nThe problem is that `UpdateLedgerAfterCommit` (step 0, before amend) appends H1 to `linked_commits`. Then `finalizeCommitAfterAmend` (step 4) replaces the last entry. But when multiple `ff commit` calls happen in succession:\n- Commit A: appends H1_A, amend produces H2_A, replaces with H2_A ✓\n- Commit B: appends H1_B, amend produces H2_B, replaces with H2_B — but H1_B was never in the list if A's amend already replaced it\n\nThe underlying issue is that the amend changes the commit hash *after* the hash was recorded, and the replacement logic doesn't account for the intermediate state correctly. Additionally, `UpdateLedgerAfterCommit` and `finalizeCommitAfterAmend` both write to the spec file and ledger, creating race conditions.\n\n## Problems This Causes\n\n- `linked_commits` contains wrong hashes (pre-amend instead of post-amend)\n- Multiple consecutive `ff commit` calls corrupt the list, losing entries\n- Requires manual raw git commits to fix (see SPEC-1784678126)\n- Observed in production: three consecutive `ff commit` calls each corrupted the list\n\n## Requirements\n\n### 1. Atomic commit + metadata update\n- The commit hash recorded in `linked_commits` must be the final post-amend hash\n- The amend and the linked_commits update must be atomic — no intermediate state where the hash is wrong\n\n### 2. No duplicate entries\n- `finalizeCommitAfterAmend` must not append a hash that already exists in the list\n- Already fixed in SPEC-1784672632, but the amend-then-replace cycle itself remains problematic\n\n### 3. Idempotent commits\n- Re-running `ff commit` with the same message should not corrupt an already-correct `linked_commits` list\n- If the last linked_commit already equals HEAD, do nothing\n\n## Acceptance Criteria\n- Three consecutive `ff commit` calls produce a `linked_commits` list with exactly three correct post-amend hashes\n- No duplicate entries in `linked_commits` after any number of consecutive commits\n- Each entry in `linked_commits` corresponds to an actual commit in the git log\n- Existing tests pass (449 tests, 0 failures)\n- Unit test: run three consecutive `ff commit` calls, verify all three hashes are correct and unique",
+      "root_cause": "UpdateLedgerAfterCommit appended the pre-amend hash, then finalizeCommitAfterAmend tried to replace it but failed when multiple commits happened in succession. Additionally, finalizeCommitAfterAmend used the wrong spec path (.ff/specs/ instead of git root).",
+      "resolution": "Fixed in SPEC-1784672632: corrected spec path in finalizeCommitAfterAmend, fixed duplicate append logic, and ensured linked_commits uses the final post-amend hash.",
       "version": "0.9.7"
     },
     "SPEC-1784678126": {

@@ -5,7 +5,7 @@ repo_issue: ""
 type: bug
 version: "0.9.7"
 root_cause: "ArchiveResolvedSpecs called db.ArchiveSpec(specID, entry.SpecID, specType, entry.RepoIssueID) without passing Version, RootCause, Resolution, or Body. ArchiveSpec then called UpsertSpec with empty strings for all four, which overwrote existing DB values via ON CONFLICT DO UPDATE."
-linked_commits: ["bf5c038", "7640137"]
+linked_commits: ["bf5c038", "8fdcdc5"]
 ---
 # ff archive drops version root_cause resolution and body from DB
 
