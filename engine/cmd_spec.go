@@ -266,14 +266,16 @@ func createSpec(configDir, name, bodyContent string, d *CommandDispatcher, flags
 
 	// Tier 1: --type is required in --ai mode (FR-6)
 	if flags.AIMode && flags.SpecType == "" {
-		return fmt.Errorf("--type is required in --ai mode: valid values are feature, bug, refactor")
+		return fmt.Errorf("--type is required in --ai mode: valid values are feature, bug, refactor, chore")
 	}
 	if flags.AIMode && flags.SpecType != "" && !isValidSpecType(flags.SpecType) {
-		return fmt.Errorf("invalid --type %q: valid values are feature, bug, refactor", flags.SpecType)
+		return fmt.Errorf("invalid --type %q: valid values are feature, bug, refactor, chore", flags.SpecType)
 	}
 
-	// Resolve version from DB (not the compile-time const).
-	specVersion := CurrentVersion(configDir)
+	// Resolve version from DB (not the compile-time const). New specs get
+	// the NEXT version (current + 1 patch) so each spec tracks the release
+	// it will ship in, not the one that was just cut.
+	specVersion := incrementPatchVersion(CurrentVersion(configDir))
 	if flags.SpecVersion != "" {
 		specVersion = flags.SpecVersion
 	}
@@ -555,7 +557,7 @@ func promptForSpecBody(title string) string {
 // isValidSpecType checks whether the given type is one of the known spec types.
 func isValidSpecType(t string) bool {
 	switch t {
-	case "feature", "bug", "refactor":
+	case "feature", "bug", "refactor", "chore":
 		return true
 	default:
 		return false

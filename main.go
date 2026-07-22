@@ -65,7 +65,7 @@ func main() {
 	disp := engine.NewCommandDispatcher(projectRoot, wd, os.Stdout, os.Stderr)
 
 	switch cmd {
-	case "version", "-v", "--version", "help", "--help", "spec", "specs", "archive", "commit", "sync", "ship", "backlog", "--install-shortcut", "--kanban":
+	case "version", "-v", "--version", "help", "--help", "spec", "specs", "archive", "commit", "sync", "ship", "--install-shortcut", "--kanban":
 		var specArgs []string
 		if len(os.Args) > 2 {
 			specArgs = os.Args[2:]

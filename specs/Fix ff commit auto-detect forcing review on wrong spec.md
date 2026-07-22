@@ -1,11 +1,11 @@
 ---
 spec_id: "SPEC-1784105008"
-status: draft
+status: review
 repo_issue: 539
 type: bug
 version: "0.9.7"
 root_cause: "ff commit --ai calls autoDetectSpecFromWorkingTree (cmd_commit.go:824) which picks the most-recently-modified ACTIVE spec and binds the commit to it, then unconditionally sets that spec to status='review' (cmd_commit.go:247/251). When multiple specs were touched (e.g. a cleanup commit touching many files, or the user editing a different spec just before committing), the auto-detect binds to the wrong spec and force-promotes it to review — creating more problems than the convenience solves. The --spec flag exists to bind explicitly, but the default auto-detect overrides intent."
-linked_commits: ["01b47d6"]
+linked_commits: ["01628d0"]
 ---
 
 # Fix `ff commit --ai` Auto-Detect Forcing Wrong Spec To `review`

@@ -2,11 +2,11 @@
   "entries": {
     "forgefix": {
       "pipeline_id": "forgefix",
-      "total_ran": 449,
-      "total_passed": 449,
+      "total_ran": 459,
+      "total_passed": 459,
       "total_failed": 0,
-      "historical_floor": 449,
-      "last_update": "2026-07-22 01:11:46"
+      "historical_floor": 459,
+      "last_update": "2026-07-22 02:41:08"
     }
   },
   "spec_mappings": {
@@ -223,9 +223,9 @@
     "SPEC-1784105008": {
       "spec_id": "Fix `ff commit --ai` Auto-Detect Forcing Wrong Spec To `review`",
       "repo_issue_id": 539,
-      "status": "draft",
+      "status": "review",
       "linked_commits": [
-        "01b47d6"
+        "01628d0"
       ],
       "type": "bug",
       "body": "# Fix `ff commit --ai` Auto-Detect Forcing Wrong Spec To `review`\n\n## Objective\n\n`ff commit --ai` auto-detects the most-recently-modified active spec, binds\nthe commit to it, and **force-sets it to `review`**. This frequently binds to\nthe wrong spec and prematurely promotes it to `review`, causing more problems\nthan the convenience solves. This spec changes that behavior.\n\n## Root Cause (from code reading)\n\n- `autoDetectSpecFromWorkingTree` (cmd_commit.go:824) prefers active specs\n  and picks the most recently modified one (lines 819-849). Comment says it\n  exists \"so that `ff commit --ai` can bind to it without an interactive\n  prompt.\"\n- After detection, `ff commit --ai` calls `UpdateSpecFileStatus(specFile,\n  \"review\")` (cmd_commit.go:247) and sets `entry.Status = \"review\"`\n  (cmd_commit.go:251) — **unconditionally**, regardless of whether the user\n  intended that spec.\n- The `--spec \u003cid\u003e` flag already allows explicit binding, but the default\n  path ignores intent and force-promotes whatever file was last touched.\n\n## Problems This Causes\n\n- A cleanup/multi-file commit (e.g. deleting rogue specs) gets bound to the\n  cleanup spec and forces it to `review` even when the user may not want it\n  promoted yet.\n- Editing a spec file moments before committing an unrelated change steals\n  the binding to the edited spec.\n- Force-promotion to `review` bypasses deliberate status workflow.\n\n## Requirements\n\n### 1. Do not force `review` on auto-detect\n- When `ff commit --ai` auto-detects a spec (no `--spec` given), bind the\n  commit to it but **do NOT auto-promote to `review`** unless the spec is\n  already in a state that implies readiness, or the user explicitly opts in.\n- Prefer leaving the spec at its current status, or require an explicit\n  `--review` flag to promote.\n\n### 2. Prefer explicit binding\n- Make `--spec \u003cid\u003e` the recommended path; when provided, bind and promote\n  only per the user's explicit intent (e.g. `--review` to promote).\n- When auto-detect is used and ambiguous (multiple recently-modified active\n  specs), either (a) prompt, or (b) refuse and require `--spec`, rather than\n  guessing.\n\n### 3. Keep convenience for the simple case\n- Single-active-spec repos should still work without `--spec` (bind + no\n  forced promotion, or promote only with `--review`).\n\n## Acceptance Criteria\n\n- `ff commit --ai` without `--spec` binds the commit but does NOT force the\n  detected spec to `review` unless `--review` is passed.\n- `ff commit --ai --spec \u003cid\u003e` binds explicitly and only promotes when\n  `--review` is given.\n- Ambiguous auto-detect (multiple recent active specs) prompts or requires\n  `--spec` instead of guessing.\n- No regression to the 13 pre-existing failing integration tests (additive\n  change; those remain tracked separately).",
@@ -418,10 +418,12 @@
       "linked_commits": [
         "0bab943",
         "7cfb30f",
-        "ba96395"
+        "ba96395",
+        "8bed541"
       ],
       "type": "refactor",
       "body": "# Problem\n\nThe `ff backlog \u003cspec_id\u003e` command is a standalone subcommand that manages spec status. It has its own usage, help text, and dispatch entry in command_dispatcher.go. This is confusing — spec status management should live under `ff spec`, not as a separate command with an unrelated name ('backlog' only describes one possible transition, not what the command does).\n\n## Current Behavior\n\n- `ff backlog \u003cspec_id\u003e` moves a spec to \"backlog\" status (if not already there)\n- If already backlog, it shows an interactive promotion menu: 1. in-progress, 2. review, 3. ship, 4. close, 5. delete\n- Both spec file frontmatter and ledger are updated atomically\n- `ff spec \u003cname\u003e` only creates new specs — it has no capability to manage existing specs\n\n## Requirements\n\n1. Remove `ff backlog` as a standalone command (remove dispatch entry, remove help text, remove handler code)\n2. Add `--status \u003cstatus\u003e` flag to `ff spec` for non-interactive status changes: `ff spec \u003cspec_id\u003e --status review`\n3. When `ff spec \u003cspec_id\u003e` is called on an existing spec without `--status` or `--delete`, show the interactive promotion menu (same logic as current promptAdvancement)\n4. Both spec file and ledger must be updated atomically on every status change\n5. The interactive menu must support all valid status transitions: in-progress, review, ship, close, delete\n6. `ff commit` (human, explicit) sets the bound spec to `review` — the human has tested the code before committing and is intentionally marking it ready for review\n7. `ff commit --ai` (AI/agent mode) sets the bound spec to `draft` — the AI ran tests but a human must verify before promotion to `review`\n8. No `--review` flag is needed on `ff commit` — the human/AI distinction already determines the post-commit status\n9. All valid status values must be accepted by `--status`: backlog, draft, in-progress, review, ship, closed\n\n## Implementation\n\n- Move the interactive promotion menu (currently promptAdvancement in cmd_backlog.go) into cmd_spec.go\n- Create a shared setSpecStatus(specID, status, configDir) helper that updates both spec file and ledger atomically\n- Rename handleBacklog to handleSpecStatus or inline into handleSpec\n- Remove the `backlog` case from command_dispatcher.go\n- Update help text accordingly\n- Keep `ff backlog` as a backward-compatible alias for one release cycle (optional — we can skip this since 0.8.5 hasn't shipped yet)\n- `ff commit`: after resolving the spec and creating the commit, set status to `review` (both file + ledger)\n- `ff commit --ai`: after commit, set status to `draft` (both file + ledger) — AI output needs human verification\n- No need for a separate `--review` flag; the `--ai` flag is the discriminator\n- Update `ff help` and `ff spec --help` text to reflect `--status` flag and the removal of `ff backlog`\n- Update any internal docs or man pages that reference `ff backlog` or the old promotion model\n\n## Acceptance Criteria\n\n1. `ff backlog \u003cspec_id\u003e` produces \"unknown command\" or routes to help\n2. `ff spec \u003cspec_id\u003e --status review` promotes the spec to review (both file + ledger)\n3. `ff spec \u003cspec_id\u003e` (on existing spec, without flags) shows interactive menu\n4. `ff spec \u003cspec_id\u003e --status invalid` shows error with valid statuses\n5. `ff spec \u003cnew-name\u003e` still creates a new spec (no regression)\n6. `ff spec \u003cspec_id\u003e --delete` still deletes a spec (no regression)\n7. All existing tests pass",
+      "root_cause": "ff backlog was a standalone command for spec status management, duplicating logic that belongs under ff spec. Collapsing it into ff spec --status simplifies the CLI surface and unifies status management under one command.",
       "version": "0.9.7"
     },
     "SPEC-1784263151": {

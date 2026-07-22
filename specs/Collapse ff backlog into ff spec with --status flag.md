@@ -1,10 +1,11 @@
----spec_id: "SPEC-1784262174"
+---
+spec_id: "SPEC-1784262174"
 status: draft
 repo_issue: 546
 type: refactor
 version: "0.9.7"
-root_cause: ""
-linked_commits: ["1a79972", "ba96395", "0bab943"]
+root_cause: "ff backlog was a standalone command for spec status management, duplicating logic that belongs under ff spec. Collapsing it into ff spec --status simplifies the CLI surface and unifies status management under one command."
+linked_commits: ["1a79972", "8bed541"]
 ---
 # Problem
 

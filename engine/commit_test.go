@@ -831,6 +831,135 @@ repo_issue: ""
 	}
 }
 
+func TestRunCommit_HumanChore_SetsShip(t *testing.T) {
+	tmpDir := t.TempDir()
+	initGitRepo(t, tmpDir)
+
+	specDir := filepath.Join(tmpDir, "specs")
+	if err := os.MkdirAll(specDir, 0755); err != nil {
+		t.Fatal(err)
+	}
+	specFile := filepath.Join(specDir, "SPEC-CHORE1.md")
+	specContent := `---
+spec_id: "SPEC-CHORE1"
+status: in-progress
+type: chore
+repo_issue: ""
+---
+# Chore Spec
+`
+	if err := os.WriteFile(specFile, []byte(specContent), 0644); err != nil {
+		t.Fatal(err)
+	}
+
+	workFile := filepath.Join(tmpDir, "work.txt")
+	if err := os.WriteFile(workFile, []byte("work"), 0644); err != nil {
+		t.Fatal(err)
+	}
+
+	d := &CommandDispatcher{Stdout: io.Discard, Stderr: io.Discard}
+	// Human commit (aiMode=false) on chore spec → should set "ship"
+	_, _, _, err := runCommit(tmpDir, "update deps [SPEC-CHORE1]", "SPEC-CHORE1", "", "", false, d, "", false)
+	if err != nil {
+		t.Fatalf("runCommit failed: %v", err)
+	}
+
+	data, err := os.ReadFile(specFile)
+	if err != nil {
+		t.Fatal(err)
+	}
+	got := string(data)
+	if !strings.Contains(got, "status: ship") {
+		t.Errorf("expected status to be ship for human chore commit, got:\n%s", got)
+	}
+}
+
+func TestRunCommit_AIChore_SetsReview(t *testing.T) {
+	tmpDir := t.TempDir()
+	initGitRepo(t, tmpDir)
+
+	specDir := filepath.Join(tmpDir, "specs")
+	if err := os.MkdirAll(specDir, 0755); err != nil {
+		t.Fatal(err)
+	}
+	specFile := filepath.Join(specDir, "SPEC-CHORE2.md")
+	specContent := `---
+spec_id: "SPEC-CHORE2"
+status: draft
+type: chore
+repo_issue: ""
+---
+# Chore Spec
+`
+	if err := os.WriteFile(specFile, []byte(specContent), 0644); err != nil {
+		t.Fatal(err)
+	}
+
+	workFile := filepath.Join(tmpDir, "work.txt")
+	if err := os.WriteFile(workFile, []byte("work"), 0644); err != nil {
+		t.Fatal(err)
+	}
+
+	d := &CommandDispatcher{Stdout: io.Discard, Stderr: io.Discard}
+	// AI commit (aiMode=true) on chore spec → should set "review"
+	_, _, _, err := runCommit(tmpDir, "update deps [SPEC-CHORE2]", "SPEC-CHORE2", "", "", true, d, "", false)
+	if err != nil {
+		t.Fatalf("runCommit failed: %v", err)
+	}
+
+	data, err := os.ReadFile(specFile)
+	if err != nil {
+		t.Fatal(err)
+	}
+	got := string(data)
+	if !strings.Contains(got, "status: review") {
+		t.Errorf("expected status to be review for AI chore commit, got:\n%s", got)
+	}
+}
+
+func TestRunCommit_AIFeature_SetsDraft(t *testing.T) {
+	tmpDir := t.TempDir()
+	initGitRepo(t, tmpDir)
+
+	specDir := filepath.Join(tmpDir, "specs")
+	if err := os.MkdirAll(specDir, 0755); err != nil {
+		t.Fatal(err)
+	}
+	specFile := filepath.Join(specDir, "SPEC-AIF1.md")
+	specContent := `---
+spec_id: "SPEC-AIF1"
+status: in-progress
+type: feature
+repo_issue: ""
+---
+# Feature Spec
+`
+	if err := os.WriteFile(specFile, []byte(specContent), 0644); err != nil {
+		t.Fatal(err)
+	}
+
+	workFile := filepath.Join(tmpDir, "work.txt")
+	if err := os.WriteFile(workFile, []byte("work"), 0644); err != nil {
+		t.Fatal(err)
+	}
+
+	d := &CommandDispatcher{Stdout: io.Discard, Stderr: io.Discard}
+	// AI commit (aiMode=true) on feature spec, no --review → should set "draft"
+	_, _, _, err := runCommit(tmpDir, "implement feature [SPEC-AIF1]", "SPEC-AIF1", "", "", true, d, "", false)
+	if err != nil {
+		t.Fatalf("runCommit failed: %v", err)
+	}
+
+	data, err := os.ReadFile(specFile)
+	if err != nil {
+		t.Fatal(err)
+	}
+	got := string(data)
+	if !strings.Contains(got, "status: draft") {
+		t.Errorf("expected status to be draft for AI feature commit without --review, got:\n%s", got)
+	}
+}
+
 func initGitRepo(t *testing.T, dir string) {
 	t.Helper()
 	runGit(t, dir, "init")

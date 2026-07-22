@@ -14,6 +14,7 @@
 - feat: Write full spec content into 4 truncated spec files (SPEC-1784101811)
 - feat: Reset SPEC-1784101811 to draft, fix type and clear stale linked_commits (SPEC-1784101811)
 - feat: fix:  stop auto-promoting to review on ff commit --ai (SPEC-1784105008)
+- feat: collapse ff backlog into ff spec --status, fix version bug, add chore type, implement chore commit behavior, update help and docs (SPEC-1784262174)
 
 ## [Unreleased] - 2026-07-17
 

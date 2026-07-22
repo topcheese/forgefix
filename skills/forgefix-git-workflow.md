@@ -15,8 +15,9 @@ Full lifecycle:
   ff spec --ai --type bug <title>  → Create bug spec with --type enforcement
   ff spec --ai --root-cause "..."  → Document root cause at creation time
   Implement code                   → Write against the spec
-  ff commit --ai <msg>             → Auto-detect spec, commit with binding, set "review"
+  ff commit --ai <msg>             → Auto-detect spec, commit with binding, set "draft"
   ff commit --ai --body "..."      → Commit with multi-line message body
+  ff commit --ai --review <msg>    → Commit and promote spec to "review"
   ff sync --ai                     → Sync to remote issue tracker, auto-promote to "ship"
   ff ship --ai                     → Push, close issues, set "closed"
   ff archive --ai                  → Archive closed specs into timestamped document
@@ -26,7 +27,7 @@ AGENT WORKFLOW (exactly five steps):
   2. ff spec --ai <title>          → Create a spec (issue contract)
   3. [OUTPUT PRE-COMMIT SUMMARY]   → Print structured summary BEFORE calling ff commit
   4. ff test --ai                  → Write the spec's tests, implement against the spec, run tests
-  5. ff commit --ai <msg>          → Only after tests pass + summary output: auto-detect spec, commit with binding, set "review"
+  5. ff commit --ai <msg>          → Only after tests pass + summary output: auto-detect spec, commit with binding, set "draft"
 
 CRITICAL RULES:
   - Always use the installed `ff` binary with `--ai` flag. Never `go run .`, `./ff`, or any direct binary path — these bypass the ledger, spec binding, and housekeeping. The installed `ff` is the ONLY valid entry point.
@@ -266,11 +267,13 @@ ff specs --all        # Include closed specs
 draft → review → ship → closed → archived
 ```
 
-With `--ai`: `ff commit --ai` sets review, `ff sync --ai` promotes to ship, `ff ship --ai` sets closed, `ff archive --ai` archives.
+With `--ai`: `ff commit --ai` sets draft, `ff sync --ai` promotes to ship, `ff ship --ai` sets closed, `ff archive --ai` archives.
+With `--ai --review`: `ff commit --ai --review` sets review (skip draft).
+Without `--ai`: edit the `status` field in the spec file's YAML frontmatter manually, or use `ff spec <id> --status <status>`.
 
-Without `--ai`: edit the `status` field in the spec file's YAML frontmatter manually.
+Chore commits: human `ff commit` on chore specs sets ship (skip review); AI `ff commit --ai` on chore specs sets review.
 
-**Do not skip states.** The Shipping Gate (`ff ship`) rejects any spec not in `ship` status. The promote function (`promoteReviewSpecs` in `sync.go`) only promotes `review` to `ship`, not draft or backlog.
+**Do not skip states.** The Shipping Gate (`ff ship`) rejects any spec not in `ship` status. The promote function (`promoteReviewSpecs` in `sync.go`) only promotes `review` to `ship`, not draft or in-progress.
 
 ### 10. Sync to Remote Issue Tracker
 
@@ -329,7 +332,7 @@ ff git log --oneline
 
 **Exit codes are preserved.** If `ff log -999` returns exit code 128, it matches `git log -999`.
 
-**Known ForgeFix commands take priority:** `commit`, `spec`, `sync`, `ship`, `specs`, `archive`, `help`, `version`, `backlog`, `status`, `config`, `export`, `import` always route to their native handlers.
+**Known ForgeFix commands take priority:** `commit`, `spec`, `sync`, `ship`, `specs`, `archive`, `help`, `version`, `status`, `config`, `export`, `import` always route to their native handlers.
 
 **Configurable opt-out:** Set `git_passthrough: false` in `<project>_ff.yaml` to restore the original behavior (unknown commands fall through to the test runner).
 
@@ -468,10 +471,10 @@ go build ./...
 ```
 1. ff spec user-authentication                  → draft
 2. Edit specs/user-authentication.md            → fill in requirements
-3. Edit status to "backlog"                     → backlog
+3. Edit status to "in-progress"                   → in-progress
 4. Implement auth logic
-5. ff commit --spec SPEC-X "add JWT middleware"  → review
-6. ff commit --spec SPEC-X "add login endpoint"  → review
+5. ff commit --spec SPEC-X "add JWT middleware"  → in-progress (no status change)
+6. ff commit --spec SPEC-X "add login endpoint"  → in-progress (no status change)
 7. ff sync                                      → create/update remote issue
 8. Edit status to "ship"                        → ship (approved)
 9. ff ship                                      → closed + release
@@ -484,8 +487,8 @@ go build ./...
 1. ff spec --ai --type bug "fix login null pointer"          → draft
 2. (optionally) ff spec --ai --root-cause "null check missing on session object" --type bug "fix null pointer" → draft with root cause
 3. Implement fix
-4. ff commit --ai "fix null check"                → commit bound to spec
-5. Edit spec status to "review" (manual)          → review
+4. ff commit --ai "fix null check"                → commit bound to spec, set "draft"
+5. ff commit --ai --review "ready for review"     → commit bound to spec, set "review"
                                                     ─────────────────
                                                     Agent stops here.
                                                     HUMAN-ONLY:
@@ -556,7 +559,7 @@ The ledger doesn't replace git tags — tags remain the source of truth for rele
 
 `ff ship` is the **Strict Shipping Gate**. It checks every active spec:
 
-- **Rejects** if any spec is `backlog` or `in-progress`
+- **Rejects** if any spec is `draft` or `in-progress`
 - **Passes** if all active specs are `ship` or `closed`
 - With `--ai`, version prompts are auto-confirmed
 - On success: pushes commits, runs housekeeping immediately (close issues, sync metadata → `closed`)

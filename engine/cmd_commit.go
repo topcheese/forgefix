@@ -210,10 +210,8 @@ func runCommit(wd, msg, flagSpecID, specType, specVersion string, aiMode bool, d
 	if specID != "" {
 		configDir := SpecConfigDir(wd)
 		specDir := filepath.Join(wd, "specs")
-		// Only promote to review when --review is explicitly passed.
-		// Without --review, leave the spec at its current status.
-		if promoteReview {
-			targetStatus := "review"
+		targetStatus := resolveTargetStatus(wd, specID, aiMode, promoteReview)
+		if targetStatus != "" {
 			if specFile, fErr := findSpecFileByID(specDir, specID); fErr == nil {
 				_ = UpdateSpecFileStatus(specFile, targetStatus)
 			}
@@ -1052,4 +1050,66 @@ func amendLastCommit(wd string) error {
 		return fmt.Errorf("amend: %w", err)
 	}
 	return git.Amend()
+}
+
+// resolveTargetStatus determines the post-commit spec status based on the
+// spec type and whether the commit was made by a human or AI agent.
+//
+// Rules:
+//   - Human commit (aiMode=false):
+//     - feature/bug/refactor + --review flag → "review"
+//     - feature/bug/refactor (no --review)   → "" (no change)
+//     - chore                                 → "ship" (skip review)
+//   - AI commit (aiMode=true):
+//     - feature/bug/refactor + --review flag → "review"
+//     - feature/bug/refactor (no --review)   → "draft"
+//     - chore                                 → "review"
+func resolveTargetStatus(wd, specID string, aiMode, promoteReview bool) string {
+	if promoteReview {
+		return "review"
+	}
+
+	specType := readSpecType(wd, specID)
+	isChore := strings.ToLower(specType) == "chore"
+
+	if aiMode {
+		if isChore {
+			return "review"
+		}
+		return "draft"
+	}
+
+	// Human commit
+	if isChore {
+		return "ship"
+	}
+	return ""
+}
+
+// readSpecType reads the type field from the spec file's frontmatter.
+func readSpecType(wd, specID string) string {
+	specDir := filepath.Join(wd, "specs")
+	specFile, err := findSpecFileByID(specDir, specID)
+	if err != nil {
+		return ""
+	}
+	data, err := os.ReadFile(specFile)
+	if err != nil {
+		return ""
+	}
+	content := string(data)
+	if !strings.HasPrefix(content, "---") {
+		return ""
+	}
+	parts := strings.SplitN(content, "---", 3)
+	if len(parts) < 3 {
+		return ""
+	}
+	for _, line := range strings.Split(parts[1], "\n") {
+		line = strings.TrimSpace(line)
+		if strings.HasPrefix(line, "type:") {
+			return strings.TrimSpace(strings.TrimPrefix(line, "type:"))
+		}
+	}
+	return ""
 }

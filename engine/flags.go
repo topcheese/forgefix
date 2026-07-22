@@ -155,10 +155,20 @@ func SanitizeMessage(msg string) string {
 func PrintHelp(w io.Writer) {
 	fmt.Fprintf(w, `ForgeFix - Automated Test Orchestrator & Bomb Defusal Pipeline
 
-Usage: ff [flags]
+Usage: ff [flags] <command> [args]
+
+Commands:
+  spec <name>            Create a new spec or manage an existing one
+  spec <id> --status S   Set spec status (draft, in-progress, review, ship, closed)
+  spec <id> --delete     Delete a spec
+  specs                  List all specs
+  commit                 Create a commit bound to a spec
+  sync                   Sync specs to remote issue tracker
+  ship                   Push commits and close remote issues
+  archive                Archive resolved specs
 
 Flags:
-  --ai                  Machine-readable JSON output mode
+  --ai                  Machine-readable JSON output mode (agents)
   --help, -h            Display this help text and exit
   --install-shortcut    Install 'ff' shell shortcut globally
   --version, -v         Print version information and exit
@@ -167,16 +177,33 @@ Flags:
   --run, -r <pattern>         Run only tests matching <pattern>
   --kanban                   Open the kanban board viewer
 
+Commit Flags:
+  --spec, -s <id>       Explicitly bind commit to a spec
+  --type, -t <type>     Set spec type (feature, bug, refactor, chore)
+  --ver <version>       Set spec version
+  --body <text>         Multi-line commit message body
+  --review              Promote spec to review status (feature/bug/refactor only)
+
+Spec Flags:
+  --status <status>     Set spec status directly (non-interactive)
+  --root-cause <text>   Document root cause at creation time (bug specs)
+  --search <query>      Search specs by title
+
 Examples:
   ff                    Run test suites with interactive TUI
   ff --ai               Run in headless AI mode (JSON output)
-  ff --install-shortcut Install the 'ff' shorthand command
-  ff -d 300             Run with 5-minute failure decay
-  ff -r TestFoo         Run only tests matching "TestFoo"
-  ff --kanban           View and manage kanban board
-  ff --kanban ls        List board, columns, and cards
-  ff --version          Show version
-  ff --help             Show this help
+  ff spec --ai --type bug "fix null pointer"  Create a bug spec
+  ff spec SPEC-X --status review              Promote spec to review
+  ff commit --ai "implement feature"          Commit bound to auto-detected spec
+  ff commit --ai --review "ready for review"  Commit and promote to review
+  ff commit --ai --type chore "update deps"   Chore commit → ship (human) / review (AI)
+  ff specs               List all specs
+  ff --install-shortcut  Install the 'ff' shorthand command
+  ff -d 300              Run with 5-minute failure decay
+  ff -r TestFoo          Run only tests matching "TestFoo"
+  ff --kanban            View and manage kanban board
+  ff --version           Show version
+  ff --help              Show this help
 `)
 }
 

@@ -15,8 +15,9 @@ Full lifecycle:
   ff spec --ai --type bug <title>  → Create bug spec with --type enforcement
   ff spec --ai --root-cause "..."  → Document root cause at creation time
   Implement code                   → Write against the spec
-  ff commit --ai <msg>             → Auto-detect spec, commit with binding, set "review"
-  ff commit --ai --body "..."      → Commit with multi-line message body
+  ff commit --ai <msg>             → Auto-detect spec, commit with binding, set "draft"
+  ff commit --ai --review "..."   → Commit and promote spec to "review"
+  ff commit --ai --body "..."     → Commit with multi-line message body
   ff sync --ai                     → Sync to remote issue tracker, auto-promote to "ship"
   ff ship --ai                     → Push, close issues, set "closed"
   ff archive --ai                  → Archive closed specs into timestamped document
@@ -41,7 +42,9 @@ ff spec --ai "my feature" → creates spec with SPEC-ID, registers as "draft"
 | Status | Set By | Description |
 |--------|--------|-------------|
 | `draft` | `ff spec --ai` | Newly created |
-| `review` | `ff commit --ai` | Committed, ready for review |
+| `draft` | `ff commit --ai` | Committed (feature/bug/refactor) |
+| `review` | `ff commit --ai --review` | Promoted to review |
+| `review` | `ff commit --ai` (chore) | Chore commits go to review |
 | `ship` | `ff sync --ai` | Auto-promoted from review |
 | `closed` | `ff ship --ai` | Shipped, issue closed |
 | archived | `ff archive --ai` | Moved to archive document |
@@ -51,8 +54,9 @@ ff spec --ai "my feature" → creates spec with SPEC-ID, registers as "draft"
 `ff commit --ai` auto-detects the most-recently-modified active spec:
 
 ```
-ff commit --ai "add user authentication"              → auto-detect spec
-ff commit --ai --spec SPEC-X "fix bug"                → explicit spec
+ff commit --ai "add user authentication"              → auto-detect spec, set "draft"
+ff commit --ai --review "ready for review"            → auto-detect spec, set "review"
+ff commit --ai --spec SPEC-X "fix bug"                → explicit spec, set "draft"
 ff commit --ai --type bug "fix null pointer"          → with metadata
 ff commit --ai --body "multi-line\nbody" "msg body"   → with body for multi-line messages
 ff commit --ai captures git diff in the spec's resolution: field
@@ -66,7 +70,8 @@ Never use `git commit` — even infrastructure changes.
 ```
 ff spec --ai <title>  → creates spec at "draft"
 implement code
-ff commit --ai <msg>  → auto-detects, commits bound, sets "review"
+ff commit --ai <msg>  → auto-detects, commits bound, sets "draft"
+ff commit --ai --review <msg>  → promotes to "review" (or use --review flag)
 ff sync --ai          → syncs issues, promotes review→"ship"
 ff ship --ai          → pushes, drains housekeeping, sets "closed"
 ff archive --ai       → archives closed specs
