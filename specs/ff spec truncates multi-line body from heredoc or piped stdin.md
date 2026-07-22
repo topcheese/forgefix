@@ -1,11 +1,11 @@
 ---
 spec_id: "SPEC-1784679743"
-status: draft
+status: review
 repo_issue: ""
 type: bug
 version: "0.9.7"
-root_cause: ""
-resolution: ""
+root_cause: "parseSpecPositional only reads body from CLI args. Piped stdin is never read, so heredoc/pipe input is silently ignored."
+resolution: "handleSpec now checks if stdin is a pipe (ModeCharDevice == 0) and reads the full stdin content as body when no body was provided via args."
 linked_commits: ["5e2eaf5"]
 ---
 

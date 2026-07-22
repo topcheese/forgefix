@@ -1,17 +1,12 @@
----spec_id: "SPEC-1784103956"
+---
+spec_id: "SPEC-1784103956"
 status: review
 repo_issue: 537
 type: bug
 version: "0.9.6"
-root_cause: "runUpdate (engine/command_dispatcher.go:160) handles update failures by printing to stderr and returning — e.g. the 'no asset found' branch (line 187) does fmt.Fprintf(stderr, ...) then returns. It never calls EmitAIError (execute.go:536), which exists specifically to emit structured errors, nor does it enqueue the failure to the background queue for later attention. So update failures (no asset, download error, release fetch error) are silently dropped from any persistent/attention path and only flash on the console."
+root_cause: "runUpdate handles update failures by printing to stderr and returning. It never calls EmitAIError or enqueues to the background queue, so update failures are silently dropped."
+resolution: "Added EmitAIError and QueueUpdateFailure calls to all three failure paths in runUpdate: UPDATE_RELEASE_FETCH_FAILED, UPDATE_NO_ASSET, UPDATE_DOWNLOAD_FAILED."
 linked_commits: ["a1ddbff"]
----
-   spec_id: "SPEC-1784103956"
-  -status: draft
-  +status: review
-   repo_issue: ""
-   type: bug
-   version: "0.9.6"
 ---
 
 # Fix `ff -v` Update "No Asset Found" Error Not Captured Or Logged

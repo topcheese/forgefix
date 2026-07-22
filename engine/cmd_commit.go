@@ -49,6 +49,9 @@ func (d *CommandDispatcher) handleCommit(args []string) (CommandResult, error) {
 			fmt.Fprintf(d.Stderr, "warning: failed to update ledger after amend: %v\n", err)
 		}
 
+		// Write commit link to resolution field (ground truth: the diff is in git)
+		updateResolutionWithCommitLink(ledgerDir, specID, commitHash)
+
 		if err := SpawnBackgroundSync(ledgerDir, specID); err != nil {
 			fmt.Fprintf(d.Stderr, "warning: failed to spawn background sync: %v\n", err)
 		}
@@ -345,6 +348,47 @@ func findGitRootWalk(dir string) (string, error) {
 		dir = parent
 	}
 	return "", fmt.Errorf("not a git repository")
+}
+
+// updateResolutionWithCommitLink writes "fixed in <hash>" to the spec file's
+// resolution frontmatter field and the DB entry. This provides a human-readable
+// pointer to the implementation commit without stuffing the full diff.
+func updateResolutionWithCommitLink(configDir, specID, commitHash string) {
+	specDir := filepath.Join(configDir, "specs")
+	specFile, err := findSpecFileByID(specDir, specID)
+	if err != nil {
+		return
+	}
+	resolution := "fixed in " + commitHash
+
+	// Update spec file frontmatter
+	data, err := os.ReadFile(specFile)
+	if err != nil {
+		return
+	}
+	content := string(data)
+	parts := strings.SplitN(content, "---", 3)
+	if len(parts) < 3 {
+		return
+	}
+	frontmatter := parts[1]
+	// Replace existing resolution line (single-line or multi-line)
+	re := regexp.MustCompile(`(?m)^resolution:.*(?:\n[ \t]+.*)*`)
+	cleaned := re.ReplaceAllString(frontmatter, "")
+	newFrontmatter := strings.TrimRight(cleaned, "\n") + "\nresolution: " + resolution + "\n"
+	newContent := parts[0] + "---" + newFrontmatter + "---" + parts[2]
+	_ = os.WriteFile(specFile, []byte(newContent), 0644)
+
+	// Update DB entry
+	ledger, lErr := LoadLedger(configDir)
+	if lErr != nil {
+		return
+	}
+	if entry := ledger.GetSpecEntry(specID); entry != nil {
+		entry.Resolution = resolution
+		ledger.SetSpecEntry(specID, entry)
+		_ = SaveLedger(ledger, configDir)
+	}
 }
 
 // findSpecFileByID searches the specs directory for a file with the given spec ID.

@@ -1,90 +1,12 @@
----spec_id: "SPEC-1784102178"
+---
+spec_id: "SPEC-1784102178"
 status: review
 repo_issue: 535
 type: bug
 version: "0.9.6"
-root_cause: "main.go:62 prints engine.Version (the compile-time const flags.Version = \"0.9.0\" from flags.go:10) as the banner on EVERY command except version/help. ff -v instead calls handleVersion() which reads the canonical version from the DB via VersionManager.CurrentVersion() (0.9.6). So the per-command banner uses a stale hardcoded constant while the version command uses the real DB value. checkAndPromptUpdate (command_dispatcher.go:144,147) also compares against the const, so the update checker uses the wrong baseline too."
+root_cause: "main.go prints engine.Version (hardcoded const 0.9.0) as the banner on every command. ff -v reads from DB via CurrentVersion() (0.9.6). checkAndPromptUpdate also compares against the const, using the wrong baseline."
+resolution: "Unified all version display to use CurrentVersion(). main.go banner, handleVersion, and checkAndPromptUpdate now all call CurrentVersion() instead of the const."
 linked_commits: ["e3bbe4e"]
----
-   spec_id: "SPEC-1784102178"
-  -status: draft
-  +status: review
-   repo_issue: ""
-   type: bug
-   version: "0.9.6"
-  diff --git a/version_consistency_test.go b/version_consistency_test.go
-  new file mode 100644
-  index 0000000..0fc3cab
-  --- /dev/null
-  +++ b/version_consistency_test.go
-  @@ -0,0 +1,67 @@
-  +package main
-  +
-  +import (
-  +	"bytes"
-  +	"strings"
-  +	"testing"
-  +
-  +	"ForgeFix/engine"
-  +)
-  +
-  +// TestBannerMatchesVersionCommand is the regression guard for SPEC-1784102178.
-  +//
-  +// It asserts that the per-command banner (main.go prints
-  +// "ForgeFix %s" with engine.CurrentVersion(projectRoot)) reports the SAME
-  +// version as `ff -v`/`ff version` (command_dispatcher.handleVersion prints
-  +// "ForgeFix %s" with CurrentVersion(d.ConfigDir)), even when the project DB
-  +// holds a version that differs from the compile-time const fallback.
-  +//
-  +// Before this fix, the banner used the hardcoded const ("0.9.0") while
-  +// `ff -v` used the DB value ("0.9.6"), so the tool reported two versions.
-  +func TestBannerMatchesVersionCommand(t *testing.T) {
-  +	const want = "9.9.9" // intentionally NOT the compile-time const "0.9.0"
-  +
-  +	tmp := t.TempDir()
-  +	if _, err := engine.InitConfig(tmp); err != nil {
-  +		t.Fatalf("InitConfig: %v", err)
-  +	}
-  +
-  +	// Set a non-default project version in the DB (the canonical source).
-  +	vm := engine.NewVersionManager(tmp)
-  +	if vm == nil {
-  +		t.Fatalf("NewVersionManager returned nil")
-  +	}
-  +	if err := vm.WriteVersion(want); err != nil {
-  +		t.Fatalf("WriteVersion: %v", err)
-  +	}
-  +
-  +	// The per-command banner uses engine.CurrentVersion(projectRoot).
-  +	bannerVer := engine.CurrentVersion(tmp)
-  +	if bannerVer != want {
-  +		t.Fatalf("banner version source returned %q, want %q", bannerVer, want)
-  +	}
-  +	// Sanity: the DB value must not be the compile-time const fallback.
-  +	if bannerVer == engine.Version {
-  +		t.Fatalf("banner fell back to compile-time const %q instead of DB value %q", engine.Version, want)
-  +	}
-  +
-  +	// `ff -v` / `ff version` via the dispatcher.
-  +	var out bytes.Buffer
-  +	d := engine.NewCommandDispatcher(tmp, tmp, &out, &out)
-  +	res, err := d.Execute("version", nil)
-  +	if err != nil {
-  +		t.Fatalf("Execute(version): %v", err)
-  +	}
-  +	if res.ExitCode != 0 {
-  +		t.Fatalf("version command exited %d: %s", res.ExitCode, out.String())
-  +	}
-  +	versionOut := out.String()
-  +	if !strings.Contains(versionOut, "ForgeFix "+bannerVer) {
-  +		t.Fatalf("version output = %q, want it to contain %q", versionOut, "ForgeFix "+bannerVer)
-  +	}
-  +
-  +	// The banner and `ff -v` must agree exactly.
-  +	if !strings.Contains("ForgeFix "+bannerVer, strings.TrimSpace(strings.TrimPrefix(versionOut, "ForgeFix "))) {
-  +		t.Fatalf("banner version %q does not match `ff -v` output %q", bannerVer, versionOut)
-  +	}
-  +}
 ---
 
 # Fix Inconsistent Version Display Across `ff` Commands

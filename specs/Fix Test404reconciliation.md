@@ -1,4 +1,5 @@
----spec_id: "SPEC-1784146853"
+---
+spec_id: "SPEC-1784146853"
 status: review
 repo_issue: ""
 type: bug
@@ -6,25 +7,9 @@ version: "0.9.6"
 root_cause: ""
 linked_commits: ["15be873"]
 ---
-   spec_id: "SPEC-1784146853"
-  -status: draft
-  +status: review
-   repo_issue: ""
-   type: bug
-   version: "0.9.6"
----
+
+# Fix Test404Reconciliation
+
 ## Objective
-Automatically created from failing test Test404Reconciliation during ff --ai run.
 
-## Root Cause
-Test failed - see failure details below.
-
-## Failure Details
-- Test: Test404Reconciliation
-- File: integration_lifecycle_test.go
-- Line: 0
-- Error: === RUN   Test404Reconciliation
-    integration_lifecycle_test.go:511: ff sync failed: exit status 1
-        ForgeFix 0.9.0
-        ⚠ `ff sync` talks to the remote issue tracker and may push metadata. Continue (y/N/q): sync: aborted — not confirmed.
---- FAIL: Test404Reconciliation (0.58s)
+Automatically created from failing test Test404Reconciliation during ff --ai run. The test verifies that ff sync handles orphaned repo_issue 404s gracefully.

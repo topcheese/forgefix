@@ -501,6 +501,9 @@ func (c *IssueCoordinator) PostResolutionComment(issueNumber int, spec *SpecFile
 	if spec.RootCause != "" {
 		body += fmt.Sprintf("**Root Cause:** %s  \n", spec.RootCause)
 	}
+	if spec.Resolution != "" {
+		body += fmt.Sprintf("**Resolution:** %s  \n", spec.Resolution)
+	}
 	body += "---\n**Closed by:** ForgeFix Auto-Resolution"
 	return c.gh.PostComment(issueNumber, body)
 }

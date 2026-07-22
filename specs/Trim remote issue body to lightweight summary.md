@@ -7,6 +7,7 @@ version: "0.9.7"
 root_cause: ""
 resolution: ""
 linked_commits: ["feab430"]
+---
 
 # Trim Remote Issue Body To Lightweight Summary
 
