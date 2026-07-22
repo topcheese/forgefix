@@ -6,7 +6,7 @@ type: feature
 version: "0.9.7"
 root_cause: ""
 resolution: ""
-linked_commits: []
+linked_commits: ["c21650c"]
 ---
 # Update Stale Backlog Version Numbers On Ship
 # Update Stale Backlog Version Numbers On Ship

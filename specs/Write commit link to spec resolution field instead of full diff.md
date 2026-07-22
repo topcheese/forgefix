@@ -9,8 +9,9 @@ root_cause: ""
 
 
 
-resolution: fixed in 05c2496
-linked_commits: ["84c4aa9", "3f38c4a", "4e17751", "8d9d2d5", "7bdcdd7"]
+
+linked_commits: ["84c4aa9", "3f38c4a", "4e17751", "8d9d2d5", "9d8cd85"]
+resolution: fixed in 7bdcdd7
 ---
 # Write Commit Link To Spec Resolution Field Instead Of Full Diff
 ## Objective

@@ -2,6 +2,7 @@
 
 ### 🚀 Release Summary
 - feat: Ledger sync (SPEC-1784703448)
+- feat: Update stale backlog/draft version numbers on ship (SPEC-1784672660)
 
 ## [Unreleased] - 2026-07-21
 

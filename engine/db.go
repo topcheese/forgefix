@@ -597,6 +597,48 @@ func (db *DB) SearchSpecs(query string, limit int) ([]SpecSearchResult, error) {
 	return results, rows.Err()
 }
 
+// GetSpecsByStatus returns all specs with the given statuses.
+func (db *DB) GetSpecsByStatus(statuses ...string) ([]SpecSearchResult, error) {
+	if len(statuses) == 0 {
+		return nil, nil
+	}
+	placeholders := strings.Repeat("?,", len(statuses))
+	placeholders = placeholders[:len(placeholders)-1]
+	query := fmt.Sprintf(`
+		SELECT spec_id, title, status, repo_issue_id
+		FROM specs
+		WHERE status IN (%s)
+		ORDER BY updated_at DESC`, placeholders)
+	args := make([]interface{}, len(statuses))
+	for i, s := range statuses {
+		args[i] = s
+	}
+	rows, err := db.conn.Query(query, args...)
+	if err != nil {
+		return nil, fmt.Errorf("querying specs by status: %w", err)
+	}
+	defer rows.Close()
+
+	var results []SpecSearchResult
+	for rows.Next() {
+		var r SpecSearchResult
+		if err := rows.Scan(&r.SpecID, &r.Title, &r.Status, &r.RepoIssueID); err != nil {
+			return nil, fmt.Errorf("scanning spec: %w", err)
+		}
+		results = append(results, r)
+	}
+	return results, rows.Err()
+}
+
+// UpdateSpecVersion updates the version field of a spec in the database.
+func (db *DB) UpdateSpecVersion(specID, version string) error {
+	_, err := db.conn.Exec(`UPDATE specs SET version = ?, updated_at = datetime('now') WHERE spec_id = ?`, version, specID)
+	if err != nil {
+		return fmt.Errorf("updating spec version: %w", err)
+	}
+	return nil
+}
+
 // ImportLedger reads the current JSON ledger and writes all spec mappings and
 // pipeline entries into the DB. Idempotent — existing rows are overwritten.
 // Uses loadLedgerFromJSONFile (not LoadLedger) to avoid a circular dependency:

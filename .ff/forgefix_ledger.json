@@ -6,7 +6,7 @@
       "total_passed": 459,
       "total_failed": 0,
       "historical_floor": 459,
-      "last_update": "2026-07-22 06:59:49"
+      "last_update": "2026-07-22 07:00:26"
     }
   },
   "spec_mappings": {
@@ -513,7 +513,9 @@
       "spec_id": "Update Stale Backlog Version Numbers On Ship",
       "repo_issue_id": 0,
       "status": "draft",
-      "linked_commits": null,
+      "linked_commits": [
+        "c21650c"
+      ],
       "type": "feature",
       "body": "# Update Stale Backlog Version Numbers On Ship\n# Update Stale Backlog Version Numbers On Ship\n\nWhen ff ship runs, specs in backlog may carry old version numbers from previous releases. These stale versions create confusion about what is planned for the current cycle. On ship, ff should scan all specs in backlog (and draft) status. Any spec whose version field does not match the incoming ship version gets its version field updated to the ship version. This keeps the backlog clean and ensures version numbers always reflect the current release cycle. Do not change specs already in review, ship, or closed status. The update should happen after the version prompt but before the push, so the version bump rides along in the shipped commit.",
       "version": "0.9.7"
@@ -600,12 +602,12 @@
         "006b458",
         "05c2496",
         "3f38c4a",
-        "8d9d2d5",
-        "7bdcdd7"
+        "7bdcdd7",
+        "9d8cd85"
       ],
       "type": "refactor",
       "body": "# Write Commit Link To Spec Resolution Field Instead Of Full Diff\n## Objective\n\nAfter each ff commit, write a lightweight commit link (e.g. \"fixed in abc123\") to the spec file's resolution frontmatter field and DB entry, instead of dumping the full git diff. The diff lives in git history via linked_commits; the resolution field provides a human-readable pointer.\n\n## Root Cause\n\nThe previous implementation (SPEC-1784264619) removed git diff capture entirely from cmd_commit.go, leaving the resolution field empty after commits. The resolution field should contain a traceable link to the implementation commit as ground truth of what was changed.\n\n## Requirements\n\n1. After finalizeCommitAfterAmend, write \"fixed in \u003ccommit_hash\u003e\" to the spec file's resolution frontmatter and DB SpecEntry.Resolution\n2. Restore spec.Resolution in PostResolutionComment so the commit link appears in the remote issue resolution comment\n3. No full diff capture — just the commit hash link",
-      "resolution": "fixed in 05c2496",
+      "resolution": "fixed in 7bdcdd7",
       "version": "0.9.8"
     }
   }

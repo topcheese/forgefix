@@ -82,6 +82,12 @@ func (sc *ShipController) Run() {
 		}
 	}
 
+	// Update version field on all backlog/draft specs to match the ship version
+	// so the backlog stays current with the release cycle.
+	if err := sc.updateBacklogVersion(shipVersion); err != nil {
+		fmt.Fprintf(os.Stderr, "Warning: failed to update backlog version: %v\n", err)
+	}
+
 	// Resolve and validate the ship remote BEFORE pushing. Public remotes
 	// (github.com, gitlab.com, bitbucket.org, ...) require explicit confirmation
 	// and are refused by default and in AI mode. Private remotes (including the
@@ -450,6 +456,57 @@ func (sc *ShipController) enqueueHousekeeping(shipSpecs []string, shipVersion st
 
 	fmt.Printf("Enqueued %d housekeeping task(s) for shipped specs.\n", len(shipSpecs))
 	fmt.Println("Run `ff sync` to close remote issues and post resolution comments.")
+}
+
+// updateBacklogVersion updates the version field of all specs in backlog or draft
+// status to match the ship version, keeping the backlog current with the release cycle.
+func (sc *ShipController) updateBacklogVersion(shipVersion string) error {
+	db, err := OpenDB(sc.configDir)
+	if err != nil {
+		return fmt.Errorf("opening DB: %w", err)
+	}
+	defer db.Close()
+
+	// Get all backlog and draft specs
+	specs, err := db.GetSpecsByStatus("backlog", "draft")
+	if err != nil {
+		return fmt.Errorf("querying backlog/draft specs: %w", err)
+	}
+
+	if len(specs) == 0 {
+		return nil
+	}
+
+	sc.logInfo(fmt.Sprintf("Updating version to %s for %d backlog/draft spec(s)...", shipVersion, len(specs)))
+
+	for _, spec := range specs {
+		// Load the full spec to get the file path
+		fullSpec, err := LoadSpecByID(sc.configDir, spec.SpecID)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "Warning: failed to load spec %s: %v\n", spec.SpecID, err)
+			continue
+		}
+		if fullSpec == nil || fullSpec.FilePath == "" {
+			fmt.Fprintf(os.Stderr, "Warning: spec %s has no file path\n", spec.SpecID)
+			continue
+		}
+
+		// Update the version in the spec file
+		if err := sc.vm.UpdateSpecFileVersion(fullSpec.FilePath, shipVersion); err != nil {
+			fmt.Fprintf(os.Stderr, "Warning: failed to update version in spec %s: %v\n", spec.SpecID, err)
+			continue
+		}
+
+		// Update the version in the DB
+		if err := db.UpdateSpecVersion(spec.SpecID, shipVersion); err != nil {
+			fmt.Fprintf(os.Stderr, "Warning: failed to update DB version for spec %s: %v\n", spec.SpecID, err)
+			continue
+		}
+
+		sc.logInfo(fmt.Sprintf("  Updated %s to version %s", spec.SpecID, shipVersion))
+	}
+
+	return nil
 }
 
 // fatalError logs an error message and exits. In AI mode it also emits an AI event.
