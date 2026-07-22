@@ -6,7 +6,7 @@
       "total_passed": 449,
       "total_failed": 0,
       "historical_floor": 449,
-      "last_update": "2026-07-21 22:42:40"
+      "last_update": "2026-07-22 00:23:17"
     }
   },
   "spec_mappings": {
@@ -178,12 +178,14 @@
       "version": "0.9.6"
     },
     "SPEC-1784101811": {
-      "spec_id": "",
+      "spec_id": "Add Post-Creation Duplicate Scan To `ff spec`",
       "repo_issue_id": 534,
       "status": "review",
-      "linked_commits": null,
-      "type": "feature",
-      "body": "spec_id: \"SPEC-1784101811\"\n  -status: draft\n  +status: review\n   repo_issue: \"\"\n   type: feature\n   version: \"0.9.6\"\n  diff --git a/specs/Fix ff commit auto-detect forcing review on wrong spec.md b/specs/Fix ff commit auto-detect forcing review on wrong spec.md\n  new file mode 100644\n  index 0000000..7f74e90\n  --- /dev/null\n  +++ b/specs/Fix ff commit auto-detect forcing review on wrong spec.md\t\n  @@ -0,0 +1,73 @@\n  +---\n  +spec_id: \"SPEC-1784105008\"\n  +status: draft\n  +repo_issue: \"\"\n  +type: bug\n  +version: \"0.9.6\"\n  +root_cause: \"ff commit --ai calls autoDetectSpecFromWorkingTree (cmd_commit.go:824) which picks the most-recently-modified ACTIVE spec and binds the commit to it, then unconditionally sets that spec to status='review' (cmd_commit.go:247/251). When multiple specs were touched (e.g. a cleanup commit touching many files, or the user editing a different spec just before committing), the auto-detect binds to the wrong spec and force-promotes it to review — creating more problems than the convenience solves. The --spec flag exists to bind explicitly, but the default auto-detect overrides intent.\"\n  +resolution: \"\"\n  +linked_commits: []\n  +---\n  +\n  +# Fix `ff commit --ai` Auto-Detect Forcing Wrong Spec To `review`\n  +\n  +## Objective\n  +\n  +`ff commit --ai` auto-detects the most-recently-modified active spec, binds\n  +the commit to it, and **force-sets it to `review`**. This frequently binds to\n  +the wrong spec and prematurely promotes it to `review`, causing more problems\n  +than the convenience solves. This spec changes that behavior.\n  +\n  +## Root Cause (from code reading)\n  +\n  +- `autoDetectSpecFromWorkingTree` (cmd_commit.go:824) prefers active specs\n  +  and picks the most recently modified one (lines 819-849). Comment says it\n  +  exists \"so that `ff commit --ai` can bind to it without an interactive\n  +  prompt.\"\n  +- After detection, `ff commit --ai` calls `UpdateSpecFileStatus(specFile,\n  +  \"review\")` (cmd_commit.go:247) and sets `entry.Status = \"review\"`\n  +  (cmd_commit.go:251) — **unconditionally**, regardless of whether the user\n  +  intended that spec.\n  +- The `--spec \u003cid\u003e` flag already allows explicit binding, but the default\n  +  path ignores intent and force-promotes whatever file was last touched.\n  +\n  +## Problems This Causes\n  +\n  +- A cleanup/multi-file commit (e.g. deleting rogue specs) gets bound to the\n  +  cleanup spec and forces it to `review` even when the user may not want it\n  +  promoted yet.\n  +- Editing a spec file moments before committing an unrelated change steals\n  +  the binding to the edited spec.\n  +- Force-promotion to `review` bypasses deliberate status workflow.\n  +\n  +## Requirements\n  +\n  +### 1. Do not force `review` on auto-detect\n  +- When `ff commit --ai` auto-detects a spec (no `--spec` given), bind the\n  +  commit to it but **do NOT auto-promote to `review`** unless the spec is\n  +  already in a state that implies readiness, or the user explicitly opts in.\n  +- Prefer leaving the spec at its current status, or require an explicit\n  +  `--review` flag to promote.\n  +\n  +### 2. Prefer explicit binding\n  +- Make `--spec \u003cid\u003e` the recommended path; when provided, bind and promote\n  +  only per the user's explicit intent (e.g. `--review` to promote).\n  +- When auto-detect is used and ambiguous (multiple recently-modified active\n  +  specs), either (a) prompt, or (b) refuse and require `--spec`, rather than\n  +  guessing.\n  +\n  +### 3. Keep convenience for the simple case\n  +- Single-active-spec repos should still work without `--spec` (bind + no\n  +  forced promotion, or promote only with `--review`).\n  +\n  +## Acceptance Criteria\n  +\n  +- `ff commit --ai` without `--spec` binds the commit but does NOT force the\n  +  detected spec to `review` unless `--review` is passed.\n  +- `ff commit --ai --spec \u003cid\u003e` binds explicitly and only promotes when\n  +  `--review` is given.\n  +- Ambiguous auto-detect (multiple recent active specs) prompts or requires\n  +  `--spec` instead of guessing.\n  +- No regression to the 13 pre-existing failing integration tests (additive\n  +  change; those remain tracked separately).\n  +\n  diff --git a/test-specs/templates/spec_template.md b/test-specs/templates/spec_template.md\n  new file mode 100644\n  index 0000000..f956ba1\n  --- /dev/null\n  +++ b/test-specs/templates/spec_template.md\n  @@ -0,0 +1,21 @@\n  +---\n  +spec_id: \"\"\n  +status: draft\n  +repo_issue: \"\"\n  +type: feature\n  +version: \"0.9.6\"\n  +root_cause: \"\"\n  +resolution: \"\"\n  +linked_commits: []\n  +---\n  +# [Title]\n  +\n  +## Objective\n  +\n  +## Requirements\n  +\n  +## Implementation\n  +\n  +## Acceptance Cr... [truncated at 10KB]\n---\n\n# Add Post-Creation Duplicate Scan To `ff spec`\n\n## Objective\n\nClose the gap found in `SPEC-1784101804` (duplicate `spec_id`\nescaped the title-only detector). After `ff spec` / `ff spec --ai`\nwrites a new spec file, automatically scan for duplicates — both an\n**exact `spec_id` collision** and a **title-similarity** match — and\nsurface the result before the spec is treated as live.\n\n## Requirements\n\n### 1. Exact `spec_id` collision check (the missing guard)\n\n- After `writeSpecFromTemplate` assigns `spec_id`, scan all existing\n  `specs/*.md` for the same id. If found, this is a HARD conflict\n  (two files, one id corrupts the ledger).\n- This must run regardless of title — the title-based `FindDuplicateSpec`\n  already covers fuzzy title matches; the id check is the new layer.\n\n### 2. Post-creation scan hook\n\n- Wire the scan into `createSpec` / `handleSpec` immediately after\n  the file is written (before any background `ff sync` is queued).\n- Reuse `listSpecs()` (already parses `spec_id` + `title`) so no\n  new filesystem walk is needed.\n\n### 3. Behavior on detection\n\n- **id collision (hard)**: block creation or auto-link to the existing\n  spec; never leave two files with one id on disk.\n- **title similarity \u003e threshold (soft)**: warn and offer link/update\n  (reuse existing `promptForDuplicateAction` in interactive mode).\n\n### 4. Pros / Cons to explore before locking the design\n\n| Option | Pros | Cons |\n|--------|------|------|\n| Block on id collision, warn on title | Prevents ledger corruption; non-fatal for fuzzy dups | Interactive prompt breaks `--ai` headless mode |\n| Auto-link on any match (title OR id) | Zero manual steps; safe for agents | May silently merge specs the user wanted separate |\n| Warn-only (never block) | Simple; never interrupts flow | Does not actually prevent the SPEC-1784089531 class of bug |\n| Exact-id check at write time + title check deferred to sync | Catches the corruption early, defers fuzzy to existing flow | Two code paths to maintain |\n\n- Decide: should `--ai` mode auto-link (no prompt) or auto-block? The\n  current `promptForDuplicateAction` returns `\"link\"` for AI mode — confirm\n  that is the desired behavior for an id collision too.\n- Performance: `listSpecs` reads every spec file. With 90+ specs this\n  is still sub-millisecond; acceptable for a post-create hook. Confirm\n  no O(n²) scan is introduced if called per-spec in a batch.\n\n## Acceptance Criteria\n\n- Creating a second spec file with an already-used `spec_id` is\n  detected and handled (blocked or auto-linked), not silently written.\n- Title-similarity detection still works (existing `FindDuplicateSpec`\n  behavior preserved).\n- `ff spec --ai` in headless mode does not hang on a prompt for\n  an id collision — it auto-resolves (link or block) and logs it.\n- Unit test: seed two specs with the same `spec_id` + different titles,\n  run the post-create scan, assert collision is reported.\n- No regression in the 13 currently-failing integration tests\n  (this is additive; those remain tracked separately).",
+      "linked_commits": [
+        "6be24b4"
+      ],
+      "type": "chore",
+      "body": "# Add Post-Creation Duplicate Scan To `ff spec`\n\n## Objective\n\nClose the gap found in `SPEC-1784101804` (duplicate `spec_id`\nescaped the title-only detector). After `ff spec` / `ff spec --ai`\nwrites a new spec file, automatically scan for duplicates — both an\n**exact `spec_id` collision** and a **title-similarity** match — and\nsurface the result before the spec is treated as live.\n\n## Requirements\n\n### 1. Exact `spec_id` collision check (the missing guard)\n\n- After `writeSpecFromTemplate` assigns `spec_id`, scan all existing\n  `specs/*.md` for the same id. If found, this is a HARD conflict\n  (two files, one id corrupts the ledger).\n- This must run regardless of title — the title-based `FindDuplicateSpec`\n  already covers fuzzy title matches; the id check is the new layer.\n\n### 2. Post-creation scan hook\n\n- Wire the scan into `createSpec` / `handleSpec` immediately after\n  the file is written (before any background `ff sync` is queued).\n- Reuse `listSpecs()` (already parses `spec_id` + `title`) so no\n  new filesystem walk is needed.\n\n### 3. Behavior on detection\n\n- **id collision (hard)**: block creation or auto-link to the existing\n  spec; never leave two files with one id on disk.\n- **title similarity \u003e threshold (soft)**: warn and offer link/update\n  (reuse existing `promptForDuplicateAction` in interactive mode).\n\n### 4. Pros / Cons to explore before locking the design\n\n| Option | Pros | Cons |\n|--------|------|------|\n| Block on id collision, warn on title | Prevents ledger corruption; non-fatal for fuzzy dups | Interactive prompt breaks `--ai` headless mode |\n| Auto-link on any match (title OR id) | Zero manual steps; safe for agents | May silently merge specs the user wanted separate |\n| Warn-only (never block) | Simple; never interrupts flow | Does not actually prevent the SPEC-1784089531 class of bug |\n| Exact-id check at write time + title check deferred to sync | Catches the corruption early, defers fuzzy to existing flow | Two code paths to maintain |\n\n- Decide: should `--ai` mode auto-link (no prompt) or auto-block? The\n  current `promptForDuplicateAction` returns `\"link\"` for AI mode — confirm\n  that is the desired behavior for an id collision too.\n- Performance: `listSpecs` reads every spec file. With 90+ specs this\n  is still sub-millisecond; acceptable for a post-create hook. Confirm\n  no O(n²) scan is introduced if called per-spec in a batch.\n\n## Acceptance Criteria\n\n- Creating a second spec file with an already-used `spec_id` is\n  detected and handled (blocked or auto-linked), not silently written.\n- Title-similarity detection still works (existing `FindDuplicateSpec`\n  behavior preserved).\n- `ff spec --ai` in headless mode does not hang on a prompt for\n  an id collision — it auto-resolves (link or block) and logs it.\n- Unit test: seed two specs with the same `spec_id` + different titles,\n  run the post-create scan, assert collision is reported.\n- No regression in the 13 currently-failing integration tests\n  (this is additive; those remain tracked separately).",
       "version": "0.9.6"
     },
     "SPEC-1784102178": {
@@ -442,7 +444,7 @@
     "SPEC-1784275332": {
       "spec_id": "Explore Swarm Integration with ForgeFix",
       "repo_issue_id": 0,
-      "status": "backlog",
+      "status": "review",
       "linked_commits": [
         "45e3297"
       ],
@@ -465,10 +467,10 @@
       "repo_issue_id": 0,
       "status": "review",
       "linked_commits": [
-        "effd4a1",
         "02a4e96",
-        "fbecfb4",
-        "563832d"
+        "515655c",
+        "563832d",
+        "86eeb74"
       ],
       "type": "bug",
       "body": "ff commit --ai corrupts the bound spec file's frontmatter with duplicate linked_commits keys and writes a stale pre-amend commit hash. Two defects: (1) UpdateSpecFileLinkedCommits can leave duplicate linked_commits keys when the spec already has one, producing invalid YAML. (2) ff commit writes the pre-amend SHA to linked_commits then amends the commit, producing a new SHA that the spec file still references. Fixes: de-duplicate linked_commits on write, record final SHA after amend, advance spec status from draft to review on commit, validate frontmatter on write.",
@@ -479,10 +481,9 @@
       "repo_issue_id": 0,
       "status": "review",
       "linked_commits": [
-        "5e6c3cf",
-        "c823dc8",
         "0dffe78",
-        "f1fb571"
+        "138178a",
+        "5429d22"
       ],
       "type": "bug",
       "body": "# Fix finalizeCommitAfterAmend spec path and duplicate linked_commits\n\nTwo bugs in finalizeCommitAfterAmend (cmd_commit.go):\n\n1. **Wrong spec directory path.** Line 312 constructs `specDir` from `configDir` (.ff/) instead of the repo root, so `findSpecFileByID` always fails and linked_commits is never updated after amend.\n\n2. **Duplicate linked_commits on re-amend.** When the last linked_commit already equals the final hash, the code skips replacement but falls through to append, creating a duplicate entry. Fix: check if finalHash exists anywhere in the list before modifying.",
@@ -495,6 +496,51 @@
       "linked_commits": null,
       "type": "feature",
       "body": "# Update Stale Backlog Version Numbers On Ship\n# Update Stale Backlog Version Numbers On Ship\n\nWhen ff ship runs, specs in backlog may carry old version numbers from previous releases. These stale versions create confusion about what is planned for the current cycle. On ship, ff should scan all specs in backlog (and draft) status. Any spec whose version field does not match the incoming ship version gets its version field updated to the ship version. This keeps the backlog clean and ensures version numbers always reflect the current release cycle. Do not change specs already in review, ship, or closed status. The update should happen after the version prompt but before the push, so the version bump rides along in the shipped commit.",
+      "version": "0.9.7"
+    },
+    "SPEC-1784678104": {
+      "spec_id": "Ff Commit Amend Cycle Corrupts Linked_commits Across Multiple Commits",
+      "repo_issue_id": 0,
+      "status": "draft",
+      "linked_commits": null,
+      "type": "bug",
+      "body": "# Ff Commit Amend Cycle Corrupts Linked_commits Across Multiple Commits\n# Ff Commit Amend Cycle Corrupts Linked_commits Across Multiple Commits\n\nThe ff commit amend cycle overwrites linked_commits in both the ledger and spec file during each commit-amend pair. Each ff commit creates a commit, amends it (changing the hash), then finalizeCommitAfterAmend tries to update linked_commits — but the amend produces a new hash that differs from what was just written, causing repeated overwrites and lost entries. This was observed during a session where three consecutive ff commit calls each corrupted the linked_commits list, requiring manual raw git commits to correct. The fix in SPEC-1784672632 addresses the root causes (wrong path, duplicate append) but the amend-then-replace cycle itself remains a design issue that can still produce incorrect hashes on rapid successive commits.",
+      "version": "0.9.7"
+    },
+    "SPEC-1784678126": {
+      "spec_id": "Chore Commits Outside Ff Lifecycle Lack Spec Binding",
+      "repo_issue_id": 0,
+      "status": "draft",
+      "linked_commits": null,
+      "type": "bug",
+      "body": "# Chore Commits Outside Ff Lifecycle Lack Spec Binding\n# Chore Commits Outside Ff Lifecycle Lack Spec Binding\n\nWhen ff commit amend cycle produces corrupted state that requires manual correction, the only recourse is raw git commit. These commits exist outside the ff lifecycle — they are not bound to any spec, have no linked_commits tracking, and appear as untracked housekeeping in the git log. This defeats ForgeFix's core invariant that every commit must be traceable to a spec. A mechanism is needed to either prevent the need for raw commits (by making ff commit idempotent/correct) or to retroactively bind orphaned commits to a spec.",
+      "version": "0.9.7"
+    },
+    "SPEC-1784679435": {
+      "spec_id": "Remove JSON ledger, make DB canonical, add post-ship integrity gate",
+      "repo_issue_id": 0,
+      "status": "draft",
+      "linked_commits": null,
+      "type": "feature",
+      "body": "# Remove JSON ledger, make DB canonical, add post-ship integrity gate\n\n## Objective\n\nEnsure local DB, spec files, and remote repo are always in sync, with a verification gate before shipping.\n\n## Problem\n\nThe system has three sources of truth that can drift:\n1. Spec files on disk (`.md` with frontmatter)\n2. SQLite DB (`specs` table + `linked_commits`)\n3. Remote issues (GitHub/Gitea)\n\nAdditionally, a legacy JSON ledger (`forgefix_ledger.json`) duplicates DB data, adding confusion and corruption risk. The current `SyncFromSpecsDir` scans every spec file on every `LoadLedger()` call, parsing frontmatter by hand to reconcile three stores. This circular flow (DB → JSON → spec files → DB) is fragile.\n\n**Failure modes observed:**\n- Agent edits spec file directly → `ff sync` fails or doesn't run → DB is stale\n- `ff commit` amend cycle corrupts `linked_commits` in JSON and DB\n- Post-ship: no verification that DB state matches remote repo\n- JSON ledger drifts from DB because `SaveLedger` does DELETE-all + re-INSERT every time\n\n## Requirements\n\n### 1. Remove JSON ledger as source of truth\n- `forgefix_ledger.json` becomes an optional export/debug artifact, not in the read/write path\n- `LoadLedger` reads from SQLite only (no JSON fallback except for one-time migration)\n- `SaveLedger` writes to SQLite only (JSON export is opt-in via `ff ledger export`)\n- `SyncFromSpecsDir` writes changes directly to SQLite, not into an in-memory JSON mirror\n\n### 2. DB is the canonical spec store\n- All spec metadata (status, type, version, linked_commits, repo_issue) lives in SQLite\n- Spec files on disk are the source of truth for body/content only\n- Frontmatter in spec files is a mirror of DB state (written by ff commands, not read as authority)\n- `ff spec`, `ff commit`, `ff ship` write to DB first, then update spec file frontmatter\n\n### 3. Pre-ship consistency gate\nBefore `ff ship` proceeds, verify:\n- All specs in `ship` status have a valid `repo_issue` linked\n- All `linked_commits` hashes exist in the local git repo\n- No spec in `ship` status has unsynced changes (DB version matches spec file version)\n- Gate fails with clear error listing inconsistent specs\n\n### 4. Post-ship integrity verification\nAfter `ff ship` pushes to remote, verify:\n- For each shipped spec, fetch the remote issue and compare body/title/status\n- Compare DB `linked_commits` against git log for the shipped version tag\n- Report any drift as warnings (non-blocking for first release, blocking after)\n- Write verification result to `ff ship --report` output\n\n### 5. Sync flow cleanup\n- `ff sync` writes spec file changes to DB (not just DB to remote)\n- `ff sync` reconciles remote issue state with DB (not with spec files directly)\n- Remove `SyncFromSpecsDir` as the primary sync mechanism; replace with targeted DB writes\n- Keep `SyncFromSpecsDir` only as a recovery/catch-up tool for when DB is corrupted\n\n## Acceptance Criteria\n- `forgefix_ledger.json` is not read or written during normal `ff commit`, `ff sync`, or `ff ship` operations\n- `ff ship` fails if pre-ship consistency gate finds issues\n- `ff ship` outputs a post-ship verification report comparing DB vs remote\n- Existing tests pass (449 tests, 0 failures)\n- Unit test: create spec, commit, sync, ship, verify DB matches remote issue body\n- Unit test: corrupt DB entry, run ship, verify gate catches inconsistency\n\n## Out of Scope\n- Removing the JSON file entirely (keep as optional export)\n- Changing the remote issue tracker API (GitHub/Gitea)\n- Modifying the kanban board functionality",
+      "version": "0.9.7"
+    },
+    "SPEC-1784679743": {
+      "spec_id": "Ff Spec Truncates Multi Line Body From Heredoc Or Piped Stdin",
+      "repo_issue_id": 0,
+      "status": "draft",
+      "linked_commits": null,
+      "type": "bug",
+      "body": "# Ff Spec Truncates Multi Line Body From Heredoc Or Piped Stdin\n# Ff Spec Truncates Multi Line Body From Heredoc Or Piped Stdin\n\nWhen ff spec receives a multi-line body via heredoc (\u003c\u003c'EOF') or piped stdin, only the first paragraph is written to the spec file. The rest of the content is silently dropped. This was observed when creating specs with detailed requirements — the body field in the spec file contained only the first line of the heredoc input. The interactive prompt flow works correctly; the issue is specific to non-interactive piped/heredoc input. Fix: ensure ff spec reads the full stdin body before writing the spec file, rather than stopping at the first blank line or EOF.",
+      "version": "0.9.7"
+    },
+    "SPEC-1784679765": {
+      "spec_id": "Ff Spec Generates Duplicated H1 Heading In Spec File",
+      "repo_issue_id": 0,
+      "status": "draft",
+      "linked_commits": null,
+      "type": "bug",
+      "body": "# Ff Spec Generates Duplicated H1 Heading In Spec File\n# Ff Spec Generates Duplicated H1 Heading In Spec File\n\nWhen ff spec creates a new spec file, the H1 heading is written twice. The template at cmd_spec.go:232 generates \"# \u003ctitle\u003e\" and the title itself contains the heading prefix, resulting in two consecutive H1 lines (e.g. \"# Fix Foo\\n# Fix Foo\"). This was observed in multiple newly-created spec files. Fix: ensure writeSpecFromTemplate emits the title exactly once, or strip any existing H1 from the body before prepending.",
       "version": "0.9.7"
     }
   }
