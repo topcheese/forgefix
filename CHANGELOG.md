@@ -12,6 +12,7 @@
 - feat: Fix UpdateLedgerAfterCommit spec path to use git root (SPEC-1784672632)
 - feat: Clean up corrupted spec, create bug specs for ff spec and ff commit issues (SPEC-1784101811)
 - feat: Write full spec content into 4 truncated spec files (SPEC-1784101811)
+- feat: Reset SPEC-1784101811 to draft, fix type and clear stale linked_commits (SPEC-1784101811)
 
 ## [Unreleased] - 2026-07-17
 

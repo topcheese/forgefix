@@ -6,7 +6,7 @@
       "total_passed": 449,
       "total_failed": 0,
       "historical_floor": 449,
-      "last_update": "2026-07-22 00:26:54"
+      "last_update": "2026-07-22 01:11:46"
     }
   },
   "spec_mappings": {
@@ -183,7 +183,8 @@
       "status": "review",
       "linked_commits": [
         "2371aba",
-        "65be191"
+        "65be191",
+        "ae8b838"
       ],
       "type": "chore",
       "body": "# Add Post-Creation Duplicate Scan To `ff spec`\n\n## Objective\n\nClose the gap found in `SPEC-1784101804` (duplicate `spec_id`\nescaped the title-only detector). After `ff spec` / `ff spec --ai`\nwrites a new spec file, automatically scan for duplicates — both an\n**exact `spec_id` collision** and a **title-similarity** match — and\nsurface the result before the spec is treated as live.\n\n## Requirements\n\n### 1. Exact `spec_id` collision check (the missing guard)\n\n- After `writeSpecFromTemplate` assigns `spec_id`, scan all existing\n  `specs/*.md` for the same id. If found, this is a HARD conflict\n  (two files, one id corrupts the ledger).\n- This must run regardless of title — the title-based `FindDuplicateSpec`\n  already covers fuzzy title matches; the id check is the new layer.\n\n### 2. Post-creation scan hook\n\n- Wire the scan into `createSpec` / `handleSpec` immediately after\n  the file is written (before any background `ff sync` is queued).\n- Reuse `listSpecs()` (already parses `spec_id` + `title`) so no\n  new filesystem walk is needed.\n\n### 3. Behavior on detection\n\n- **id collision (hard)**: block creation or auto-link to the existing\n  spec; never leave two files with one id on disk.\n- **title similarity \u003e threshold (soft)**: warn and offer link/update\n  (reuse existing `promptForDuplicateAction` in interactive mode).\n\n### 4. Pros / Cons to explore before locking the design\n\n| Option | Pros | Cons |\n|--------|------|------|\n| Block on id collision, warn on title | Prevents ledger corruption; non-fatal for fuzzy dups | Interactive prompt breaks `--ai` headless mode |\n| Auto-link on any match (title OR id) | Zero manual steps; safe for agents | May silently merge specs the user wanted separate |\n| Warn-only (never block) | Simple; never interrupts flow | Does not actually prevent the SPEC-1784089531 class of bug |\n| Exact-id check at write time + title check deferred to sync | Catches the corruption early, defers fuzzy to existing flow | Two code paths to maintain |\n\n- Decide: should `--ai` mode auto-link (no prompt) or auto-block? The\n  current `promptForDuplicateAction` returns `\"link\"` for AI mode — confirm\n  that is the desired behavior for an id collision too.\n- Performance: `listSpecs` reads every spec file. With 90+ specs this\n  is still sub-millisecond; acceptable for a post-create hook. Confirm\n  no O(n²) scan is introduced if called per-spec in a batch.\n\n## Acceptance Criteria\n\n- Creating a second spec file with an already-used `spec_id` is\n  detected and handled (blocked or auto-linked), not silently written.\n- Title-similarity detection still works (existing `FindDuplicateSpec`\n  behavior preserved).\n- `ff spec --ai` in headless mode does not hang on a prompt for\n  an id collision — it auto-resolves (link or block) and logs it.\n- Unit test: seed two specs with the same `spec_id` + different titles,\n  run the post-create scan, assert collision is reported.\n- No regression in the 13 currently-failing integration tests\n  (this is additive; those remain tracked separately).",
