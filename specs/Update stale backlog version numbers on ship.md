@@ -6,8 +6,9 @@ type: feature
 version: "0.9.7"
 root_cause: ""
 
-resolution: fixed in c21650c
-linked_commits: ["7639034", "265f42c"]
+
+resolution: fixed in 265f42c
+linked_commits: ["7639034", "383248f", "d7412c2"]
 ---
 # Update Stale Backlog Version Numbers On Ship
 # Update Stale Backlog Version Numbers On Ship
