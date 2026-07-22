@@ -49,6 +49,7 @@ type CLIArgs struct {
 	Delete           bool
 	SearchQuery      string
 	SpecStatus       string // NEW — --status flag for spec status
+	PromoteReview    bool   // --review flag: promote spec to review on commit
 }
 
 func ParseFlags(args []string) CLIArgs {
@@ -137,6 +138,8 @@ func ParseFlags(args []string) CLIArgs {
 				i++
 				flags.SpecStatus = args[i]
 			}
+		case "--review":
+			flags.PromoteReview = true
 		}
 	}
 	return flags

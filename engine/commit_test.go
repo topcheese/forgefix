@@ -97,7 +97,7 @@ created: 2024-01-01
 	d := &CommandDispatcher{Stdout: io.Discard, Stderr: io.Discard}
 	// User passes message that already contains the spec ID tag — dedup should
 	// strip [SPEC-123] before the function prepends "feat: [SPEC-123]"
-	hash, specID, commitMsg, err := runCommit(tmpDir, "implement feature [SPEC-123]", "SPEC-123", "", "", false, d, "")
+	hash, specID, commitMsg, err := 	runCommit(tmpDir, "implement feature [SPEC-123]", "SPEC-123", "", "", false, d, "", false)
 	if err != nil {
 		t.Fatalf("runCommit failed: %v", err)
 	}
@@ -141,7 +141,7 @@ created: 2024-01-01
 	}
 
 	d := &CommandDispatcher{Stdout: io.Discard, Stderr: io.Discard}
-	_, _, commitMsg, err := runCommit(tmpDir, "[SPEC-456] add new feature", "SPEC-456", "", "", false, d, "")
+	_, _, commitMsg, err := 	runCommit(tmpDir, "[SPEC-456] add new feature", "SPEC-456", "", "", false, d, "", false)
 	if err != nil {
 		t.Fatalf("runCommit failed: %v", err)
 	}
@@ -176,7 +176,7 @@ created: 2024-01-01
 
 	d := &CommandDispatcher{Stdout: io.Discard, Stderr: io.Discard}
 	// Committing to SPEC-111, message references SPEC-456 and SPEC-789
-	_, _, commitMsg, err := runCommit(tmpDir, "[SPEC-111] integrate with [SPEC-456] and [SPEC-789]", "SPEC-111", "", "", false, d, "")
+	_, _, commitMsg, err := 	runCommit(tmpDir, "[SPEC-111] integrate with [SPEC-456] and [SPEC-789]", "SPEC-111", "", "", false, d, "", false)
 	if err != nil {
 		t.Fatalf("runCommit failed: %v", err)
 	}
@@ -215,7 +215,7 @@ created: 2024-01-01
 	}
 
 	d := &CommandDispatcher{Stdout: io.Discard, Stderr: io.Discard}
-	_, _, commitMsg, err := runCommit(tmpDir, "[SPEC-999]", "SPEC-999", "", "", false, d, "")
+	_, _, commitMsg, err := 	runCommit(tmpDir, "[SPEC-999]", "SPEC-999", "", "", false, d, "", false)
 	if err != nil {
 		t.Fatalf("runCommit failed: %v", err)
 	}
@@ -254,7 +254,7 @@ created: 2024-01-01
 	}
 
 	d := &CommandDispatcher{Stdout: io.Discard, Stderr: io.Discard}
-	_, _, commitMsg, err := runCommit(tmpDir, "implement feature", "SPEC-789", "", "", false, d, "")
+	_, _, commitMsg, err := 	runCommit(tmpDir, "implement feature", "SPEC-789", "", "", false, d, "", false)
 	if err != nil {
 		t.Fatalf("runCommit failed: %v", err)
 	}
@@ -289,7 +289,7 @@ created: 2024-01-01
 	}
 
 	d := &CommandDispatcher{Stdout: io.Discard, Stderr: io.Discard}
-	hash, specID, commitMsg, err := runCommit(tmpDir, "my message", "SPEC-BODY-1", "", "", false, d, "Additional body text")
+	hash, specID, commitMsg, err := 	runCommit(tmpDir, "my message", "SPEC-BODY-1", "", "", false, d, "Additional body text", false)
 	if err != nil {
 		t.Fatalf("runCommit failed: %v", err)
 	}
@@ -342,7 +342,7 @@ created: 2024-01-01
 	}
 
 	d := &CommandDispatcher{Stdout: io.Discard, Stderr: io.Discard}
-	_, _, commitMsg, err := runCommit(tmpDir, "no body here", "SPEC-BODY-EMPTY", "", "", false, d, "")
+	_, _, commitMsg, err := 	runCommit(tmpDir, "no body here", "SPEC-BODY-EMPTY", "", "", false, d, "", false)
 	if err != nil {
 		t.Fatalf("runCommit failed: %v", err)
 	}
@@ -384,7 +384,7 @@ created: 2024-01-01
 
 	multilineBody := "Line one\n\nLine two\nLine three"
 	d := &CommandDispatcher{Stdout: io.Discard, Stderr: io.Discard}
-	_, _, commitMsg, err := runCommit(tmpDir, "multiline body test", "SPEC-BODY-NL", "", "", false, d, multilineBody)
+	_, _, commitMsg, err := 	runCommit(tmpDir, "multiline body test", "SPEC-BODY-NL", "", "", false, d, multilineBody, false)
 	if err != nil {
 		t.Fatalf("runCommit failed: %v", err)
 	}
@@ -691,6 +691,143 @@ linked_commits: ["` + hash1 + `"]
 	}
 	if !strings.Contains(got, hash2) {
 		t.Errorf("expected final hash %s in linked_commits:\n%s", hash2, got)
+	}
+}
+
+func TestRunCommit_NoPromoteReview_KeepsStatus(t *testing.T) {
+	tmpDir := t.TempDir()
+	initGitRepo(t, tmpDir)
+
+	specDir := filepath.Join(tmpDir, "specs")
+	if err := os.MkdirAll(specDir, 0755); err != nil {
+		t.Fatal(err)
+	}
+	specFile := filepath.Join(specDir, "SPEC-NOREVIEW.md")
+	specContent := `---
+spec_id: "SPEC-NOREVIEW"
+status: draft
+type: feature
+repo_issue: ""
+---
+# No Review Spec
+`
+	if err := os.WriteFile(specFile, []byte(specContent), 0644); err != nil {
+		t.Fatal(err)
+	}
+
+	workFile := filepath.Join(tmpDir, "work.txt")
+	if err := os.WriteFile(workFile, []byte("work"), 0644); err != nil {
+		t.Fatal(err)
+	}
+
+	d := &CommandDispatcher{Stdout: io.Discard, Stderr: io.Discard}
+	_, _, _, err := runCommit(tmpDir, "implement feature [SPEC-NOREVIEW]", "SPEC-NOREVIEW", "", "", false, d, "", false)
+	if err != nil {
+		t.Fatalf("runCommit failed: %v", err)
+	}
+
+	// Status should still be draft — no --review flag was passed
+	data, err := os.ReadFile(specFile)
+	if err != nil {
+		t.Fatal(err)
+	}
+	got := string(data)
+	if !strings.Contains(got, "status: draft") {
+		t.Errorf("expected status to remain draft without --review, got:\n%s", got)
+	}
+}
+
+func TestRunCommit_PromoteReview_SetsStatus(t *testing.T) {
+	tmpDir := t.TempDir()
+	initGitRepo(t, tmpDir)
+
+	specDir := filepath.Join(tmpDir, "specs")
+	if err := os.MkdirAll(specDir, 0755); err != nil {
+		t.Fatal(err)
+	}
+	specFile := filepath.Join(specDir, "SPEC-YESREVIEW.md")
+	specContent := `---
+spec_id: "SPEC-YESREVIEW"
+status: draft
+type: feature
+repo_issue: ""
+---
+# Yes Review Spec
+`
+	if err := os.WriteFile(specFile, []byte(specContent), 0644); err != nil {
+		t.Fatal(err)
+	}
+
+	workFile := filepath.Join(tmpDir, "work.txt")
+	if err := os.WriteFile(workFile, []byte("work"), 0644); err != nil {
+		t.Fatal(err)
+	}
+
+	d := &CommandDispatcher{Stdout: io.Discard, Stderr: io.Discard}
+	_, _, _, err := runCommit(tmpDir, "implement feature [SPEC-YESREVIEW]", "SPEC-YESREVIEW", "", "", false, d, "", true)
+	if err != nil {
+		t.Fatalf("runCommit failed: %v", err)
+	}
+
+	// Status should be review — --review flag was passed
+	data, err := os.ReadFile(specFile)
+	if err != nil {
+		t.Fatal(err)
+	}
+	got := string(data)
+	if !strings.Contains(got, "status: review") {
+		t.Errorf("expected status to be review with --review, got:\n%s", got)
+	}
+}
+
+func TestRunCommit_AmbiguousAutoDetect_ReturnsError(t *testing.T) {
+	tmpDir := t.TempDir()
+	initGitRepo(t, tmpDir)
+
+	specDir := filepath.Join(tmpDir, "specs")
+	if err := os.MkdirAll(specDir, 0755); err != nil {
+		t.Fatal(err)
+	}
+
+	// Create two active specs modified within the same time window
+	for _, id := range []string{"SPEC-AMB1", "SPEC-AMB2"} {
+		specFile := filepath.Join(specDir, id+".md")
+		specContent := `---
+spec_id: "` + id + `"
+status: draft
+type: feature
+repo_issue: ""
+---
+# ` + id + `
+`
+		if err := os.WriteFile(specFile, []byte(specContent), 0644); err != nil {
+			t.Fatal(err)
+		}
+	}
+
+	// Touch both files to set mod times close together
+	for _, id := range []string{"SPEC-AMB1", "SPEC-AMB2"} {
+		specFile := filepath.Join(specDir, id+".md")
+		data, _ := os.ReadFile(specFile)
+		// Append a space to force a mod time update
+		if err := os.WriteFile(specFile, append(data, ' '), 0644); err != nil {
+			t.Fatal(err)
+		}
+	}
+
+	workFile := filepath.Join(tmpDir, "work.txt")
+	if err := os.WriteFile(workFile, []byte("work"), 0644); err != nil {
+		t.Fatal(err)
+	}
+
+	d := &CommandDispatcher{Stdout: io.Discard, Stderr: io.Discard}
+	// No --spec given, AI mode, ambiguous auto-detect should error
+	_, _, _, err := runCommit(tmpDir, "implement feature", "", "", "", true, d, "", false)
+	if err == nil {
+		t.Fatal("expected error for ambiguous auto-detect, got nil")
+	}
+	if !strings.Contains(err.Error(), "ambiguous") {
+		t.Errorf("expected 'ambiguous' in error, got: %v", err)
 	}
 }
 

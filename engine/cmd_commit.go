@@ -21,7 +21,7 @@ func (d *CommandDispatcher) handleCommit(args []string) (CommandResult, error) {
 		msg = ExtractMessageFromArgs(args)
 	}
 
-	commitHash, specID, commitMsg, err := runCommit(d.WorkDir, msg, flags.SpecID, flags.SpecType, flags.SpecVersion, flags.AIMode, d, flags.Body)
+	commitHash, specID, commitMsg, err := runCommit(d.WorkDir, msg, flags.SpecID, flags.SpecType, flags.SpecVersion, flags.AIMode, d, flags.Body, flags.PromoteReview)
 	if err != nil {
 		fmt.Fprintf(d.Stderr, "error: %v\n", err)
 		return CommandResult{ExitCode: 1}, nil
@@ -66,7 +66,7 @@ func (d *CommandDispatcher) handleCommit(args []string) (CommandResult, error) {
 
 // runCommit executes the full commit workflow: resolves the spec, stages, commits,
 // and updates the ledger. Returns the commit hash and spec ID.
-func runCommit(wd, msg, flagSpecID, specType, specVersion string, aiMode bool, d *CommandDispatcher, body string) (string, string, string, error) {
+func runCommit(wd, msg, flagSpecID, specType, specVersion string, aiMode bool, d *CommandDispatcher, body string, promoteReview bool) (string, string, string, error) {
 	gitRoot, err := findGitRootWalk(wd)
 	if err != nil {
 		return "", "", "", err
@@ -77,6 +77,18 @@ func runCommit(wd, msg, flagSpecID, specType, specVersion string, aiMode bool, d
 		specID = extractSpecID(msg)
 	}
 	if specID == "" {
+		// Check for ambiguous auto-detect BEFORE picking a spec.
+		// If multiple recently-modified active specs exist, refuse and
+		// require explicit --spec instead of guessing.
+		explicitSpecGiven := flagSpecID != ""
+		if aiMode && !explicitSpecGiven {
+			if ambiguous, err := checkAmbiguousAutoDetect(wd); err != nil {
+				return "", "", "", err
+			} else if ambiguous {
+				return "", "", "", fmt.Errorf("ambiguous auto-detect: multiple recently-modified active specs found. Use --spec <id> to explicitly bind")
+			}
+		}
+
 		var err error
 		if aiMode {
 			specID, err = autoDetectSpecFromWorkingTree(wd)
@@ -85,18 +97,6 @@ func runCommit(wd, msg, flagSpecID, specType, specVersion string, aiMode bool, d
 		}
 		if err != nil {
 			return "", "", "", err
-		}
-	}
-
-	// Check for ambiguous auto-detect: if no explicit --spec was given and we're in AI mode,
-	// check if there are multiple recently-modified active specs that could cause ambiguity.
-	// If so, require explicit --spec instead of guessing.
-	explicitSpecGiven := flagSpecID != ""
-	if aiMode && !explicitSpecGiven {
-		if ambiguous, err := checkAmbiguousAutoDetect(wd); err != nil {
-			return "", "", "", err
-		} else if ambiguous {
-			return "", "", "", fmt.Errorf("ambiguous auto-detect: multiple recently-modified active specs found. Use --spec <id> to explicitly bind")
 		}
 	}
 
@@ -210,16 +210,19 @@ func runCommit(wd, msg, flagSpecID, specType, specVersion string, aiMode bool, d
 	if specID != "" {
 		configDir := SpecConfigDir(wd)
 		specDir := filepath.Join(wd, "specs")
-		// Both ff commit and ff commit --ai advance status to "review".
-		targetStatus := "review"
-		if specFile, fErr := findSpecFileByID(specDir, specID); fErr == nil {
-			_ = UpdateSpecFileStatus(specFile, targetStatus)
-		}
-		if ledger, lErr := LoadLedger(configDir); lErr == nil {
-			if entry := ledger.GetSpecEntry(specID); entry != nil {
-				entry.Status = targetStatus
-				ledger.SetSpecEntry(specID, entry)
-				_ = SaveLedger(ledger, configDir)
+		// Only promote to review when --review is explicitly passed.
+		// Without --review, leave the spec at its current status.
+		if promoteReview {
+			targetStatus := "review"
+			if specFile, fErr := findSpecFileByID(specDir, specID); fErr == nil {
+				_ = UpdateSpecFileStatus(specFile, targetStatus)
+			}
+			if ledger, lErr := LoadLedger(configDir); lErr == nil {
+				if entry := ledger.GetSpecEntry(specID); entry != nil {
+					entry.Status = targetStatus
+					ledger.SetSpecEntry(specID, entry)
+					_ = SaveLedger(ledger, configDir)
+				}
 			}
 		}
 	}
