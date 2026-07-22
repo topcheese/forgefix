@@ -6,8 +6,8 @@ type: bug
 version: "0.9.8"
 root_cause: ""
 
-linked_commits: ["25724ea"]
 resolution: fixed in b6967e6
+linked_commits: ["25724ea", "c7d7f6b"]
 ---
 # Fix Redundant Title Formatting In Remote Issues
 
