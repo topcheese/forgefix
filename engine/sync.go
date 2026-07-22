@@ -622,9 +622,6 @@ func syncSingleSpec(coord *IssueCoordinator, configDir, specID string, cfg *Conf
 			} else {
 				coord.markSpecAsDuplicateIfNeeded(spec)
 				title := prefixedTitle(spec)
-				if !IsValidIssueTitle(title) {
-					title = fmt.Sprintf("feat/spec: %s", title)
-				}
 				if len(title) > maxTitleLength {
 					// Truncate at last word boundary to fit within maxTitleLength
 					cutAt := maxTitleLength
@@ -642,6 +639,16 @@ func syncSingleSpec(coord *IssueCoordinator, configDir, specID string, cfg *Conf
 				}
 				spec.RepoIssue = issue.Number
 				fmt.Printf("Created issue #%d for spec: %s\n", issue.Number, spec.Title)
+
+				// Update local title to match remote (consistency requirement)
+				if err := UpdateSpecFileTitle(filePath, title); err == nil {
+					if ledger != nil {
+						if entry := ledger.GetSpecEntry(spec.SpecID); entry != nil {
+							entry.SpecID = title
+							ledger.SetSpecEntry(spec.SpecID, entry)
+						}
+					}
+				}
 			}
 		} else {
 			remoteIssue, err := coord.GetIssueByNumber(spec.RepoIssue)

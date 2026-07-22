@@ -89,6 +89,47 @@ func UpdateSpecFileStatus(filePath, status string) error {
 	return os.WriteFile(filePath, []byte(strings.Join(lines, "\n")), 0644)
 }
 
+func UpdateSpecFileTitle(filePath, title string) error {
+	data, err := os.ReadFile(filePath)
+	if err != nil {
+		return err
+	}
+	content := string(data)
+	lines := strings.Split(content, "\n")
+	inFrontmatter := false
+	found := false
+	for i, line := range lines {
+		trimmed := strings.TrimSpace(line)
+		if trimmed == "---" && !inFrontmatter {
+			inFrontmatter = true
+			continue
+		}
+		if trimmed == "---" && inFrontmatter {
+			break
+		}
+		if inFrontmatter && strings.HasPrefix(trimmed, "title:") {
+			lines[i] = fmt.Sprintf("title: %q", title)
+			found = true
+		}
+	}
+
+	if !found {
+		// If not found in frontmatter, maybe it's the H1 heading
+		for i, line := range lines {
+			if strings.HasPrefix(line, "# ") {
+				lines[i] = "# " + title
+				found = true
+				break
+			}
+		}
+	}
+
+	if !found {
+		return fmt.Errorf("title field not found in frontmatter or heading")
+	}
+	return os.WriteFile(filePath, []byte(strings.Join(lines, "\n")), 0644)
+}
+
 // validateSpecFrontmatter ensures the spec's frontmatter parses as valid YAML with no duplicate keys.
 func validateSpecFrontmatter(content string) error {
 	lines := strings.Split(content, "\n")

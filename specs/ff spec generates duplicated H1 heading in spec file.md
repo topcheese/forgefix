@@ -1,7 +1,7 @@
 ---
 spec_id: "SPEC-1784679765"
 status: review
-repo_issue: ""
+repo_issue: 555
 type: bug
 version: "0.9.7"
 root_cause: "writeSpecFromTemplate always prepends '# <title>' to the body, but promptForSpecBody builds a body that already starts with '# <title>', producing two H1 lines. sanitizeSpecTitle also did not strip leading '# ' from user input."

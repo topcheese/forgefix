@@ -897,9 +897,6 @@ func (c *IssueCoordinator) SyncSpecs(configDir string) error {
 			} else {
 				c.markSpecAsDuplicateIfNeeded(spec)
 				title := prefixedTitle(spec)
-				if !IsValidIssueTitle(title) {
-					title = fmt.Sprintf("feat/spec: %s", title)
-				}
 				if len(title) > maxTitleLength {
 					cutAt := maxTitleLength
 					for cutAt > 10 && title[cutAt-1] != ' ' {
@@ -917,6 +914,16 @@ func (c *IssueCoordinator) SyncSpecs(configDir string) error {
 				}
 				spec.RepoIssue = issue.Number
 				fmt.Printf("Created issue #%d for spec: %s\n", issue.Number, spec.Title)
+
+				// Update local title to match remote (consistency requirement)
+				if err := UpdateSpecFileTitle(filePath, title); err == nil {
+					if ledger != nil {
+						if entry := ledger.GetSpecEntry(spec.SpecID); entry != nil {
+							entry.SpecID = title
+							ledger.SetSpecEntry(spec.SpecID, entry)
+						}
+					}
+				}
 			}
 		}
 
@@ -948,9 +955,6 @@ func (c *IssueCoordinator) SyncSpecs(configDir string) error {
 					} else {
 						c.markSpecAsDuplicateIfNeeded(spec)
 						title := prefixedTitle(spec)
-						if !IsValidIssueTitle(title) {
-							title = fmt.Sprintf("feat/spec: %s", title)
-						}
 						if len(title) > maxTitleLength {
 							cutAt := maxTitleLength
 							for cutAt > 10 && title[cutAt-1] != ' ' {
@@ -968,6 +972,16 @@ func (c *IssueCoordinator) SyncSpecs(configDir string) error {
 						}
 						spec.RepoIssue = issue.Number
 						fmt.Printf("Created replacement issue #%d for spec: %s\n", issue.Number, spec.Title)
+
+						// Update local title to match remote (consistency requirement)
+						if err := UpdateSpecFileTitle(filePath, title); err == nil {
+							if ledger != nil {
+								if entry := ledger.GetSpecEntry(spec.SpecID); entry != nil {
+									entry.SpecID = title
+									ledger.SetSpecEntry(spec.SpecID, entry)
+								}
+							}
+						}
 					}
 
 					// Fetch the (re)bound or newly created issue for body sync

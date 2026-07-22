@@ -1,7 +1,7 @@
 ---
 spec_id: "SPEC-1784703448"
 status: draft
-repo_issue: ""
+repo_issue: 557
 type: refactor
 version: "0.9.8"
 root_cause: ""

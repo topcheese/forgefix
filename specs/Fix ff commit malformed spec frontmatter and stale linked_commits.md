@@ -1,7 +1,7 @@
 ---
 spec_id: "SPEC-1784660285"
 status: review
-repo_issue: ""
+repo_issue: 548
 type: bug
 version: "0.9.7"
 root_cause: ""

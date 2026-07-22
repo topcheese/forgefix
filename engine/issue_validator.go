@@ -19,8 +19,11 @@ var (
 		"chore":    true,
 	}
 
-	issueTitleRegex = regexp.MustCompile(`^(feat|fix|docs|refactor|ops|chore)/[a-z0-9-]+: .+$`)
-	maxTitleLength  = 60
+	// issueTitleRegex supports both:
+	// 1. [type][status] Title (new format)
+	// 2. type/component: Title (old format)
+	issueTitleRegex = regexp.MustCompile(`^(\[.+\])+ .+|^(feat|fix|docs|refactor|ops|chore)/[a-z0-9-]+: .+$`)
+	maxTitleLength  = 120
 )
 
 type IssueTitleValidator struct {
@@ -42,22 +45,12 @@ func (v *IssueTitleValidator) Validate(title string) error {
 		return fmt.Errorf("title too long (%d > %d): %w", len(title), maxTitleLength, ErrInvalidIssueTitle)
 	}
 
-	if strings.HasSuffix(title, ".") || strings.HasSuffix(title, "!") || strings.HasSuffix(title, "?") {
+	if strings.HasSuffix(title, ".") || strings.HasSuffix(title, "!") || strings.HasSuffix(title, "?") || strings.HasSuffix(title, "...") {
 		return fmt.Errorf("trailing punctuation: %w", ErrInvalidIssueTitle)
 	}
 
 	if !v.regex.MatchString(title) {
 		return fmt.Errorf("regex mismatch for %q: %w", title, ErrInvalidIssueTitle)
-	}
-
-	parts := strings.SplitN(title, "/", 2)
-	if len(parts) != 2 {
-		return fmt.Errorf("no slash separator: %w", ErrInvalidIssueTitle)
-	}
-
-	issueType := parts[0]
-	if !allowedTypes[issueType] {
-		return fmt.Errorf("invalid type %q: %w", issueType, ErrInvalidIssueTitle)
 	}
 
 	return nil

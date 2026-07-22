@@ -1,14 +1,15 @@
 ---
 spec_id: "SPEC-1784672660"
-status: draft
-repo_issue: ""
+status: review
+repo_issue: 550
 type: feature
 version: "0.9.7"
 root_cause: ""
 
 
-resolution: fixed in 265f42c
-linked_commits: ["7639034", "383248f", "d7412c2"]
+
+linked_commits: ["7639034", "383248f", "40a0402"]
+resolution: fixed in d7412c2
 ---
 # Update Stale Backlog Version Numbers On Ship
 # Update Stale Backlog Version Numbers On Ship

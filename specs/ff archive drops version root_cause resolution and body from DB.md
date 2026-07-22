@@ -1,7 +1,7 @@
 ---
 spec_id: "SPEC-1784263151"
 status: draft
-repo_issue: ""
+repo_issue: 547
 type: bug
 version: "0.9.7"
 root_cause: "ArchiveResolvedSpecs called db.ArchiveSpec(specID, entry.SpecID, specType, entry.RepoIssueID) without passing Version, RootCause, Resolution, or Body. ArchiveSpec then called UpsertSpec with empty strings for all four, which overwrote existing DB values via ON CONFLICT DO UPDATE."

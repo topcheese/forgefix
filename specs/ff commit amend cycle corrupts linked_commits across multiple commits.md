@@ -1,7 +1,7 @@
 ---
 spec_id: "SPEC-1784678104"
 status: review
-repo_issue: ""
+repo_issue: 551
 type: bug
 version: "0.9.7"
 root_cause: "UpdateLedgerAfterCommit appended the pre-amend hash, then finalizeCommitAfterAmend tried to replace it but failed when multiple commits happened in succession. Additionally, finalizeCommitAfterAmend used the wrong spec path (.ff/specs/ instead of git root)."

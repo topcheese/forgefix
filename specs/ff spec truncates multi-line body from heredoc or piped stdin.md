@@ -1,7 +1,7 @@
 ---
 spec_id: "SPEC-1784679743"
 status: review
-repo_issue: ""
+repo_issue: 554
 type: bug
 version: "0.9.7"
 root_cause: "parseSpecPositional only reads body from CLI args. Piped stdin is never read, so heredoc/pipe input is silently ignored."

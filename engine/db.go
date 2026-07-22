@@ -639,6 +639,15 @@ func (db *DB) UpdateSpecVersion(specID, version string) error {
 	return nil
 }
 
+// UpdateSpecTitle updates the title field of a spec in the database.
+func (db *DB) UpdateSpecTitle(specID, title string) error {
+	_, err := db.conn.Exec(`UPDATE specs SET title = ?, updated_at = datetime('now') WHERE spec_id = ?`, title, specID)
+	if err != nil {
+		return fmt.Errorf("updating spec title: %w", err)
+	}
+	return nil
+}
+
 // ImportLedger reads the current JSON ledger and writes all spec mappings and
 // pipeline entries into the DB. Idempotent — existing rows are overwritten.
 // Uses loadLedgerFromJSONFile (not LoadLedger) to avoid a circular dependency:

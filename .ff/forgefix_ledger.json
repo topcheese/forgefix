@@ -2,11 +2,11 @@
   "entries": {
     "forgefix": {
       "pipeline_id": "forgefix",
-      "total_ran": 459,
-      "total_passed": 459,
-      "total_failed": 0,
-      "historical_floor": 459,
-      "last_update": "2026-07-22 09:09:50"
+      "total_ran": 460,
+      "total_passed": 458,
+      "total_failed": 2,
+      "historical_floor": 460,
+      "last_update": "2026-07-22 18:05:23"
     }
   },
   "spec_mappings": {
@@ -230,9 +230,7 @@
       "spec_id": "Fix `ff commit --ai` Auto-Detect Forcing Wrong Spec To `review`",
       "repo_issue_id": 539,
       "status": "review",
-      "linked_commits": [
-        "01628d0"
-      ],
+      "linked_commits": null,
       "type": "bug",
       "body": "# Fix `ff commit --ai` Auto-Detect Forcing Wrong Spec To `review`\n\n## Objective\n\n`ff commit --ai` auto-detects the most-recently-modified active spec, binds\nthe commit to it, and **force-sets it to `review`**. This frequently binds to\nthe wrong spec and prematurely promotes it to `review`, causing more problems\nthan the convenience solves. This spec changes that behavior.\n\n## Root Cause (from code reading)\n\n- `autoDetectSpecFromWorkingTree` (cmd_commit.go:824) prefers active specs\n  and picks the most recently modified one (lines 819-849). Comment says it\n  exists \"so that `ff commit --ai` can bind to it without an interactive\n  prompt.\"\n- After detection, `ff commit --ai` calls `UpdateSpecFileStatus(specFile,\n  \"review\")` (cmd_commit.go:247) and sets `entry.Status = \"review\"`\n  (cmd_commit.go:251) — **unconditionally**, regardless of whether the user\n  intended that spec.\n- The `--spec \u003cid\u003e` flag already allows explicit binding, but the default\n  path ignores intent and force-promotes whatever file was last touched.\n\n## Problems This Causes\n\n- A cleanup/multi-file commit (e.g. deleting rogue specs) gets bound to the\n  cleanup spec and forces it to `review` even when the user may not want it\n  promoted yet.\n- Editing a spec file moments before committing an unrelated change steals\n  the binding to the edited spec.\n- Force-promotion to `review` bypasses deliberate status workflow.\n\n## Requirements\n\n### 1. Do not force `review` on auto-detect\n- When `ff commit --ai` auto-detects a spec (no `--spec` given), bind the\n  commit to it but **do NOT auto-promote to `review`** unless the spec is\n  already in a state that implies readiness, or the user explicitly opts in.\n- Prefer leaving the spec at its current status, or require an explicit\n  `--review` flag to promote.\n\n### 2. Prefer explicit binding\n- Make `--spec \u003cid\u003e` the recommended path; when provided, bind and promote\n  only per the user's explicit intent (e.g. `--review` to promote).\n- When auto-detect is used and ambiguous (multiple recently-modified active\n  specs), either (a) prompt, or (b) refuse and require `--spec`, rather than\n  guessing.\n\n### 3. Keep convenience for the simple case\n- Single-active-spec repos should still work without `--spec` (bind + no\n  forced promotion, or promote only with `--review`).\n\n## Acceptance Criteria\n\n- `ff commit --ai` without `--spec` binds the commit but does NOT force the\n  detected spec to `review` unless `--review` is passed.\n- `ff commit --ai --spec \u003cid\u003e` binds explicitly and only promotes when\n  `--review` is given.\n- Ambiguous auto-detect (multiple recent active specs) prompts or requires\n  `--spec` instead of guessing.\n- No regression to the 13 pre-existing failing integration tests (additive\n  change; those remain tracked separately).",
       "root_cause": "ff commit --ai calls autoDetectSpecFromWorkingTree (cmd_commit.go:824) which picks the most-recently-modified ACTIVE spec and binds the commit to it, then unconditionally sets that spec to status='review' (cmd_commit.go:247/251). When multiple specs were touched (e.g. a cleanup commit touching many files, or the user editing a different spec just before committing), the auto-detect binds to the wrong spec and force-promotes it to review — creating more problems than the convenience solves. The --spec flag exists to bind explicitly, but the default auto-detect overrides intent.",
@@ -424,13 +422,7 @@
       "spec_id": "Problem",
       "repo_issue_id": 546,
       "status": "draft",
-      "linked_commits": [
-        "0bab943",
-        "7cfb30f",
-        "8783e13",
-        "8bed541",
-        "c3728c3"
-      ],
+      "linked_commits": null,
       "type": "refactor",
       "body": "# Problem\n\nThe `ff backlog \u003cspec_id\u003e` command is a standalone subcommand that manages spec status. It has its own usage, help text, and dispatch entry in command_dispatcher.go. This is confusing — spec status management should live under `ff spec`, not as a separate command with an unrelated name ('backlog' only describes one possible transition, not what the command does).\n\n## Current Behavior\n\n- `ff backlog \u003cspec_id\u003e` moves a spec to \"backlog\" status (if not already there)\n- If already backlog, it shows an interactive promotion menu: 1. in-progress, 2. review, 3. ship, 4. close, 5. delete\n- Both spec file frontmatter and ledger are updated atomically\n- `ff spec \u003cname\u003e` only creates new specs — it has no capability to manage existing specs\n\n## Requirements\n\n1. Remove `ff backlog` as a standalone command (remove dispatch entry, remove help text, remove handler code)\n2. Add `--status \u003cstatus\u003e` flag to `ff spec` for non-interactive status changes: `ff spec \u003cspec_id\u003e --status review`\n3. When `ff spec \u003cspec_id\u003e` is called on an existing spec without `--status` or `--delete`, show the interactive promotion menu (same logic as current promptAdvancement)\n4. Both spec file and ledger must be updated atomically on every status change\n5. The interactive menu must support all valid status transitions: in-progress, review, ship, close, delete\n6. `ff commit` (human, explicit) sets the bound spec to `review` — the human has tested the code before committing and is intentionally marking it ready for review\n7. `ff commit --ai` (AI/agent mode) sets the bound spec to `draft` — the AI ran tests but a human must verify before promotion to `review`\n8. No `--review` flag is needed on `ff commit` — the human/AI distinction already determines the post-commit status\n9. All valid status values must be accepted by `--status`: backlog, draft, in-progress, review, ship, closed\n\n## Implementation\n\n- Move the interactive promotion menu (currently promptAdvancement in cmd_backlog.go) into cmd_spec.go\n- Create a shared setSpecStatus(specID, status, configDir) helper that updates both spec file and ledger atomically\n- Rename handleBacklog to handleSpecStatus or inline into handleSpec\n- Remove the `backlog` case from command_dispatcher.go\n- Update help text accordingly\n- Keep `ff backlog` as a backward-compatible alias for one release cycle (optional — we can skip this since 0.8.5 hasn't shipped yet)\n- `ff commit`: after resolving the spec and creating the commit, set status to `review` (both file + ledger)\n- `ff commit --ai`: after commit, set status to `draft` (both file + ledger) — AI output needs human verification\n- No need for a separate `--review` flag; the `--ai` flag is the discriminator\n- Update `ff help` and `ff spec --help` text to reflect `--status` flag and the removal of `ff backlog`\n- Update any internal docs or man pages that reference `ff backlog` or the old promotion model\n\n## Acceptance Criteria\n\n1. `ff backlog \u003cspec_id\u003e` produces \"unknown command\" or routes to help\n2. `ff spec \u003cspec_id\u003e --status review` promotes the spec to review (both file + ledger)\n3. `ff spec \u003cspec_id\u003e` (on existing spec, without flags) shows interactive menu\n4. `ff spec \u003cspec_id\u003e --status invalid` shows error with valid statuses\n5. `ff spec \u003cnew-name\u003e` still creates a new spec (no regression)\n6. `ff spec \u003cspec_id\u003e --delete` still deletes a spec (no regression)\n7. All existing tests pass",
       "root_cause": "ff backlog was a standalone command for spec status management, duplicating logic that belongs under ff spec. Collapsing it into ff spec --status simplifies the CLI surface and unifies status management under one command.",
@@ -438,12 +430,9 @@
     },
     "SPEC-1784263151": {
       "spec_id": "ff archive drops version root_cause resolution and body from DB",
-      "repo_issue_id": 0,
+      "repo_issue_id": 547,
       "status": "draft",
-      "linked_commits": [
-        "7640137",
-        "8fdcdc5"
-      ],
+      "linked_commits": null,
       "type": "bug",
       "body": "# ff archive drops version root_cause resolution and body from DB\n\n## Problem\n\nWhen ff archive runs, it calls db.ArchiveSpec which passes empty strings for version, root_cause, resolution, and body to UpsertSpec. Since UpsertSpec uses ON CONFLICT DO UPDATE, these empty values overwrite whatever was previously stored in the DB. The archived spec record therefore has empty values for all four fields, losing the spec's resolution details permanently.\n\n## Root Cause\n\narchive.go: ArchiveResolvedSpecs() at line 39 calls:\n    db.ArchiveSpec(specID, entry.SpecID, specType, entry.RepoIssueID)\n\nIt doesn't pass entry.Version, entry.RootCause, entry.Resolution, or entry.Body even though the ledger SpecEntry has all four fields populated (populated by SyncFromSpecsDir which reads them from the spec file frontmatter).\n\ndb.go: ArchiveSpec() at line 230 calls:\n    db.UpsertSpec(specID, title, \"archived\", specType, \"\", repoIssueID, \"\", \"\", \"\")\n\nThe empty strings for version, rootCause, resolution, and body blow away existing DB values via the ON CONFLICT DO UPDATE clause.\n\nMeanwhile, the normal sync path (ImportDB at line 637) properly passes all fields:\n    db.UpsertSpec(specID, entry.SpecID, entry.Status, entry.Type, entry.Version, entry.RepoIssueID, entry.RootCause, entry.Resolution, entry.Body)\n\nSo the ledger has the data, the DB supports the columns, but the archive path drops it all.\n\n## Requirements\n\n1. ArchiveResolvedSpecs must pass Version, RootCause, Resolution, and Body from the ledger entry to ArchiveSpec\n2. ArchiveSpec must accept and forward all four fields to UpsertSpec\n3. No regression in the archive flow — archived specs still get status \"archived\" and their files removed\n4. The archived DB record preserves the spec's version, root_cause, resolution, and body as they were before archiving",
       "root_cause": "ArchiveResolvedSpecs called db.ArchiveSpec(specID, entry.SpecID, specType, entry.RepoIssueID) without passing Version, RootCause, Resolution, or Body. ArchiveSpec then called UpsertSpec with empty strings for all four, which overwrote existing DB values via ON CONFLICT DO UPDATE.",
@@ -483,54 +472,38 @@
       "version": "0.9.7"
     },
     "SPEC-1784660285": {
-      "spec_id": "Fix Ff Commit Malformed Spec Frontmatter And Stale Linked_commits",
-      "repo_issue_id": 0,
+      "spec_id": "",
+      "repo_issue_id": 548,
       "status": "review",
-      "linked_commits": [
-        "02a4e96",
-        "515655c",
-        "563832d",
-        "86eeb74"
-      ],
+      "linked_commits": null,
       "type": "bug",
       "body": "ff commit --ai corrupts the bound spec file's frontmatter with duplicate linked_commits keys and writes a stale pre-amend commit hash. Two defects: (1) UpdateSpecFileLinkedCommits can leave duplicate linked_commits keys when the spec already has one, producing invalid YAML. (2) ff commit writes the pre-amend SHA to linked_commits then amends the commit, producing a new SHA that the spec file still references. Fixes: de-duplicate linked_commits on write, record final SHA after amend, advance spec status from draft to review on commit, validate frontmatter on write.",
       "version": "0.9.7"
     },
     "SPEC-1784672632": {
       "spec_id": "Fix finalizeCommitAfterAmend spec path and duplicate linked_commits",
-      "repo_issue_id": 0,
+      "repo_issue_id": 549,
       "status": "review",
-      "linked_commits": [
-        "0dffe78",
-        "138178a",
-        "5429d22"
-      ],
+      "linked_commits": null,
       "type": "bug",
       "body": "# Fix finalizeCommitAfterAmend spec path and duplicate linked_commits\n\nTwo bugs in finalizeCommitAfterAmend (cmd_commit.go):\n\n1. **Wrong spec directory path.** Line 312 constructs `specDir` from `configDir` (.ff/) instead of the repo root, so `findSpecFileByID` always fails and linked_commits is never updated after amend.\n\n2. **Duplicate linked_commits on re-amend.** When the last linked_commit already equals the final hash, the code skips replacement but falls through to append, creating a duplicate entry. Fix: check if finalHash exists anywhere in the list before modifying.",
       "version": "0.9.7"
     },
     "SPEC-1784672660": {
       "spec_id": "Update Stale Backlog Version Numbers On Ship",
-      "repo_issue_id": 0,
-      "status": "draft",
-      "linked_commits": [
-        "265f42c",
-        "383248f",
-        "d7412c2"
-      ],
+      "repo_issue_id": 550,
+      "status": "review",
+      "linked_commits": null,
       "type": "feature",
       "body": "# Update Stale Backlog Version Numbers On Ship\n# Update Stale Backlog Version Numbers On Ship\n\nWhen ff ship runs, specs in backlog may carry old version numbers from previous releases. These stale versions create confusion about what is planned for the current cycle. On ship, ff should scan all specs in backlog (and draft) status. Any spec whose version field does not match the incoming ship version gets its version field updated to the ship version. This keeps the backlog clean and ensures version numbers always reflect the current release cycle. Do not change specs already in review, ship, or closed status. The update should happen after the version prompt but before the push, so the version bump rides along in the shipped commit.",
-      "resolution": "fixed in 265f42c",
+      "resolution": "fixed in d7412c2",
       "version": "0.9.7"
     },
     "SPEC-1784678104": {
       "spec_id": "ff commit amend cycle corrupts linked_commits across multiple commits",
-      "repo_issue_id": 0,
+      "repo_issue_id": 551,
       "status": "review",
-      "linked_commits": [
-        "25126a4",
-        "d61c818"
-      ],
+      "linked_commits": null,
       "type": "bug",
       "body": "# ff commit amend cycle corrupts linked_commits across multiple commits\n\n## Objective\n\nThe `ff commit` amend cycle overwrites `linked_commits` in both the ledger and spec file during each commit-amend pair, causing data loss and incorrect commit hashes on rapid successive commits.\n\n## Root Cause\n\n`ff commit` follows this flow:\n1. `AutoStageAndCommit` creates a commit with hash H1\n2. Metadata changes (spec file, ledger) are staged\n3. `amendLastCommit` amends the commit, producing hash H2\n4. `finalizeCommitAfterAmend` tries to replace H1 with H2 in `linked_commits`\n\nThe problem is that `UpdateLedgerAfterCommit` (step 0, before amend) appends H1 to `linked_commits`. Then `finalizeCommitAfterAmend` (step 4) replaces the last entry. But when multiple `ff commit` calls happen in succession:\n- Commit A: appends H1_A, amend produces H2_A, replaces with H2_A ✓\n- Commit B: appends H1_B, amend produces H2_B, replaces with H2_B — but H1_B was never in the list if A's amend already replaced it\n\nThe underlying issue is that the amend changes the commit hash *after* the hash was recorded, and the replacement logic doesn't account for the intermediate state correctly. Additionally, `UpdateLedgerAfterCommit` and `finalizeCommitAfterAmend` both write to the spec file and ledger, creating race conditions.\n\n## Problems This Causes\n\n- `linked_commits` contains wrong hashes (pre-amend instead of post-amend)\n- Multiple consecutive `ff commit` calls corrupt the list, losing entries\n- Requires manual raw git commits to fix (see SPEC-1784678126)\n- Observed in production: three consecutive `ff commit` calls each corrupted the list\n\n## Requirements\n\n### 1. Atomic commit + metadata update\n- The commit hash recorded in `linked_commits` must be the final post-amend hash\n- The amend and the linked_commits update must be atomic — no intermediate state where the hash is wrong\n\n### 2. No duplicate entries\n- `finalizeCommitAfterAmend` must not append a hash that already exists in the list\n- Already fixed in SPEC-1784672632, but the amend-then-replace cycle itself remains problematic\n\n### 3. Idempotent commits\n- Re-running `ff commit` with the same message should not corrupt an already-correct `linked_commits` list\n- If the last linked_commit already equals HEAD, do nothing\n\n## Acceptance Criteria\n- Three consecutive `ff commit` calls produce a `linked_commits` list with exactly three correct post-amend hashes\n- No duplicate entries in `linked_commits` after any number of consecutive commits\n- Each entry in `linked_commits` corresponds to an actual commit in the git log\n- Existing tests pass (449 tests, 0 failures)\n- Unit test: run three consecutive `ff commit` calls, verify all three hashes are correct and unique",
       "root_cause": "UpdateLedgerAfterCommit appended the pre-amend hash, then finalizeCommitAfterAmend tried to replace it but failed when multiple commits happened in succession. Additionally, finalizeCommitAfterAmend used the wrong spec path (.ff/specs/ instead of git root).",
@@ -539,7 +512,7 @@
     },
     "SPEC-1784678126": {
       "spec_id": "Chore commits outside ff lifecycle lack spec binding",
-      "repo_issue_id": 0,
+      "repo_issue_id": 552,
       "status": "draft",
       "linked_commits": null,
       "type": "bug",
@@ -548,7 +521,7 @@
     },
     "SPEC-1784679435": {
       "spec_id": "Remove JSON ledger, make DB canonical, add post-ship integrity gate",
-      "repo_issue_id": 0,
+      "repo_issue_id": 553,
       "status": "draft",
       "linked_commits": null,
       "type": "feature",
@@ -557,11 +530,9 @@
     },
     "SPEC-1784679743": {
       "spec_id": "ff spec truncates multi-line body from heredoc or piped stdin",
-      "repo_issue_id": 0,
+      "repo_issue_id": 554,
       "status": "review",
-      "linked_commits": [
-        "2a9254d"
-      ],
+      "linked_commits": null,
       "type": "bug",
       "body": "# ff spec truncates multi-line body from heredoc or piped stdin\n\n## Objective\n\nWhen `ff spec` receives a multi-line body via heredoc (`\u003c\u003c'EOF'`) or piped stdin, only the first paragraph is written to the spec file. The rest of the content is silently dropped.\n\n## Root Cause\n\n`parseSpecPositional` in `cmd_spec.go` reads stdin via `bufio.Scanner` but splits on blank lines, treating the first blank line as the end of input. Heredoc input with blank lines between paragraphs causes the scanner to stop reading after the first paragraph. The interactive prompt flow reads the full body correctly because it uses a different code path.\n\n## Problems This Causes\n\n- Specs created via `ff spec --ai` with piped body content lose all content after the first blank line\n- Detailed requirements, acceptance criteria, and implementation notes are silently dropped\n- The spec appears complete (frontmatter is correct) but the body is truncated\n- Users must manually edit the spec file to restore lost content\n\n## Requirements\n\n### 1. Read full stdin body\n- When body is provided via heredoc or piped stdin, read until actual EOF (not first blank line)\n- Preserve blank lines in the body content\n- Strip only trailing whitespace, not internal blank lines\n\n### 2. Maintain interactive behavior\n- Interactive prompt flow should continue to work as-is\n- Single-paragraph bodies should work unchanged\n\n### 3. Regression prevention\n- Unit test: pipe multi-paragraph body via stdin, verify all paragraphs appear in spec file\n- Unit test: heredoc with blank lines between sections, verify full content preserved\n\n## Acceptance Criteria\n- `echo -e \"## Section 1\\n\\n## Section 2\" | ff spec \"Test spec\" --type feature` produces a spec with both sections\n- `ff spec \"Test spec\" --type feature \u003c\u003c'EOF'` with multi-paragraph body preserves all paragraphs\n- Interactive prompt flow is unchanged\n- Existing tests pass (449 tests, 0 failures)",
       "root_cause": "parseSpecPositional only reads body from CLI args. Piped stdin is never read, so heredoc/pipe input is silently ignored.",
@@ -570,11 +541,9 @@
     },
     "SPEC-1784679765": {
       "spec_id": "ff spec generates duplicated H1 heading in spec file",
-      "repo_issue_id": 0,
+      "repo_issue_id": 555,
       "status": "review",
-      "linked_commits": [
-        "9f894ab"
-      ],
+      "linked_commits": null,
       "type": "bug",
       "body": "# ff spec generates duplicated H1 heading in spec file\n\n## Objective\n\nWhen `ff spec` creates a new spec file, the H1 heading is written twice, producing two consecutive `# Title` lines at the top of the body.\n\n## Root Cause\n\n`writeSpecFromTemplate` at `cmd_spec.go:232` generates the body as:\n```go\ncontent := fmt.Sprintf(\"---%s---\\n# %s\\n%s\\n\", frontmatter, title, body)\n```\n\nThe `title` parameter comes from `sanitizeSpecTitle(name)` which does not strip a leading `# ` if the user provides one. Additionally, when the spec name is already a valid title, the `# ` prefix is added unconditionally, but if the body content also starts with `# Title` (from the user or from a previous template), the heading appears twice.\n\nObserved in multiple newly-created spec files where lines 11-12 are identical `# Title` lines.\n\n## Problems This Causes\n\n- Rendered markdown shows the title twice\n- Looks unprofessional in spec listings and web views\n- Violates markdown best practices (single H1 per document)\n\n## Requirements\n\n### 1. Single H1 heading\n- `writeSpecFromTemplate` must emit exactly one `# \u003ctitle\u003e` line\n- If the body already starts with `# \u003ctitle\u003e`, do not add another\n- If the body does not start with `# \u003ctitle\u003e`, prepend it\n\n### 2. Sanitize title input\n- `sanitizeSpecTitle` should strip leading `# ` from user input to prevent double-prefixing\n\n### 3. Regression prevention\n- Unit test: create spec with plain name, verify single H1\n- Unit test: create spec with `# ` prefixed name, verify single H1\n- Unit test: create spec with body starting with `# Title`, verify no duplication\n\n## Acceptance Criteria\n- `ff spec \"My Feature\" --type feature` produces exactly one `# My Feature` line\n- `ff spec \"# My Feature\" --type feature` produces exactly one `# My Feature` line (not `# # My Feature`)\n- Existing tests pass (449 tests, 0 failures)",
       "root_cause": "writeSpecFromTemplate always prepends '# \u003ctitle\u003e' to the body, but promptForSpecBody builds a body that already starts with '# \u003ctitle\u003e', producing two H1 lines. sanitizeSpecTitle also did not strip leading '# ' from user input.",
@@ -583,7 +552,7 @@
     },
     "SPEC-1784690583": {
       "spec_id": "Ff Commit Should Not Set Spec Status By Default",
-      "repo_issue_id": 0,
+      "repo_issue_id": 556,
       "status": "draft",
       "linked_commits": null,
       "type": "bug",
@@ -599,18 +568,59 @@
     },
     "SPEC-1784703448": {
       "spec_id": "Write Commit Link To Spec Resolution Field Instead Of Full Diff",
-      "repo_issue_id": 0,
+      "repo_issue_id": 557,
       "status": "draft",
-      "linked_commits": [
-        "006b458",
-        "05c2496",
-        "3f38c4a",
-        "7bdcdd7",
-        "9d8cd85"
-      ],
+      "linked_commits": null,
       "type": "refactor",
       "body": "# Write Commit Link To Spec Resolution Field Instead Of Full Diff\n## Objective\n\nAfter each ff commit, write a lightweight commit link (e.g. \"fixed in abc123\") to the spec file's resolution frontmatter field and DB entry, instead of dumping the full git diff. The diff lives in git history via linked_commits; the resolution field provides a human-readable pointer.\n\n## Root Cause\n\nThe previous implementation (SPEC-1784264619) removed git diff capture entirely from cmd_commit.go, leaving the resolution field empty after commits. The resolution field should contain a traceable link to the implementation commit as ground truth of what was changed.\n\n## Requirements\n\n1. After finalizeCommitAfterAmend, write \"fixed in \u003ccommit_hash\u003e\" to the spec file's resolution frontmatter and DB SpecEntry.Resolution\n2. Restore spec.Resolution in PostResolutionComment so the commit link appears in the remote issue resolution comment\n3. No full diff capture — just the commit hash link",
       "resolution": "fixed in 7bdcdd7",
+      "version": "0.9.8"
+    },
+    "SPEC-1784742157": {
+      "spec_id": "Fix Ff Sync Not Promoting Review Specs To Ship",
+      "repo_issue_id": 558,
+      "status": "draft",
+      "linked_commits": null,
+      "type": "bug",
+      "body": "# Fix Ff Sync Not Promoting Review Specs To Ship\n## Objective\nff sync is supposed to promote specs from 'review' status to 'ship' status after successfully synchronizing with the remote issue tracker. Currently, specs are remaining in 'review' status even after a successful sync.\n\n## Root Cause\nInvestigation needed in engine/cmd_sync.go and engine/sync.go to ensure the status transition logic is correctly triggered and persisted to both the spec file and the database after remote synchronization.\n\n## Requirements\n1. ff sync must promote all successfully synced 'review' specs to 'ship' status.\n2. The status change must be persisted to the spec's frontmatter.\n3. The status change must be persisted to the database/ledger.\n4. Verify via unit or integration tests.",
+      "version": "0.9.8"
+    },
+    "SPEC-1784742186": {
+      "spec_id": "Fix Redundant Title Formatting In Remote Issues",
+      "repo_issue_id": 559,
+      "status": "draft",
+      "linked_commits": [
+        "b6967e6"
+      ],
+      "type": "bug",
+      "body": "# Fix Redundant Title Formatting In Remote Issues\n\n## Objective\nRemote issue titles currently include a redundant prefix like 'feat/spec: [type][status] Title #123'. The 'feat/spec:' part is unnecessary and clutters the title. Additionally, the spec titles stored in the local database and files should consistently use the same '[type][status] Title' naming scheme to match the remote repository.\n\n## Root Cause\nThe title generation logic in `issue_coordinator.go` and `sync.go` prepends a hardcoded `feat/spec:` label. Local storage (DB/Files) currently stores the raw title without the type/status metadata, leading to inconsistency.\n\n## Requirements\n1. Remove the 'feat/spec:' prefix from remote issue titles.\n2. Ensure the title follows the format: '[type][status] Title'.\n3. Update the local database and spec files so that stored titles include the `[type][status]` prefix, ensuring consistency across local and remote environments.\n4. Verify that all spec types (feat, bug, refactor, chore) are formatted consistently.\n5. Update existing tests to match the new title format and consistency requirements.",
+      "version": "0.9.8"
+    },
+    "SPEC-1784743251": {
+      "spec_id": "Fix Teststresspartialsuccess",
+      "repo_issue_id": 0,
+      "status": "draft",
+      "linked_commits": null,
+      "type": "bug",
+      "body": "# Fix Teststresspartialsuccess\n## Objective\nAutomatically created from failing test TestStressPartialSuccess during ff --ai run.\n\n## Root Cause\nTest failed - see failure details below.\n\n## Failure Details\n- Test: TestStressPartialSuccess\n- File: sync_stress_test.go\n- Line: 0\n- Error: === RUN   TestStressPartialSuccess\n[DEBUG] HTTP client configured: Proxy=true, TLSInsecure=false\n[DEBUG] GET no open issues with matching title: feat/test: stress-B\n[DEBUG] Repo/GitHub POST comment on issue #1\n    sync_stress_test.go:272: processSyncQueue returned error (expected due to partial failure): comment posting failed (500): {\"message\":\"server error\"}\n    sync_stress_test.go:281: expected 1 remaining op (post_comment), got 2\n--- FAIL: TestStressPartialSuccess (0.00s)",
+      "version": "0.9.8"
+    },
+    "SPEC-1784743300": {
+      "spec_id": "Fix Testissuetitlevalidator_trailingpunctuation",
+      "repo_issue_id": 0,
+      "status": "draft",
+      "linked_commits": null,
+      "type": "bug",
+      "body": "# Fix Testissuetitlevalidator_trailingpunctuation\n## Objective\nAutomatically created from failing test TestIssueTitleValidator_TrailingPunctuation during ff --ai run.\n\n## Root Cause\nTest failed - see failure details below.\n\n## Failure Details\n- Test: TestIssueTitleValidator_TrailingPunctuation\n- File: issue_validator_test.go\n- Line: 0\n- Error: === RUN   TestIssueTitleValidator_TrailingPunctuation\n    issue_validator_test.go:127: Validate(\"feat/engine: add new feature.\") = nil, want error for trailing punctuation\n    issue_validator_test.go:127: Validate(\"fix/sync: resolve bug!\") = nil, want error for trailing punctuation\n    issue_validator_test.go:127: Validate(\"docs/config: update guide?\") = nil, want error for trailing punctuation\n    issue_validator_test.go:127: Validate(\"refactor/engine: simplify code...\") = nil, want error for trailing punctuation\n    issue_validator_test.go:127: Validate(\"feat/engine: test...\") = nil, want error for trailing punctuation\n--- FAIL: TestIssueTitleValidator_TrailingPunctuation (0.00s)",
+      "version": "0.9.8"
+    },
+    "SPEC-1784743523": {
+      "spec_id": "Fix Isvalidissuetitle Helper Regex For Old Format",
+      "repo_issue_id": 0,
+      "status": "draft",
+      "linked_commits": null,
+      "type": "bug",
+      "body": "# Fix Isvalidissuetitle Helper Regex For Old Format\n## Objective\nTestIsValidIssueTitle_Helper is failing because the updated regex does not correctly match the old 'type/component: Title' format when the component name is long.\n\n## Root Cause\nThe old format part of the regex was . The issue_validator_test.go has a test case:  which is expected to return false but returns true because the component name 'engine' is short, and the title part is long, and the maxTitleLength check was moved/changed.\n\nActually, the test failure message is:\n\n\nThis means the regex matched, and the length check passed (or failed to fail).\n\n## Requirements\n1. Fix the regex and validation logic to correctly handle both new and old formats.\n2. Ensure the maxTitleLength check (120 for new, likely 60 for old or consistent 120) is enforced correctly.\n3. Fix the failing test case.",
       "version": "0.9.8"
     }
   }
