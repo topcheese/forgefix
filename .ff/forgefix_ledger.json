@@ -3,10 +3,10 @@
     "forgefix": {
       "pipeline_id": "forgefix",
       "total_ran": 460,
-      "total_passed": 458,
-      "total_failed": 2,
+      "total_passed": 460,
+      "total_failed": 0,
       "historical_floor": 460,
-      "last_update": "2026-07-22 18:06:13"
+      "last_update": "2026-07-22 18:07:30"
     }
   },
   "spec_mappings": {
@@ -592,12 +592,13 @@
       "linked_commits": [
         "25724ea",
         "32d2265",
-        "a633f01",
-        "8531d08"
+        "3eceff4",
+        "8531d08",
+        "4102e00"
       ],
       "type": "bug",
       "body": "# Fix Redundant Title Formatting In Remote Issues\n\n## Objective\nRemote issue titles currently include a redundant prefix like 'feat/spec: [type][status] Title #123'. The 'feat/spec:' part is unnecessary and clutters the title. Additionally, the spec titles stored in the local database and files should consistently use the same '[type][status] Title' naming scheme to match the remote repository.\n\n## Root Cause\nThe title generation logic in `issue_coordinator.go` and `sync.go` prepends a hardcoded `feat/spec:` label. Local storage (DB/Files) currently stores the raw title without the type/status metadata, leading to inconsistency.\n\n## Requirements\n1. Remove the 'feat/spec:' prefix from remote issue titles.\n2. Ensure the title follows the format: '[type][status] Title'.\n3. Update the local database and spec files so that stored titles include the `[type][status]` prefix, ensuring consistency across local and remote environments.\n4. Verify that all spec types (feat, bug, refactor, chore) are formatted consistently.\n5. Update existing tests to match the new title format and consistency requirements.",
-      "resolution": "fixed in 32d2265",
+      "resolution": "fixed in 8531d08",
       "version": "0.9.8"
     },
     "SPEC-1784743251": {
