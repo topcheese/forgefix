@@ -1064,6 +1064,9 @@ func amendLastCommit(wd string) error {
 //     - feature/bug/refactor + --review flag → "review"
 //     - feature/bug/refactor (no --review)   → "draft"
 //     - chore                                 → "review"
+//
+// Important: never downgrades. If the spec is already at a higher status,
+// the target is ignored to avoid regressions (e.g. review→draft on commit).
 func resolveTargetStatus(wd, specID string, aiMode, promoteReview bool) string {
 	if promoteReview {
 		return "review"
@@ -1072,16 +1075,74 @@ func resolveTargetStatus(wd, specID string, aiMode, promoteReview bool) string {
 	specType := readSpecType(wd, specID)
 	isChore := strings.ToLower(specType) == "chore"
 
+	var target string
 	if aiMode {
 		if isChore {
-			return "review"
+			target = "review"
+		} else {
+			target = "draft"
 		}
-		return "draft"
+	} else {
+		if isChore {
+			target = "ship"
+		} else {
+			return ""
+		}
 	}
 
-	// Human commit
-	if isChore {
-		return "ship"
+	// Never downgrade: only apply if target ranks higher than current
+	currentStatus := readSpecStatus(wd, specID)
+	if statusRank(target) > statusRank(currentStatus) {
+		return target
+	}
+	return ""
+}
+
+// statusRank returns a numeric rank for spec status comparison.
+// Higher rank = more advanced in the lifecycle.
+func statusRank(s string) int {
+	switch s {
+	case "draft":
+		return 0
+	case "in-progress":
+		return 1
+	case "review":
+		return 2
+	case "ship":
+		return 3
+	case "closed":
+		return 4
+	case "archived":
+		return 5
+	default:
+		return -1
+	}
+}
+
+// readSpecStatus reads the status field from the spec file's frontmatter.
+func readSpecStatus(wd, specID string) string {
+	specDir := filepath.Join(wd, "specs")
+	specFile, err := findSpecFileByID(specDir, specID)
+	if err != nil {
+		return ""
+	}
+	data, err := os.ReadFile(specFile)
+	if err != nil {
+		return ""
+	}
+	content := string(data)
+	if !strings.HasPrefix(content, "---") {
+		return ""
+	}
+	parts := strings.SplitN(content, "---", 3)
+	if len(parts) < 3 {
+		return ""
+	}
+	for _, line := range strings.Split(parts[1], "\n") {
+		line = strings.TrimSpace(line)
+		if strings.HasPrefix(line, "status:") {
+			return strings.TrimSpace(strings.TrimPrefix(line, "status:"))
+		}
 	}
 	return ""
 }

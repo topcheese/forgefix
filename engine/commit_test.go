@@ -917,7 +917,7 @@ repo_issue: ""
 	}
 }
 
-func TestRunCommit_AIFeature_SetsDraft(t *testing.T) {
+func TestRunCommit_AIFeature_NoDowngradeFromInProgress(t *testing.T) {
 	tmpDir := t.TempDir()
 	initGitRepo(t, tmpDir)
 
@@ -944,7 +944,7 @@ repo_issue: ""
 	}
 
 	d := &CommandDispatcher{Stdout: io.Discard, Stderr: io.Discard}
-	// AI commit (aiMode=true) on feature spec, no --review → should set "draft"
+	// AI commit on feature spec at in-progress — should NOT downgrade to draft
 	_, _, _, err := runCommit(tmpDir, "implement feature [SPEC-AIF1]", "SPEC-AIF1", "", "", true, d, "", false)
 	if err != nil {
 		t.Fatalf("runCommit failed: %v", err)
@@ -955,8 +955,8 @@ repo_issue: ""
 		t.Fatal(err)
 	}
 	got := string(data)
-	if !strings.Contains(got, "status: draft") {
-		t.Errorf("expected status to be draft for AI feature commit without --review, got:\n%s", got)
+	if !strings.Contains(got, "status: in-progress") {
+		t.Errorf("expected status to remain in-progress (no downgrade), got:\n%s", got)
 	}
 }
 

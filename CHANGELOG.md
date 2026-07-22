@@ -18,6 +18,7 @@
 - feat: remove bookkeeping commit from git history, clean up Swarm spec linked_commits (SPEC-1784262174)
 - feat: fix malformed frontmatter, add missing title heading, set status to review in file and DB (SPEC-1784263151)
 - feat: set status to review, add root_cause and resolution referencing SPEC-1784672632 fix (SPEC-1784678104)
+- feat: fix resolveTargetStatus to never downgrade status, add statusRank guard (SPEC-1784678104)
 
 ## [Unreleased] - 2026-07-17
 
