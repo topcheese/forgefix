@@ -23,6 +23,7 @@
 - feat: Fix duplicated H1 heading in spec files (SPEC-1784679765)
 - feat: Fix ff spec truncating multi-line body from piped stdin (SPEC-1784679743)
 - feat: Write commit link to spec resolution field instead of full diff (SPEC-1784703448)
+- feat: Update ledger and spec file after commit-link resolution (SPEC-1784703448)
 
 ## [Unreleased] - 2026-07-17
 

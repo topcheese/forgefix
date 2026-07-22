@@ -6,7 +6,7 @@
       "total_passed": 459,
       "total_failed": 0,
       "historical_floor": 459,
-      "last_update": "2026-07-22 06:57:28"
+      "last_update": "2026-07-22 06:57:35"
     }
   },
   "spec_mappings": {
@@ -597,10 +597,12 @@
       "repo_issue_id": 0,
       "status": "draft",
       "linked_commits": [
-        "606cdf5"
+        "84c4aa9",
+        "7337c51"
       ],
       "type": "refactor",
       "body": "# Write Commit Link To Spec Resolution Field Instead Of Full Diff\n## Objective\n\nAfter each ff commit, write a lightweight commit link (e.g. \"fixed in abc123\") to the spec file's resolution frontmatter field and DB entry, instead of dumping the full git diff. The diff lives in git history via linked_commits; the resolution field provides a human-readable pointer.\n\n## Root Cause\n\nThe previous implementation (SPEC-1784264619) removed git diff capture entirely from cmd_commit.go, leaving the resolution field empty after commits. The resolution field should contain a traceable link to the implementation commit as ground truth of what was changed.\n\n## Requirements\n\n1. After finalizeCommitAfterAmend, write \"fixed in \u003ccommit_hash\u003e\" to the spec file's resolution frontmatter and DB SpecEntry.Resolution\n2. Restore spec.Resolution in PostResolutionComment so the commit link appears in the remote issue resolution comment\n3. No full diff capture — just the commit hash link",
+      "resolution": "fixed in 606cdf5",
       "version": "0.9.8"
     }
   }

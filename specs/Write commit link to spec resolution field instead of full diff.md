@@ -5,8 +5,9 @@ repo_issue: ""
 type: refactor
 version: "0.9.8"
 root_cause: ""
-resolution: ""
-linked_commits: ["606cdf5"]
+
+resolution: fixed in 606cdf5
+linked_commits: ["84c4aa9", "7337c51"]
 ---
 # Write Commit Link To Spec Resolution Field Instead Of Full Diff
 ## Objective
