@@ -6,7 +6,7 @@
       "total_passed": 459,
       "total_failed": 0,
       "historical_floor": 459,
-      "last_update": "2026-07-22 03:21:09"
+      "last_update": "2026-07-22 03:23:03"
     }
   },
   "spec_mappings": {
@@ -443,7 +443,7 @@
     "SPEC-1784264619": {
       "spec_id": "Trim Remote Issue Body To Lightweight Summary",
       "repo_issue_id": 0,
-      "status": "draft",
+      "status": "closed",
       "linked_commits": [
         "64c802c"
       ],
@@ -461,10 +461,11 @@
     "SPEC-1784280001": {
       "spec_id": "ff commit produces malformed spec frontmatter and stale linked_commits",
       "repo_issue_id": 0,
-      "status": "draft",
+      "status": "review",
       "linked_commits": [
         "07f33dc",
-        "2ebba65"
+        "2ebba65",
+        "9b5cbd3"
       ],
       "type": "bug",
       "body": "# ff commit produces malformed spec frontmatter and stale linked_commits\n\n## Objective\n\n`ff commit --ai` (and likely `ff commit`) corrupts the bound spec file's\nfrontmatter and writes a stale commit hash to `linked_commits`. This was\nobserved while committing SPEC-1784264619 and is reproducible across multiple\nspecs (e.g. SPEC-1784275332 shows the same defect).\n\n## Root Cause\n\nTwo distinct defects:\n\n1. **Duplicate `linked_commits:` keys.** `UpdateSpecFileLinkedCommits`\n   (engine/cmd_backlog.go:94) walks the frontmatter line-by-line and, on the\n   first `linked_commits:` line it finds, either replaces that line or — if it\n   believes the field is missing — inserts a *new* `linked_commits:` line before\n   the closing `---`. When the spec already carries a `linked_commits:` key (for\n   example the `linked_commits: []` placeholder created by `ff spec`), the\n   function can leave the original key in place and append another, producing\n   three `linked_commits:` keys in the file. A YAML document with duplicate keys\n   is ambiguous/undefined — parsers keep either the first or last arbitrarily.\n\n2. **Stale hash after amend.** `ff commit` writes `linked_commits: [\"\u003chash\u003e\"]`\n   using the commit hash it just created, then **amends** that commit (folding\n   the metadata change into it). The amend produces a *new* SHA, but the spec\n   file and ledger still reference the pre-amend SHA. The linked commit therefore\n   points at a dangling/rewritten object rather than HEAD.\n\n   Observed in reflog for SPEC-1784264619:\n   ```\n   feab430 HEAD@{0}: commit (amend): feat: [SPEC-1784264619] refactor:\n   64c802c HEAD@{1}: commit:       feat: [SPEC-1784264619] refactor:\n   ```\n   The spec recorded `64c802c` while HEAD became `feab430`.\n\n## Problems\n\n- **Invalid frontmatter**: duplicate `linked_commits:` keys break strict YAML\n  parsers and make the field's value non-deterministic.\n- **Broken traceability**: `linked_commits` points at a pre-amend SHA that is no\n  longer HEAD, defeating the purpose of the field (pointer to the implementation).\n- **Status never advanced**: the spec stays `draft` even after the implementing\n  commit lands; there is no automatic transition to `implemented`/`closed`.\n- **Systemic**: SPEC-1784275332 exhibits the same stale-hash pattern\n  (`linked_commits: [\"45e3297\"]` while HEAD is `24c12a3`), confirming this is not\n  a one-off.\n\n## Requirements\n\n### 1. De-duplicate `linked_commits` on write\n- `UpdateSpecFileLinkedCommits` must never leave more than one `linked_commits:`\n  key in the frontmatter. If duplicates exist, collapse them into a single key\n  containing the union of all hashes (de-duplicated).\n- Add a regression test that feeds a frontmatter with 2–3 duplicate\n  `linked_commits:` keys and asserts exactly one key remains with the correct\n  hash set.\n\n### 2. Record the final SHA, not the pre-amend SHA\n- After `ff commit` amends the commit, re-read the resulting HEAD SHA and write\n  *that* to `linked_commits` (and the ledger). The hash written must equal\n  `git rev-parse HEAD` at the end of the command.\n- Alternatively, write `linked_commits` *after* the amend completes, not before.\n\n### 3. Advance spec status on commit\n- When `ff commit` successfully binds a commit to a spec, advance the spec\n  `status` from `draft` to `implemented` (or the project's configured\n  post-commit status), unless the spec is already in a terminal state.\n\n### 4. Validate frontmatter on write\n- Before writing the spec file back, assert the frontmatter parses as valid YAML\n  with no duplicate keys. Fail loudly rather than writing corruption.\n\n## Acceptance Criteria\n\n- `ff commit --ai` on a spec with existing `linked_commits: []` produces exactly\n  one `linked_commits:` key.\n- The hash in `linked_commits` equals `git rev-parse HEAD` after the command\n  returns.\n- The bound spec's `status` is advanced past `draft` after a successful commit.\n- No spec file written by `ff commit` contains duplicate frontmatter keys.\n- All existing tests pass.",
@@ -511,7 +512,7 @@
       "repo_issue_id": 0,
       "status": "review",
       "linked_commits": [
-        "dde80e6",
+        "25126a4",
         "d61c818"
       ],
       "type": "bug",
@@ -555,6 +556,15 @@
       "type": "bug",
       "body": "# ff spec generates duplicated H1 heading in spec file\n\n## Objective\n\nWhen `ff spec` creates a new spec file, the H1 heading is written twice, producing two consecutive `# Title` lines at the top of the body.\n\n## Root Cause\n\n`writeSpecFromTemplate` at `cmd_spec.go:232` generates the body as:\n```go\ncontent := fmt.Sprintf(\"---%s---\\n# %s\\n%s\\n\", frontmatter, title, body)\n```\n\nThe `title` parameter comes from `sanitizeSpecTitle(name)` which does not strip a leading `# ` if the user provides one. Additionally, when the spec name is already a valid title, the `# ` prefix is added unconditionally, but if the body content also starts with `# Title` (from the user or from a previous template), the heading appears twice.\n\nObserved in multiple newly-created spec files where lines 11-12 are identical `# Title` lines.\n\n## Problems This Causes\n\n- Rendered markdown shows the title twice\n- Looks unprofessional in spec listings and web views\n- Violates markdown best practices (single H1 per document)\n\n## Requirements\n\n### 1. Single H1 heading\n- `writeSpecFromTemplate` must emit exactly one `# \u003ctitle\u003e` line\n- If the body already starts with `# \u003ctitle\u003e`, do not add another\n- If the body does not start with `# \u003ctitle\u003e`, prepend it\n\n### 2. Sanitize title input\n- `sanitizeSpecTitle` should strip leading `# ` from user input to prevent double-prefixing\n\n### 3. Regression prevention\n- Unit test: create spec with plain name, verify single H1\n- Unit test: create spec with `# ` prefixed name, verify single H1\n- Unit test: create spec with body starting with `# Title`, verify no duplication\n\n## Acceptance Criteria\n- `ff spec \"My Feature\" --type feature` produces exactly one `# My Feature` line\n- `ff spec \"# My Feature\" --type feature` produces exactly one `# My Feature` line (not `# # My Feature`)\n- Existing tests pass (449 tests, 0 failures)",
       "version": "0.9.7"
+    },
+    "SPEC-1784690583": {
+      "spec_id": "Ff Commit Should Not Set Spec Status By Default",
+      "repo_issue_id": 0,
+      "status": "draft",
+      "linked_commits": null,
+      "type": "bug",
+      "body": "# Ff Commit Should Not Set Spec Status By Default\nff commit --ai unconditionally sets spec status (draft for feature/bug/refactor, review for chore) even when the spec is already at that status or higher. This causes regressions — e.g. a spec at review gets downgraded to draft on the next commit. Status should only change when --review is explicitly passed. The resolveTargetStatus function should be stripped to only honor --review.",
+      "version": "0.9.8"
     }
   }
 }

@@ -1,12 +1,12 @@
 ---
 spec_id: "SPEC-1784280001"
-status: draft
+status: review
 repo_issue: ""
 type: bug
 version: "0.9.7"
 root_cause: ""
 resolution: ""
-linked_commits: ["07f33dc", "2ebba65"]
+linked_commits: ["07f33dc", "2ebba65", "9b5cbd3"]
 ---
 
 # ff commit produces malformed spec frontmatter and stale linked_commits

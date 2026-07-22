@@ -1,4 +1,5 @@
----spec_id: "SPEC-1784264619"
+---
+spec_id: "SPEC-1784264619"
 status: closed
 repo_issue: ""
 type: refactor

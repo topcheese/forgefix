@@ -6,7 +6,7 @@ type: bug
 version: "0.9.7"
 root_cause: "UpdateLedgerAfterCommit appended the pre-amend hash, then finalizeCommitAfterAmend tried to replace it but failed when multiple commits happened in succession. Additionally, finalizeCommitAfterAmend used the wrong spec path (.ff/specs/ instead of git root)."
 resolution: "Fixed in SPEC-1784672632: corrected spec path in finalizeCommitAfterAmend, fixed duplicate append logic, and ensured linked_commits uses the final post-amend hash."
-linked_commits: ["f02dbb6", "dde80e6", "d61c818"]
+linked_commits: ["f02dbb6", "dde80e6", "25126a4"]
 ---
 
 # ff commit amend cycle corrupts linked_commits across multiple commits

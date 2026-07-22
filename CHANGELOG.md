@@ -19,6 +19,7 @@
 - feat: fix malformed frontmatter, add missing title heading, set status to review in file and DB (SPEC-1784263151)
 - feat: set status to review, add root_cause and resolution referencing SPEC-1784672632 fix (SPEC-1784678104)
 - feat: fix resolveTargetStatus to never downgrade status, add statusRank guard (SPEC-1784678104)
+- feat: Fix duplicated H1 heading in spec files (SPEC-1784280001)
 
 ## [Unreleased] - 2026-07-17
 

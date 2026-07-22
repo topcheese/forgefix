@@ -229,7 +229,15 @@ func writeSpecFromTemplate(configDir, name, title, body, specType, specVersion, 
 	}
 	frontmatter := parts[1]
 
-	content := fmt.Sprintf("---%s---\n# %s\n%s\n", frontmatter, title, body)
+	// Avoid duplicating the H1 heading: if body already starts with
+	// "# <title>", don't prepend another one.
+	var content string
+	bodyTrimmed := strings.TrimSpace(body)
+	if strings.HasPrefix(bodyTrimmed, "# "+title) {
+		content = fmt.Sprintf("---%s---\n%s\n", frontmatter, body)
+	} else {
+		content = fmt.Sprintf("---%s---\n# %s\n%s\n", frontmatter, title, body)
+	}
 
 	specDir := filepath.Join(configDir, "specs")
 	if err := os.MkdirAll(specDir, 0755); err != nil {
@@ -456,6 +464,8 @@ func parseSpecPositional(args []string) (name, body string) {
 // collapses any resulting multiple spaces into one, so phrases like "--ai" no
 // longer produce double/garbled spacing. The result is Title-cased.
 func sanitizeSpecTitle(name string) string {
+	// Strip leading "# " so `ff spec "# Title"` doesn't produce "# # Title".
+	name = strings.TrimPrefix(name, "# ")
 	replaced := strings.ReplaceAll(name, "-", " ")
 	fields := strings.Fields(replaced)
 	title := strings.Join(fields, " ")
