@@ -9,6 +9,7 @@
 - feat: Fix IsValidIssueTitle regex and validation for both formats (SPEC-1784743523)
 - feat: Fix IsValidIssueTitle helper regex for old format (SPEC-1784743523)
 - feat: Sync spec file and ledger for title formatting (SPEC-1784742186)
+- feat: Final sync (SPEC-1784742186)
 
 ## [Unreleased] - 2026-07-21
 
