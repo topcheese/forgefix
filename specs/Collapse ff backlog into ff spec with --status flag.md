@@ -5,7 +5,7 @@ repo_issue: 546
 type: refactor
 version: "0.9.7"
 root_cause: "ff backlog was a standalone command for spec status management, duplicating logic that belongs under ff spec. Collapsing it into ff spec --status simplifies the CLI surface and unifies status management under one command."
-linked_commits: ["1a79972", "fe63c8e", "c3728c3"]
+linked_commits: ["1a79972", "fe63c8e", "8783e13"]
 ---
 # Problem
 

@@ -1,12 +1,15 @@
----spec_id: "SPEC-1784263151"
+---
+spec_id: "SPEC-1784263151"
 status: draft
 repo_issue: ""
 type: bug
 version: "0.9.7"
 root_cause: "ArchiveResolvedSpecs called db.ArchiveSpec(specID, entry.SpecID, specType, entry.RepoIssueID) without passing Version, RootCause, Resolution, or Body. ArchiveSpec then called UpsertSpec with empty strings for all four, which overwrote existing DB values via ON CONFLICT DO UPDATE."
-linked_commits: ["bf5c038"]
+linked_commits: ["bf5c038", "7640137"]
 ---
-# Problem
+# ff archive drops version root_cause resolution and body from DB
+
+## Problem
 
 When ff archive runs, it calls db.ArchiveSpec which passes empty strings for version, root_cause, resolution, and body to UpsertSpec. Since UpsertSpec uses ON CONFLICT DO UPDATE, these empty values overwrite whatever was previously stored in the DB. The archived spec record therefore has empty values for all four fields, losing the spec's resolution details permanently.
 

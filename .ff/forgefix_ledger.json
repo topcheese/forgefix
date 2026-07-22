@@ -6,7 +6,7 @@
       "total_passed": 459,
       "total_failed": 0,
       "historical_floor": 459,
-      "last_update": "2026-07-22 03:07:29"
+      "last_update": "2026-07-22 03:13:06"
     }
   },
   "spec_mappings": {
@@ -418,8 +418,8 @@
       "linked_commits": [
         "0bab943",
         "7cfb30f",
+        "8783e13",
         "8bed541",
-        "fe63c8e",
         "c3728c3"
       ],
       "type": "refactor",
@@ -428,14 +428,15 @@
       "version": "0.9.7"
     },
     "SPEC-1784263151": {
-      "spec_id": "Problem",
+      "spec_id": "ff archive drops version root_cause resolution and body from DB",
       "repo_issue_id": 0,
       "status": "draft",
       "linked_commits": [
-        "bf5c038"
+        "bf5c038",
+        "7640137"
       ],
       "type": "bug",
-      "body": "# Problem\n\nWhen ff archive runs, it calls db.ArchiveSpec which passes empty strings for version, root_cause, resolution, and body to UpsertSpec. Since UpsertSpec uses ON CONFLICT DO UPDATE, these empty values overwrite whatever was previously stored in the DB. The archived spec record therefore has empty values for all four fields, losing the spec's resolution details permanently.\n\n## Root Cause\n\narchive.go: ArchiveResolvedSpecs() at line 39 calls:\n    db.ArchiveSpec(specID, entry.SpecID, specType, entry.RepoIssueID)\n\nIt doesn't pass entry.Version, entry.RootCause, entry.Resolution, or entry.Body even though the ledger SpecEntry has all four fields populated (populated by SyncFromSpecsDir which reads them from the spec file frontmatter).\n\ndb.go: ArchiveSpec() at line 230 calls:\n    db.UpsertSpec(specID, title, \"archived\", specType, \"\", repoIssueID, \"\", \"\", \"\")\n\nThe empty strings for version, rootCause, resolution, and body blow away existing DB values via the ON CONFLICT DO UPDATE clause.\n\nMeanwhile, the normal sync path (ImportDB at line 637) properly passes all fields:\n    db.UpsertSpec(specID, entry.SpecID, entry.Status, entry.Type, entry.Version, entry.RepoIssueID, entry.RootCause, entry.Resolution, entry.Body)\n\nSo the ledger has the data, the DB supports the columns, but the archive path drops it all.\n\n## Requirements\n\n1. ArchiveResolvedSpecs must pass Version, RootCause, Resolution, and Body from the ledger entry to ArchiveSpec\n2. ArchiveSpec must accept and forward all four fields to UpsertSpec\n3. No regression in the archive flow — archived specs still get status \"archived\" and their files removed\n4. The archived DB record preserves the spec's version, root_cause, resolution, and body as they were before archiving",
+      "body": "# ff archive drops version root_cause resolution and body from DB\n\n## Problem\n\nWhen ff archive runs, it calls db.ArchiveSpec which passes empty strings for version, root_cause, resolution, and body to UpsertSpec. Since UpsertSpec uses ON CONFLICT DO UPDATE, these empty values overwrite whatever was previously stored in the DB. The archived spec record therefore has empty values for all four fields, losing the spec's resolution details permanently.\n\n## Root Cause\n\narchive.go: ArchiveResolvedSpecs() at line 39 calls:\n    db.ArchiveSpec(specID, entry.SpecID, specType, entry.RepoIssueID)\n\nIt doesn't pass entry.Version, entry.RootCause, entry.Resolution, or entry.Body even though the ledger SpecEntry has all four fields populated (populated by SyncFromSpecsDir which reads them from the spec file frontmatter).\n\ndb.go: ArchiveSpec() at line 230 calls:\n    db.UpsertSpec(specID, title, \"archived\", specType, \"\", repoIssueID, \"\", \"\", \"\")\n\nThe empty strings for version, rootCause, resolution, and body blow away existing DB values via the ON CONFLICT DO UPDATE clause.\n\nMeanwhile, the normal sync path (ImportDB at line 637) properly passes all fields:\n    db.UpsertSpec(specID, entry.SpecID, entry.Status, entry.Type, entry.Version, entry.RepoIssueID, entry.RootCause, entry.Resolution, entry.Body)\n\nSo the ledger has the data, the DB supports the columns, but the archive path drops it all.\n\n## Requirements\n\n1. ArchiveResolvedSpecs must pass Version, RootCause, Resolution, and Body from the ledger entry to ArchiveSpec\n2. ArchiveSpec must accept and forward all four fields to UpsertSpec\n3. No regression in the archive flow — archived specs still get status \"archived\" and their files removed\n4. The archived DB record preserves the spec's version, root_cause, resolution, and body as they were before archiving",
       "root_cause": "ArchiveResolvedSpecs called db.ArchiveSpec(specID, entry.SpecID, specType, entry.RepoIssueID) without passing Version, RootCause, Resolution, or Body. ArchiveSpec then called UpsertSpec with empty strings for all four, which overwrote existing DB values via ON CONFLICT DO UPDATE.",
       "version": "0.9.7"
     },
