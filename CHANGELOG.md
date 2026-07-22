@@ -1,4 +1,4 @@
-## [Unreleased] - 2026-07-22
+## [v0.9.8] - 2026-07-22
 
 ### 🚀 Release Summary
 - feat: Ledger sync (SPEC-1784703448)
@@ -19,10 +19,6 @@
 - feat: Remove aiMode gate from promoteReviewSpecs so ff sync promotes review to ship regardless of --ai flag (SPEC-1784754084)
 - feat: Fix spec title corrupted by sync, document work done, add linked commits (SPEC-1784744046)
 - feat: Fix status back to ship - was already implemented, should not have been demoted (SPEC-1784744046)
-
-## [Unreleased] - 2026-07-21
-
-### 🚀 Release Summary
 - feat: Fix malformed spec frontmatter and stale linked_commits (SPEC-1784280001)
 - feat: Fix auto-created specs missing title heading (SPEC-1784225300)
 - feat: Fix malformed spec frontmatter and stale linked_commits (SPEC-1784660285)
@@ -48,19 +44,11 @@
 - feat: Update ledger and spec file after commit-link resolution (SPEC-1784703448)
 - feat: Sync ledger state after resolution link update (SPEC-1784703448)
 - feat: Final ledger sync after commit-link resolution implementation (SPEC-1784703448)
-
-## [Unreleased] - 2026-07-17
-
-### 🚀 Release Summary
 - feat: Collapse ff backlog into ff spec with --status flag (SPEC-1784262174)
 - feat: Update linked_commits to correct commit SHA (SPEC-1784262174)
 - feat: Fix corrupted spec frontmatter (linked_commits, resolution format) (SPEC-1784262174)
 - feat: Write Swarm Integration exploration spec and register in ledger (SPEC-1784275332)
 - feat: refactor: (SPEC-1784264619)
-
-## [Unreleased] - 2026-07-16
-
-### 🚀 Release Summary
 - feat: fix: preserve version/root_cause/resolution/body when archiving specs to DBArchiveResolvedSpecs was calling db.ArchiveSpec() without passingVersion, RootCause, Resolution, or Body from the ledger entry.ArchiveSpec then called UpsertSpec with empty strings for all four,which overwrote existing DB values via ON CONFLICT DO UPDATE.Fixes SPEC-1784263151 (SPEC-1784263151)
 
 ## [v0.9.7] - 2026-07-16
@@ -140,5 +128,6 @@
 
 ### 🚀 Release Summary
 - release: initialize stable v0.7.0 architecture with atomic dashboard dirty flag, custom command args, and issue-aware changelog automation
+
 
 
